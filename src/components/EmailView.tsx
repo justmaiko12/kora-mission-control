@@ -45,7 +45,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const [bulkProcessing, setBulkProcessing] = useState(false);
   
   // Filter state (MUST be before any conditional returns!)
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [filter, setFilter] = useState<"all" | "unread" | "needs-response">("all");
   
   // Similar emails prompt state
   const [similarPrompt, setSimilarPrompt] = useState<{
@@ -407,8 +407,12 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     return colors[hash % colors.length];
   };
 
+  const needsResponseCount = visibleEmails.filter(e => e.needsResponse).length;
+  
   const filteredEmails = filter === "unread" 
     ? visibleEmails.filter(e => !e.read)
+    : filter === "needs-response"
+    ? visibleEmails.filter(e => e.needsResponse)
     : visibleEmails;
 
   // Default: full email list view
@@ -459,10 +463,24 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto">
+          <button
+            onClick={() => setFilter("needs-response")}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+              filter === "needs-response"
+                ? "bg-amber-600 text-white"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            Needs Response
+            {needsResponseCount > 0 && (
+              <span className="text-xs text-zinc-300">{needsResponseCount}</span>
+            )}
+          </button>
           <button
             onClick={() => setFilter("unread")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
               filter === "unread"
                 ? "bg-zinc-700 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
@@ -476,7 +494,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           </button>
           <button
             onClick={() => setFilter("all")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
               filter === "all"
                 ? "bg-zinc-700 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
@@ -594,7 +612,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           <svg className="w-12 h-12 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-          <p>{filter === "unread" ? "No unread emails" : "No emails"}</p>
+          <p>{filter === "unread" ? "No unread emails" : filter === "needs-response" ? "All caught up! 🎉" : "No emails"}</p>
         </div>
       )}
 

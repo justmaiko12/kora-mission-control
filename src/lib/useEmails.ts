@@ -20,6 +20,7 @@ export interface EmailThread {
   read: boolean;
   snippet: string;
   importanceScore?: number; // 0-100, learned from user actions
+  needsResponse?: boolean; // True if user hasn't replied to this thread
 }
 
 interface EmailsState {

@@ -14,6 +14,7 @@ import Dashboard from "@/components/Dashboard";
 import Avatar from "@/components/Avatar";
 import { FocusedItem } from "@/lib/types";
 import { CustomChannel, listCustomChannels, onCustomChannelsUpdated } from "@/lib/channelStorage";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export type ViewType =
   | "dashboard"
@@ -131,13 +132,15 @@ function HomeContent() {
         return <Dashboard onNavigate={setActiveView} />;
       case "email":
         return (
-          <EmailView
-            focusedItem={focusedItem}
-            onFocusItem={setFocusedItem}
-            previewEmailIds={previewEmailIds}
-            refreshTrigger={emailRefreshTrigger}
-            onActiveAccountChange={handleActiveAccountChange}
-          />
+          <ErrorBoundary name="EmailView">
+            <EmailView
+              focusedItem={focusedItem}
+              onFocusItem={setFocusedItem}
+              previewEmailIds={previewEmailIds}
+              refreshTrigger={emailRefreshTrigger}
+              onActiveAccountChange={handleActiveAccountChange}
+            />
+          </ErrorBoundary>
         );
       case "tasks":
         return (

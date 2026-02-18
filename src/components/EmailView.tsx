@@ -42,6 +42,9 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkProcessing, setBulkProcessing] = useState(false);
+  
+  // Filter state (MUST be before any conditional returns!)
+  const [filter, setFilter] = useState<"all" | "unread">("all");
 
   // Toggle individual email selection
   const toggleSelect = (emailId: string) => {
@@ -254,12 +257,19 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const visibleEmails = emails.filter((e) => !ignoredIds.has(e.id));
   const unreadCount = visibleEmails.filter((e) => !e.read).length;
 
-  // Show simple detail view when email is selected
+  // Show detail view when email is selected
   if (selectedEmail) {
     return (
-      <div className="h-full p-8 bg-zinc-900">
-        <p>Static text only - no variables</p>
-      </div>
+      <ErrorBoundary name="EmailDetailView">
+        <EmailDetail
+          email={selectedEmail}
+          account={activeAccount}
+          onClose={() => setSelectedEmail(null)}
+          onIgnore={handleIgnore}
+          onMarkDeal={handleMarkAsDeal}
+          onMarkRequest={handleMarkAsRequest}
+        />
+      </ErrorBoundary>
     );
   }
 
@@ -280,8 +290,6 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     return colors[hash % colors.length];
   };
 
-  // Filter state
-  const [filter, setFilter] = useState<"all" | "unread">("all");
   const filteredEmails = filter === "unread" 
     ? visibleEmails.filter(e => !e.read)
     : visibleEmails;

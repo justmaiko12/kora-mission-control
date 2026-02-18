@@ -84,6 +84,7 @@ function HomeContent() {
   const [previewEmailIds, setPreviewEmailIds] = useState<string[]>([]);
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0);
   const [activeEmailAccount, setActiveEmailAccount] = useState<string>("");
+  const [visibleEmails, setVisibleEmails] = useState<Array<{ from: string; subject: string; id: string }>>([]);
   const searchParams = useSearchParams();
   
   // Callbacks for chat to control email view
@@ -98,6 +99,10 @@ function HomeContent() {
   
   const handleActiveAccountChange = useCallback((account: string) => {
     setActiveEmailAccount(account);
+  }, []);
+  
+  const handleVisibleEmailsChange = useCallback((emails: Array<{ from: string; subject: string; id: string }>) => {
+    setVisibleEmails(emails);
   }, []);
 
   useEffect(() => {
@@ -143,6 +148,7 @@ function HomeContent() {
               previewEmailIds={previewEmailIds}
               refreshTrigger={emailRefreshTrigger}
               onActiveAccountChange={handleActiveAccountChange}
+              onVisibleEmailsChange={handleVisibleEmailsChange}
             />
           </ErrorBoundary>
         );
@@ -256,6 +262,7 @@ function HomeContent() {
                   context={viewToActivityContext[activeView]}
                   onCommand={() => handleRefreshEmails()}
                   emailAccount={activeView === "email" ? activeEmailAccount : undefined}
+                  visibleEmails={activeView === "email" ? visibleEmails : undefined}
                 />
               </ErrorBoundary>
             </div>
@@ -294,6 +301,7 @@ function HomeContent() {
                     context={viewToActivityContext[activeView]}
                     onCommand={() => handleRefreshEmails()}
                     emailAccount={activeView === "email" ? activeEmailAccount : undefined}
+                    visibleEmails={activeView === "email" ? visibleEmails : undefined}
                   />
                 </ErrorBoundary>
               </div>

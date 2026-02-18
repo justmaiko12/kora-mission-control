@@ -14,9 +14,10 @@ interface EmailViewProps {
   previewEmailIds?: string[]; // Emails to highlight (pending action)
   refreshTrigger?: number; // Increment to force refresh
   onActiveAccountChange?: (account: string) => void; // Report active account to parent
+  onVisibleEmailsChange?: (emails: Array<{ from: string; subject: string; id: string }>) => void;
 }
 
-export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = [], refreshTrigger = 0, onActiveAccountChange }: EmailViewProps) {
+export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = [], refreshTrigger = 0, onActiveAccountChange, onVisibleEmailsChange }: EmailViewProps) {
   const { accounts, emails, loading, error, activeAccount, setActiveAccount, refresh } =
     useEmails();
   
@@ -256,6 +257,19 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   // Filter out ignored emails
   const visibleEmails = emails.filter((e) => !ignoredIds.has(e.id));
   const unreadCount = visibleEmails.filter((e) => !e.read).length;
+
+  // Report visible emails to parent for command context
+  useEffect(() => {
+    if (onVisibleEmailsChange) {
+      onVisibleEmailsChange(
+        visibleEmails.slice(0, 30).map(e => ({
+          from: e.from,
+          subject: e.subject,
+          id: e.id,
+        }))
+      );
+    }
+  }, [visibleEmails, onVisibleEmailsChange]);
 
   // Show detail view when email is selected
   if (selectedEmail) {

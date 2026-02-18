@@ -15,9 +15,10 @@ interface ActivityFeedProps {
   context?: string; // "email" | "deals" | "general"
   onCommand?: (command: string) => void;
   emailAccount?: string; // Current email account when in email context
+  visibleEmails?: Array<{ from: string; subject: string; id: string }>; // Current emails for context
 }
 
-export default function ActivityFeed({ context = "general", onCommand, emailAccount }: ActivityFeedProps) {
+export default function ActivityFeed({ context = "general", onCommand, emailAccount, visibleEmails }: ActivityFeedProps) {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [command, setCommand] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,6 +59,7 @@ export default function ActivityFeed({ context = "general", onCommand, emailAcco
           command: command.trim(), 
           context,
           emailAccount: context === "email" ? emailAccount : undefined,
+          visibleEmails: context === "email" ? visibleEmails?.slice(0, 20) : undefined, // Send top 20 for context
         }),
       });
       
@@ -166,8 +168,8 @@ export default function ActivityFeed({ context = "general", onCommand, emailAcco
             onChange={(e) => setCommand(e.target.value)}
             placeholder={
               context === "email" 
-                ? `Command for ${emailAccount || 'email'}...` 
-                : "Quick command..."
+                ? "Tell me what to do with these emails..." 
+                : "What do you need?"
             }
             className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 placeholder-zinc-500"
             disabled={loading}
@@ -182,8 +184,8 @@ export default function ActivityFeed({ context = "general", onCommand, emailAcco
         </div>
         <p className="text-xs text-zinc-600 mt-2 px-1">
           {context === "email" 
-            ? `Examples: "archive all from @amazon.com" • "delete all from newsletters" • "spam from @acquire.com"`
-            : `Examples: "archive all from @domain.com" • "mark Nike deal as active"`
+            ? `Try: "these look like spam" • "archive the amazon deliveries" • "what looks important?"`
+            : `Try: "what's on my plate?" • "remind me about Nike deal tomorrow"`
           }
         </p>
       </form>

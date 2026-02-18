@@ -5,13 +5,23 @@ const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 
 export async function POST(req: Request) {
   try {
-    const { command, context, emailAccount } = await req.json();
+    const { command, context, emailAccount, visibleEmails } = await req.json();
 
     if (!command) {
       return NextResponse.json({ error: "Command required" }, { status: 400 });
     }
 
-    // Route command to Bridge API chat (which handles email commands directly)
+    // Build context-aware message
+    let contextMessage = command;
+    if (context === "email" && visibleEmails?.length > 0) {
+      const emailList = visibleEmails
+        .slice(0, 15)
+        .map((e: { from: string; subject: string }, i: number) => `${i + 1}. From: ${e.from} | Subject: ${e.subject}`)
+        .join("\n");
+      contextMessage = `User is looking at ${emailAccount || "their inbox"} with these emails:\n${emailList}\n\nUser says: "${command}"\n\nHelp them manage these emails. If they want to archive/delete/spam, tell them which specific senders or patterns to target.`;
+    }
+
+    // Route command to Bridge API chat
     const res = await fetch(`${BRIDGE_URL}/api/chat/send`, {
       method: "POST",
       headers: {
@@ -19,10 +29,10 @@ export async function POST(req: Request) {
         Authorization: `Bearer ${BRIDGE_SECRET}`,
       },
       body: JSON.stringify({
-        message: command,
+        message: contextMessage,
         chatContext: context || "general",
         userId: "michael",
-        account: emailAccount, // Pass the current email account
+        account: emailAccount,
       }),
     });
 

@@ -7,7 +7,7 @@ import ChannelView from "@/components/ChannelView";
 import MemoryBrowser from "@/components/MemoryBrowser";
 import KoraTasks from "@/components/KoraTasks";
 import Integrations from "@/components/Integrations";
-import ChatPanel from "@/components/ChatPanel";
+import InlineChat from "@/components/InlineChat";
 import EmailView from "@/components/EmailView";
 import DealsView from "@/components/DealsView";
 import Dashboard from "@/components/Dashboard";
@@ -41,7 +41,6 @@ const viewOptions: ViewType[] = [
 
 function HomeContent() {
   const [activeView, setActiveView] = useState<ViewType>("dashboard");
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [focusedItem, setFocusedItem] = useState<FocusedItem | null>(null);
   const [customChannels, setCustomChannels] = useState<CustomChannel[]>([]);
   const [activeCustomChannelId, setActiveCustomChannelId] = useState<string | null>(null);
@@ -98,6 +97,7 @@ function HomeContent() {
           />
         );
       case "chat":
+        // Full-page chat mode (legacy, redirects focus to inline)
         return (
           <ChannelView
             channel="chat"
@@ -151,29 +151,21 @@ function HomeContent() {
         }}
       />
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {renderView()}
-      </main>
+      {/* Main Content Area - Split Layout */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top: Current View */}
+        <main className="flex-1 overflow-auto min-h-0">
+          {renderView()}
+        </main>
 
-      {/* Floating Chat Button */}
-      {activeView !== "chat" && (
-        <button
-          onClick={() => setIsChatOpen(!isChatOpen)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 rounded-full shadow-lg flex items-center justify-center text-2xl transition-all z-50"
-        >
-          💬
-        </button>
-      )}
-
-      {/* Floating Chat Panel */}
-      {isChatOpen && activeView !== "chat" && (
-        <ChatPanel
-          onClose={() => setIsChatOpen(false)}
-          focusedItem={focusedItem}
-          onClearFocus={() => setFocusedItem(null)}
-        />
-      )}
+        {/* Bottom: Persistent Chat */}
+        <div className="h-[45%] min-h-[280px] max-h-[400px] border-t border-zinc-800">
+          <InlineChat
+            focusedItem={focusedItem}
+            onClearFocus={() => setFocusedItem(null)}
+          />
+        </div>
+      </div>
     </div>
   );
 }

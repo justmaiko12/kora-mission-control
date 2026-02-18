@@ -26,8 +26,9 @@ export function getSettings(): AppSettings {
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (!stored) return defaultSettings;
-    cachedSettings = { ...defaultSettings, ...JSON.parse(stored) };
-    return cachedSettings;
+    const merged = { ...defaultSettings, ...JSON.parse(stored) };
+    cachedSettings = merged;
+    return merged;
   } catch {
     return defaultSettings;
   }

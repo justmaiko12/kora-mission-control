@@ -98,13 +98,17 @@ export function useEmails() {
         const data = await res.json();
         
         const accounts: EmailAccount[] = (data.accounts || []).map(
-          (acc: { email: string; name: string }) => ({
-            id: acc.email,
-            email: acc.email,
-            name: acc.email, // Use full email as name
-            provider: "gmail" as const,
-            unreadCount: 0,
-          })
+          (acc: string | { email: string; name: string }) => {
+            // Handle both string and object formats
+            const email = typeof acc === 'string' ? acc : acc.email;
+            return {
+              id: email,
+              email: email,
+              name: email, // Use full email as name
+              provider: "gmail" as const,
+              unreadCount: 0,
+            };
+          }
         );
 
         if (cancelled) return;

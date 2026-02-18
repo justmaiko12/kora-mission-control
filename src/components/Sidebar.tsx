@@ -106,11 +106,11 @@ export default function Sidebar({
     { id: "payables", icon: "💸", label: "Payables", href: "/payables" },
   ];
 
-  const koraItems: NavItem[] = [
+  const automationItems: NavItem[] = [
+    { id: "automations", icon: "⚡", label: "Automations" },
     { id: "kora-activity", icon: "📊", label: "Activity" },
     { id: "memory", icon: "🧠", label: "Memory" },
     { id: "kora-tasks", icon: "📋", label: "My Tasks", badge: badges.tasks || undefined },
-    { id: "integrations", icon: "🔌", label: "Integrations" },
   ];
 
   const handleNavigate = (view: ViewType) => {
@@ -270,13 +270,13 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* Kora Section */}
+          {/* Automations Section */}
           <div>
             <h2 className="px-3 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Kora
             </h2>
             <div className="space-y-1">
-              {koraItems.map((item) => (
+              {automationItems.map((item) => (
                 <NavButton key={item.id} item={item} />
               ))}
             </div>

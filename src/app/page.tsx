@@ -12,6 +12,7 @@ import EmailView from "@/components/EmailView";
 import DealsView from "@/components/DealsView";
 import Dashboard from "@/components/Dashboard";
 import ActivityView from "@/components/ActivityView";
+import AutomationsView from "@/components/AutomationsView";
 import Avatar from "@/components/Avatar";
 import { FocusedItem } from "@/lib/types";
 import { CustomChannel, listCustomChannels, onCustomChannelsUpdated } from "@/lib/channelStorage";
@@ -26,6 +27,7 @@ export type ViewType =
   | "memory"
   | "kora-tasks"
   | "kora-activity"
+  | "automations"
   | "integrations"
   | "payables"
   | "business";
@@ -39,6 +41,7 @@ const viewOptions: ViewType[] = [
   "memory",
   "kora-tasks",
   "kora-activity",
+  "automations",
   "integrations",
   "payables",
   "business",
@@ -53,6 +56,7 @@ const viewTitles: Record<ViewType, string> = {
   memory: "Memory",
   "kora-tasks": "My Tasks",
   "kora-activity": "Activity",
+  automations: "Automations",
   integrations: "Integrations",
   payables: "Payables",
   business: "Deals",
@@ -68,6 +72,7 @@ const viewToActivityContext: Record<ViewType, string> = {
   memory: "general",
   "kora-tasks": "general",
   "kora-activity": "general",
+  automations: "automations",
   integrations: "integrations",
   payables: "payables",
   business: "deals",
@@ -189,6 +194,8 @@ function HomeContent() {
         return <KoraTasks />;
       case "kora-activity":
         return <ActivityView />;
+      case "automations":
+        return <AutomationsView />;
       case "integrations":
         return <Integrations />;
       case "business":
@@ -242,8 +249,8 @@ function HomeContent() {
           {renderView()}
         </main>
 
-        {/* Mobile Activity Feed - bottom half when open (hide on Activity tab) */}
-        {mobileChatOpen && activeView !== "kora-activity" && (
+        {/* Mobile Activity Feed - bottom half when open (hide on Activity/Automations tabs) */}
+        {mobileChatOpen && activeView !== "kora-activity" && activeView !== "automations" && (
           <div className="md:hidden h-[50%] border-t border-zinc-800 flex flex-col">
             <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800">
               <span className="font-semibold text-sm">Activity</span>
@@ -269,8 +276,8 @@ function HomeContent() {
           </div>
         )}
 
-        {/* Desktop: Persistent Activity Feed (hide on Activity tab) */}
-        <div className={`hidden ${activeView === "kora-activity" ? "" : "md:block"} border-t border-zinc-800 transition-all ${chatCollapsed ? "h-12" : "h-[35%] min-h-[200px] max-h-[300px]"}`}>
+        {/* Desktop: Persistent Activity Feed (hide on Activity/Automations tabs) */}
+        <div className={`hidden ${activeView === "kora-activity" || activeView === "automations" ? "" : "md:block"} border-t border-zinc-800 transition-all ${chatCollapsed ? "h-12" : "h-[35%] min-h-[200px] max-h-[300px]"}`}>
           {chatCollapsed ? (
             <button
               onClick={() => setChatCollapsed(false)}
@@ -310,8 +317,8 @@ function HomeContent() {
         </div>
       </div>
 
-      {/* Mobile Activity FAB - hidden when panel is open or on Activity tab */}
-      {!mobileChatOpen && activeView !== "kora-activity" && (
+      {/* Mobile Activity FAB - hidden when panel is open or on Activity/Automations tabs */}
+      {!mobileChatOpen && activeView !== "kora-activity" && activeView !== "automations" && (
         <button
           className="md:hidden fixed bottom-4 right-4 w-14 h-14 bg-indigo-600 rounded-full shadow-lg flex items-center justify-center text-2xl z-30"
           onClick={() => setMobileChatOpen(true)}

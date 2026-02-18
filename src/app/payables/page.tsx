@@ -45,17 +45,6 @@ interface PaymentRecord {
   note?: string;
 }
 
-interface PromoTask {
-  id: string;
-  title: string;
-  clientName?: string;
-  fee?: number;
-  status: string;
-  workStatus?: string;
-  paymentStatus?: string;
-  createdAt?: string;
-}
-
 const pendingStatuses = new Set<ExpensePayableStatus>(["planned", "approved", "partial"]);
 
 const statusBadgeStyles: Record<ExpensePayableStatus, string> = {
@@ -76,7 +65,6 @@ const getOutstandingAmount = (payable: ExpensePayable) => {
 export default function PayablesPage() {
   const router = useRouter();
   const [payables, setPayables] = useState<ExpensePayable[]>([]);
-  const [promoTasks, setPromoTasks] = useState<PromoTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -85,7 +73,7 @@ export default function PayablesPage() {
   const [endDate, setEndDate] = useState("");
   const [customChannels, setCustomChannels] = useState<CustomChannel[]>([]);
   const [activeCustomChannelId, setActiveCustomChannelId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"deals" | "expenses">("deals");
+  // Only showing expenses now - brand deals are in Deals tab
 
   useEffect(() => {
     let isMounted = true;
@@ -100,7 +88,6 @@ export default function PayablesPage() {
         }
         if (isMounted) {
           setPayables(payload.payables ?? []);
-          setPromoTasks(payload.promoTasks ?? []);
           setError(null);
         }
       } catch (fetchError) {
@@ -156,7 +143,6 @@ export default function PayablesPage() {
   }, [today]);
 
   const summary = useMemo(() => {
-    // Expense payables
     const pending = payables.filter((payable) => pendingStatuses.has(payable.status));
     const totalPending = pending.reduce((sum, payable) => sum + getOutstandingAmount(payable), 0);
     const dueThisWeek = pending.filter((payable) => {
@@ -165,20 +151,14 @@ export default function PayablesPage() {
     });
     const overdue = pending.filter((payable) => toDate(payable.dueDate) < today);
 
-    // Promo tasks (deals) - unpaid or not invoiced
-    const unpaidDeals = promoTasks.filter((t) => !t.paymentStatus || t.paymentStatus === "unpaid" || t.paymentStatus === "partial");
-    const totalDealsAmount = unpaidDeals.reduce((sum, t) => sum + (t.fee || 0), 0);
-
     return {
       totalPending,
       dueThisWeekCount: dueThisWeek.length,
       dueThisWeekTotal: dueThisWeek.reduce((sum, payable) => sum + getOutstandingAmount(payable), 0),
       overdueCount: overdue.length,
       overdueTotal: overdue.reduce((sum, payable) => sum + getOutstandingAmount(payable), 0),
-      totalDeals: unpaidDeals.length,
-      totalDealsAmount,
     };
-  }, [payables, promoTasks, today, weekAhead]);
+  }, [payables, today, weekAhead]);
 
   const filteredPayables = useMemo(() => {
     return payables.filter((payable) => {
@@ -251,8 +231,8 @@ export default function PayablesPage() {
       <main className="flex-1 overflow-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Payables Dashboard</h1>
-            <p className="text-zinc-500 mt-1">Track upcoming invoices and payment obligations.</p>
+            <h1 className="text-2xl font-bold">💸 Expenses</h1>
+            <p className="text-zinc-500 mt-1">Track bills and payment obligations.</p>
           </div>
           <div className="text-right">
             <p className="text-sm text-zinc-500">Updated</p>
@@ -272,21 +252,16 @@ export default function PayablesPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-green-900/30 border border-green-800/60 rounded-xl p-4">
-            <p className="text-sm text-green-300">💰 Deals Awaiting Payment</p>
-            <p className="text-3xl font-bold mt-1 text-green-200">{summary.totalDeals}</p>
-            <p className="text-xs text-green-300 mt-1">{formatCurrency(summary.totalDealsAmount, "USD")} pending</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-            <p className="text-sm text-zinc-500">📋 Expenses Pending</p>
+            <p className="text-sm text-zinc-500">📋 Total Pending</p>
             <p className="text-3xl font-bold mt-1">{formatCurrency(summary.totalPending, "USD")}</p>
             <p className="text-xs text-zinc-500 mt-1">Outstanding bills to pay</p>
           </div>
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-            <p className="text-sm text-zinc-500">Due This Week</p>
-            <p className="text-3xl font-bold mt-1">{summary.dueThisWeekCount}</p>
-            <p className="text-xs text-zinc-500 mt-1">
+          <div className="bg-amber-900/30 border border-amber-800/60 rounded-xl p-4">
+            <p className="text-sm text-amber-300">Due This Week</p>
+            <p className="text-3xl font-bold mt-1 text-amber-200">{summary.dueThisWeekCount}</p>
+            <p className="text-xs text-amber-300 mt-1">
               {formatCurrency(summary.dueThisWeekTotal, "USD")} scheduled
             </p>
           </div>
@@ -295,30 +270,6 @@ export default function PayablesPage() {
             <p className="text-3xl font-bold mt-1 text-red-200">{summary.overdueCount}</p>
             <p className="text-xs text-red-300 mt-1">{formatCurrency(summary.overdueTotal, "USD")} past due</p>
           </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab("deals")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === "deals"
-                ? "bg-green-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-white"
-            }`}
-          >
-            💰 Brand Deals ({promoTasks.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("expenses")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === "expenses"
-                ? "bg-indigo-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-white"
-            }`}
-          >
-            📋 Expenses ({payables.length})
-          </button>
         </div>
 
         <div className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4">
@@ -368,92 +319,8 @@ export default function PayablesPage() {
           </div>
         </div>
 
-        {/* Deals Table */}
-        {activeTab === "deals" && (
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">💰 Brand Deals</h2>
-                <p className="text-sm text-zinc-500">{promoTasks.length} deals awaiting payment</p>
-              </div>
-              {isLoading && <span className="text-sm text-zinc-500">Loading...</span>}
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-zinc-950/60 text-zinc-500">
-                  <tr>
-                    <th className="text-left px-5 py-3 font-medium">Deal</th>
-                    <th className="text-left px-5 py-3 font-medium">Client</th>
-                    <th className="text-left px-5 py-3 font-medium">Amount</th>
-                    <th className="text-left px-5 py-3 font-medium">Work Status</th>
-                    <th className="text-left px-5 py-3 font-medium">Payment</th>
-                    <th className="text-left px-5 py-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {promoTasks.map((task) => (
-                    <tr key={task.id} className="border-t border-zinc-800 hover:bg-white/5 transition">
-                      <td className="px-5 py-4">
-                        <div className="font-medium text-zinc-200">{task.title}</div>
-                        {task.createdAt && (
-                          <div className="text-xs text-zinc-500">
-                            Added {new Date(task.createdAt).toLocaleDateString()}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="text-zinc-300">{task.clientName || "—"}</div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="font-semibold text-green-400">
-                          {task.fee ? formatCurrency(task.fee, "USD") : "TBD"}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          task.workStatus === "completed" 
-                            ? "bg-green-900/40 text-green-300 border border-green-700"
-                            : task.workStatus === "in_progress"
-                            ? "bg-blue-900/40 text-blue-300 border border-blue-700"
-                            : "bg-zinc-900/40 text-zinc-400 border border-zinc-700"
-                        }`}>
-                          {task.workStatus || task.status || "pending"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          task.paymentStatus === "paid"
-                            ? "bg-emerald-900/40 text-emerald-300 border border-emerald-700"
-                            : task.paymentStatus === "partial"
-                            ? "bg-amber-900/40 text-amber-300 border border-amber-700"
-                            : "bg-red-900/40 text-red-300 border border-red-700"
-                        }`}>
-                          {task.paymentStatus || "unpaid"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <button className="px-3 py-1.5 rounded-lg bg-green-600/20 text-green-300 hover:bg-green-600/30 transition text-xs font-semibold">
-                          Create Invoice
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {!isLoading && promoTasks.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-5 py-8 text-center text-zinc-500">
-                        No deals awaiting payment. All caught up! 🎉
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
         {/* Expenses Table */}
-        {activeTab === "expenses" && (
+        {(
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
               <div>

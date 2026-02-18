@@ -1,6 +1,103 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+
+// Simple chat component for automations
+function AutomationsChat({ onRefresh }: { onRefresh: () => void }) {
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
+    
+    const userMessage = input.trim();
+    setInput("");
+    setMessages(prev => [...prev, { role: "user", content: userMessage }]);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/openclaw/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `[Automations Context] ${userMessage}`,
+          context: "automations",
+        }),
+      });
+      
+      const data = await res.json();
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: data.response || data.error || "No response" 
+      }]);
+      
+      // Refresh automations list after Kora responds (might have created/modified something)
+      setTimeout(onRefresh, 1000);
+    } catch (err) {
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: `Error: ${err instanceof Error ? err.message : "Failed to send"}` 
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-zinc-800 bg-zinc-900/80 backdrop-blur-sm">
+      {/* Messages area */}
+      {messages.length > 0 && (
+        <div className="max-h-48 overflow-y-auto p-4 space-y-3">
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={`text-sm ${
+                msg.role === "user"
+                  ? "text-zinc-300 text-right"
+                  : "text-zinc-400"
+              }`}
+            >
+              {msg.role === "assistant" && <span className="text-indigo-400">Kora: </span>}
+              {msg.content}
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      )}
+      
+      {/* Input area */}
+      <div className="p-4">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+            placeholder="Create, edit, or manage automations... (e.g., 'create a daily reminder at 9am')"
+            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            disabled={loading}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={loading || !input.trim()}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 rounded-lg text-sm font-medium transition-colors"
+          >
+            {loading ? "..." : "Send"}
+          </button>
+        </div>
+        <p className="text-xs text-zinc-500 mt-2">
+          Try: &quot;Create a reminder every day at 9am&quot; or &quot;Disable the session sync job&quot;
+        </p>
+      </div>
+    </div>
+  );
+}
 
 interface CronJob {
   id: string;
@@ -32,23 +129,24 @@ export default function AutomationsView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchJobs() {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/automations");
-        if (!res.ok) throw new Error("Failed to fetch automations");
-        const data: CronJobsResponse = await res.json();
-        setJobs(data.jobs || []);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
-      } finally {
-        setLoading(false);
-      }
+  const fetchJobs = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/automations");
+      if (!res.ok) throw new Error("Failed to fetch automations");
+      const data: CronJobsResponse = await res.json();
+      setJobs(data.jobs || []);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load");
+    } finally {
+      setLoading(false);
     }
-    fetchJobs();
   }, []);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
 
   const formatSchedule = (schedule: CronJob["schedule"]): string => {
     if (schedule.kind === "cron" && schedule.expr) {
@@ -92,18 +190,24 @@ export default function AutomationsView() {
   const disabledJobs = jobs.filter(j => !j.enabled);
 
   return (
-    <div className="h-full flex flex-col p-4 md:p-6 overflow-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold">⚡ Automations</h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            Cron jobs and scheduled tasks running in OpenClaw
-          </p>
+    <div className="h-full flex flex-col">
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-auto p-4 md:p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold">⚡ Automations</h1>
+            <p className="text-sm text-zinc-500 mt-1">
+              Cron jobs and scheduled tasks running in OpenClaw
+            </p>
+          </div>
+          <button
+            onClick={fetchJobs}
+            className="text-sm text-zinc-400 hover:text-white transition-colors"
+            title="Refresh"
+          >
+            🔄 {enabledJobs.length} active
+          </button>
         </div>
-        <div className="text-sm text-zinc-400">
-          {enabledJobs.length} active
-        </div>
-      </div>
 
       {loading && (
         <div className="flex-1 flex items-center justify-center">
@@ -213,6 +317,10 @@ export default function AutomationsView() {
           )}
         </div>
       )}
+      </div>
+
+      {/* Chat for managing automations */}
+      <AutomationsChat onRefresh={fetchJobs} />
     </div>
   );
 }

@@ -6,6 +6,15 @@ import EmailTabs from "@/components/EmailTabs";
 import EmailDetail from "@/components/EmailDetail";
 import { FocusedItem } from "@/lib/types";
 
+// Safely convert any value to string to prevent React Error #300
+const safeString = (val: unknown): string => {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") return val;
+  if (Array.isArray(val)) return val.map(safeString).join(", ");
+  if (typeof val === "object") return JSON.stringify(val);
+  return String(val);
+};
+
 interface EmailViewProps {
   focusedItem?: FocusedItem | null;
   onFocusItem?: (item: FocusedItem) => void;
@@ -311,12 +320,12 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                   )}
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm truncate ${email.read ? "text-zinc-400" : "font-medium"}`}>
-                      {email.subject || "(no subject)"}
+                      {safeString(email.subject) || "(no subject)"}
                     </p>
-                    <p className="text-xs text-zinc-500 truncate mt-0.5">{email.from}</p>
+                    <p className="text-xs text-zinc-500 truncate mt-0.5">{safeString(email.from)}</p>
                   </div>
                   <span className="text-[10px] text-zinc-600 flex-shrink-0">
-                    {formatDate(email.date)}
+                    {formatDate(safeString(email.date))}
                   </span>
                 </div>
               </div>
@@ -519,7 +528,8 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
         {filteredEmails.map((email) => {
           const isPreview = previewEmailIds.includes(email.id);
           const isSelected = selectedIds.has(email.id);
-          const senderName = email.from.split("<")[0].trim();
+          const fromStr = safeString(email.from);
+          const senderName = fromStr.split("<")[0].trim();
           
           return (
             <div
@@ -544,8 +554,8 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                 />
               ) : (
                 <div className="relative flex-shrink-0">
-                  <div className={`w-10 h-10 rounded-full ${getAvatarColor(email.from)} flex items-center justify-center text-white font-semibold`}>
-                    {getSenderInitial(email.from)}
+                  <div className={`w-10 h-10 rounded-full ${getAvatarColor(fromStr)} flex items-center justify-center text-white font-semibold`}>
+                    {getSenderInitial(fromStr)}
                   </div>
                   {!email.read && (
                     <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-zinc-950" />
@@ -560,11 +570,11 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                     {senderName}
                   </p>
                   <span className="text-xs text-zinc-500 flex-shrink-0">
-                    {formatDate(email.date)}
+                    {formatDate(safeString(email.date))}
                   </span>
                 </div>
                 <p className={`text-sm truncate ${email.read ? "text-zinc-500" : "text-zinc-300"}`}>
-                  {email.subject || "(no subject)"}
+                  {safeString(email.subject) || "(no subject)"}
                 </p>
               </div>
 

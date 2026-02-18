@@ -44,11 +44,6 @@ const DEAL_STAGES = {
   invoiced: { label: "🧾 Invoiced", color: "bg-cyan-500/20 border-cyan-500/50" },
 };
 
-// Archived stage (collapsible)
-const ARCHIVED_STAGE = {
-  paid: { label: "💰 Paid", color: "bg-emerald-500/20 border-emerald-500/50" },
-};
-
 const REQUEST_STAGES = {
   new: { label: "📩 New", color: "bg-slate-500/20 border-slate-500/50" },
   reviewing: { label: "👀 Reviewing", color: "bg-amber-500/20 border-amber-500/50" },
@@ -98,7 +93,6 @@ export default function DealsView() {
   const [draftLoading, setDraftLoading] = useState(false);
   const [draft, setDraft] = useState<string>("");
   const [activeTab, setActiveTab] = useState<TabType>("deals");
-  const [showPaid, setShowPaid] = useState(false);
   const [businessFilter, setBusinessFilter] = useState<BusinessFilter>("shluv");
   
   // Filter deals by business (always filtered, no "all" option)
@@ -306,51 +300,6 @@ export default function DealsView() {
               </div>
             );
             })}
-
-          {/* Paid (Collapsible) */}
-          {activeTab === "deals" && pipelineData?.deals?.paid && (() => {
-            const filteredPaid = filterByBusiness(pipelineData.deals.paid || []);
-            if (filteredPaid.length === 0) return null;
-            return (
-            <div className={`flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800 transition-all ${showPaid ? "w-56 md:w-72" : "w-14"}`}>
-              <button
-                onClick={() => setShowPaid(!showPaid)}
-                className="p-3 border-b border-zinc-800 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
-              >
-                {showPaid ? (
-                  <>
-                    <span className="font-medium text-sm text-emerald-400">💰 Paid</span>
-                    <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
-                      {filteredPaid.length}
-                    </span>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center w-full">
-                    <span className="text-lg">💰</span>
-                    <span className="text-[10px] text-zinc-500 mt-1">{filteredPaid.length}</span>
-                  </div>
-                )}
-              </button>
-              {showPaid && (
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {filteredPaid.map((deal) => (
-                    <div
-                      key={deal.id}
-                      onClick={() => { setSelectedDeal(deal); setDraft(""); }}
-                      className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md bg-emerald-500/20 border-emerald-500/50 ${selectedDeal?.id === deal.id ? "ring-2 ring-indigo-500" : ""}`}
-                    >
-                      <p className="text-sm font-medium line-clamp-2">{safeString(deal.subject)}</p>
-                      <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(deal.from)}</p>
-                      {deal.amount && (
-                        <p className="text-xs font-semibold text-emerald-300 mt-1">{formatMoney(deal.amount)}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            );
-          })()}
 
           {/* Requests Pipeline */}
           {activeTab === "requests" && pipelineData?.requests &&

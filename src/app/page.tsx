@@ -7,7 +7,7 @@ import ChannelView from "@/components/ChannelView";
 import MemoryBrowser from "@/components/MemoryBrowser";
 import KoraTasks from "@/components/KoraTasks";
 import Integrations from "@/components/Integrations";
-import InlineChat from "@/components/InlineChat";
+import InlineChat, { ChatContext } from "@/components/InlineChat";
 import EmailView from "@/components/EmailView";
 import DealsView from "@/components/DealsView";
 import Dashboard from "@/components/Dashboard";
@@ -51,6 +51,20 @@ const viewTitles: Record<ViewType, string> = {
   integrations: "Integrations",
   payables: "Payables",
   business: "Deals",
+};
+
+// Map views to their chat context (email and deals share context)
+const viewToChatContext: Record<ViewType, ChatContext> = {
+  dashboard: "dashboard",
+  email: "email",
+  tasks: "tasks",
+  chat: "general",
+  custom: "general",
+  memory: "memory",
+  "kora-tasks": "tasks",
+  integrations: "integrations",
+  payables: "payables",
+  business: "email", // Deals uses same chat as email (deals come from emails)
 };
 
 function HomeContent() {
@@ -195,6 +209,7 @@ function HomeContent() {
           <InlineChat
             focusedItem={focusedItem}
             onClearFocus={() => setFocusedItem(null)}
+            chatContext={viewToChatContext[activeView]}
           />
         </div>
       </div>

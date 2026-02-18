@@ -73,6 +73,8 @@ function HomeContent() {
   const [customChannels, setCustomChannels] = useState<CustomChannel[]>([]);
   const [activeCustomChannelId, setActiveCustomChannelId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatCollapsed, setChatCollapsed] = useState(false);
+  const [chatFullscreen, setChatFullscreen] = useState(false);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -205,13 +207,34 @@ function HomeContent() {
         </main>
 
         {/* Bottom: Persistent Chat - hidden on mobile for more space */}
-        <div className="hidden md:block h-[40%] min-h-[250px] max-h-[350px] border-t border-zinc-800">
-          <InlineChat
-            focusedItem={focusedItem}
-            onClearFocus={() => setFocusedItem(null)}
-            chatContext={viewToChatContext[activeView]}
-          />
-        </div>
+        {!chatFullscreen && (
+          <div className={`hidden md:block border-t border-zinc-800 transition-all ${chatCollapsed ? "h-auto" : "h-[40%] min-h-[250px] max-h-[350px]"}`}>
+            <InlineChat
+              focusedItem={focusedItem}
+              onClearFocus={() => setFocusedItem(null)}
+              chatContext={viewToChatContext[activeView]}
+              isCollapsed={chatCollapsed}
+              onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
+              isFullscreen={false}
+              onToggleFullscreen={() => setChatFullscreen(true)}
+            />
+          </div>
+        )}
+
+        {/* Fullscreen Chat Overlay */}
+        {chatFullscreen && (
+          <div className="fixed inset-0 z-50">
+            <InlineChat
+              focusedItem={focusedItem}
+              onClearFocus={() => setFocusedItem(null)}
+              chatContext={viewToChatContext[activeView]}
+              isCollapsed={false}
+              onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
+              isFullscreen={true}
+              onToggleFullscreen={() => setChatFullscreen(false)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Mobile Chat FAB */}

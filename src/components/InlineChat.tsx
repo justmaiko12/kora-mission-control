@@ -14,6 +14,10 @@ interface InlineChatProps {
   focusedItem: FocusedItem | null;
   onClearFocus: () => void;
   chatContext?: ChatContext; // Which view's chat this is
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 interface Message {
@@ -100,7 +104,15 @@ const messageStore: Record<ChatContext, Message[]> = {
   general: [],
 };
 
-export default function InlineChat({ focusedItem, onClearFocus, chatContext = "general" }: InlineChatProps) {
+export default function InlineChat({ 
+  focusedItem, 
+  onClearFocus, 
+  chatContext = "general",
+  isCollapsed = false,
+  onToggleCollapse,
+  isFullscreen = false,
+  onToggleFullscreen,
+}: InlineChatProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -220,8 +232,41 @@ export default function InlineChat({ focusedItem, onClearFocus, chatContext = "g
     }
   }, [input, isLoading, focusedItem, chatContext]);
 
+  // Collapsed view - just the header bar
+  if (isCollapsed) {
+    return (
+      <div className="bg-zinc-950 border-t border-zinc-800">
+        <div className="px-4 py-2 flex items-center justify-between bg-zinc-900/50">
+          <div className="flex items-center gap-3">
+            <Avatar size="sm" />
+            <div>
+              <h3 className="font-medium text-sm">{chatTitles[chatContext]}</h3>
+              <p className="text-[10px] text-green-500">● Online</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {focusedItem && (
+              <ContextBadge item={focusedItem} onClear={onClearFocus} compact />
+            )}
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
+                title="Expand chat"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full flex flex-col bg-zinc-950">
+    <div className={`flex flex-col bg-zinc-950 ${isFullscreen ? "fixed inset-0 z-50" : "h-full"}`}>
       {/* Header */}
       <div className="px-4 py-2 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
         <div className="flex items-center gap-3">
@@ -231,9 +276,39 @@ export default function InlineChat({ focusedItem, onClearFocus, chatContext = "g
             <p className="text-[10px] text-green-500">● Online</p>
           </div>
         </div>
-        {focusedItem && (
-          <ContextBadge item={focusedItem} onClear={onClearFocus} compact />
-        )}
+        <div className="flex items-center gap-2">
+          {focusedItem && (
+            <ContextBadge item={focusedItem} onClear={onClearFocus} compact />
+          )}
+          {onToggleFullscreen && (
+            <button
+              onClick={onToggleFullscreen}
+              className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
+              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              )}
+            </button>
+          )}
+          {onToggleCollapse && !isFullscreen && (
+            <button
+              onClick={onToggleCollapse}
+              className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
+              title="Collapse chat"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}

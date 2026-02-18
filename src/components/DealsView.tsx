@@ -14,10 +14,8 @@ interface Deal {
 }
 
 interface DealPipeline {
-  new_lead: Deal[];
   negotiating: Deal[];
-  contracted: Deal[];
-  in_progress: Deal[];
+  active: Deal[];
   completed: Deal[];
   invoiced: Deal[];
   paid: Deal[];
@@ -36,12 +34,14 @@ interface PipelineData {
 }
 
 const DEAL_STAGES = {
-  new_lead: { label: "📧 New Lead", color: "bg-blue-500/20 border-blue-500/50" },
   negotiating: { label: "💬 Negotiating", color: "bg-yellow-500/20 border-yellow-500/50" },
-  contracted: { label: "📝 Contracted", color: "bg-purple-500/20 border-purple-500/50" },
-  in_progress: { label: "🎬 In Progress", color: "bg-orange-500/20 border-orange-500/50" },
+  active: { label: "🎬 Active", color: "bg-orange-500/20 border-orange-500/50" },
   completed: { label: "✅ Completed", color: "bg-green-500/20 border-green-500/50" },
   invoiced: { label: "🧾 Invoiced", color: "bg-cyan-500/20 border-cyan-500/50" },
+};
+
+// Archived stage (collapsible)
+const ARCHIVED_STAGE = {
   paid: { label: "💰 Paid", color: "bg-emerald-500/20 border-emerald-500/50" },
 };
 
@@ -62,6 +62,7 @@ export default function DealsView() {
   const [draftLoading, setDraftLoading] = useState(false);
   const [draft, setDraft] = useState<string>("");
   const [activeTab, setActiveTab] = useState<TabType>("deals");
+  const [showPaid, setShowPaid] = useState(false);
 
   const fetchPipeline = useCallback(async () => {
     setLoading(true);
@@ -223,6 +224,44 @@ export default function DealsView() {
                 </div>
               </div>
             ))}
+
+          {/* Paid (Collapsible) */}
+          {activeTab === "deals" && pipelineData?.deals?.paid && pipelineData.deals.paid.length > 0 && (
+            <div className={`flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800 transition-all ${showPaid ? "w-56 md:w-72" : "w-14"}`}>
+              <button
+                onClick={() => setShowPaid(!showPaid)}
+                className="p-3 border-b border-zinc-800 flex items-center justify-between hover:bg-zinc-800/50 transition-colors"
+              >
+                {showPaid ? (
+                  <>
+                    <span className="font-medium text-sm text-emerald-400">💰 Paid</span>
+                    <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
+                      {pipelineData.deals.paid.length}
+                    </span>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center w-full">
+                    <span className="text-lg">💰</span>
+                    <span className="text-[10px] text-zinc-500 mt-1">{pipelineData.deals.paid.length}</span>
+                  </div>
+                )}
+              </button>
+              {showPaid && (
+                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  {pipelineData.deals.paid.map((deal) => (
+                    <div
+                      key={deal.id}
+                      onClick={() => { setSelectedDeal(deal); setDraft(""); }}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md bg-emerald-500/20 border-emerald-500/50 ${selectedDeal?.id === deal.id ? "ring-2 ring-indigo-500" : ""}`}
+                    >
+                      <p className="text-sm font-medium line-clamp-2">{deal.subject}</p>
+                      <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(deal.from)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Requests Pipeline */}
           {activeTab === "requests" && pipelineData?.requests &&

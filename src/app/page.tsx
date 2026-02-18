@@ -11,6 +11,7 @@ import ActivityFeed from "@/components/ActivityFeed";
 import EmailView from "@/components/EmailView";
 import DealsView from "@/components/DealsView";
 import Dashboard from "@/components/Dashboard";
+import ActivityView from "@/components/ActivityView";
 import Avatar from "@/components/Avatar";
 import { FocusedItem } from "@/lib/types";
 import { CustomChannel, listCustomChannels, onCustomChannelsUpdated } from "@/lib/channelStorage";
@@ -24,6 +25,7 @@ export type ViewType =
   | "custom"
   | "memory"
   | "kora-tasks"
+  | "kora-activity"
   | "integrations"
   | "payables"
   | "business";
@@ -36,6 +38,7 @@ const viewOptions: ViewType[] = [
   "custom",
   "memory",
   "kora-tasks",
+  "kora-activity",
   "integrations",
   "payables",
   "business",
@@ -49,6 +52,7 @@ const viewTitles: Record<ViewType, string> = {
   custom: "Channel",
   memory: "Memory",
   "kora-tasks": "My Tasks",
+  "kora-activity": "Activity",
   integrations: "Integrations",
   payables: "Payables",
   business: "Deals",
@@ -63,6 +67,7 @@ const viewToActivityContext: Record<ViewType, string> = {
   custom: "general",
   memory: "general",
   "kora-tasks": "general",
+  "kora-activity": "general",
   integrations: "integrations",
   payables: "payables",
   business: "deals",
@@ -176,6 +181,8 @@ function HomeContent() {
         return <MemoryBrowser />;
       case "kora-tasks":
         return <KoraTasks />;
+      case "kora-activity":
+        return <ActivityView />;
       case "integrations":
         return <Integrations />;
       case "business":

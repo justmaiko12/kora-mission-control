@@ -104,6 +104,7 @@ export default function Sidebar({
   ];
 
   const koraItems: NavItem[] = [
+    { id: "kora-activity", icon: "📊", label: "Activity" },
     { id: "memory", icon: "🧠", label: "Memory" },
     { id: "kora-tasks", icon: "📋", label: "My Tasks", badge: badges.tasks || undefined },
     { id: "integrations", icon: "🔌", label: "Integrations" },

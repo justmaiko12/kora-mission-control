@@ -33,8 +33,32 @@ interface AgentStatusResponse {
   updatedAt?: string;
 }
 
+interface DailyCost {
+  date: string;
+  cost: number;
+  tokens: number;
+}
+
+interface UsageBreakdown {
+  name: string;
+  cost: number;
+  tokens: number;
+  percentage: number;
+}
+
+interface UsageResponse {
+  totalCost: number;
+  totalTokens: number;
+  conversations: number;
+  activity: number;
+  dailyCosts: DailyCost[];
+  byAgent: UsageBreakdown[];
+  byModel: UsageBreakdown[];
+}
+
 interface DashboardData {
   agents: AgentStatusResponse;
+  usage: UsageResponse;
   loading: boolean;
   error: string | null;
 }
@@ -46,18 +70,37 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       activeCount: 0,
       recentCompletions: [],
     },
+    usage: {
+      totalCost: 0,
+      totalTokens: 0,
+      conversations: 0,
+      activity: 0,
+      dailyCosts: [],
+      byAgent: [],
+      byModel: [],
+    },
     loading: true,
     error: null,
   });
 
+  const [timeFilter, setTimeFilter] = useState("This Week");
+  const [metricFilter, setMetricFilter] = useState<
+    "Cost" | "Tokens" | "Conversations" | "Activity"
+  >("Cost");
+
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        const agentRes = await fetch("/api/agents/status");
+        const [agentRes, usageRes] = await Promise.all([
+          fetch("/api/agents/status"),
+          fetch("/api/usage"),
+        ]);
         const agentData = await agentRes.json();
+        const usageData = await usageRes.json();
 
         setData({
           agents: agentData,
+          usage: usageData,
           loading: false,
           error: null,
         });
@@ -80,6 +123,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     if (hour < 17) return "Good afternoon";
     return "Good evening";
   };
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    }).format(value);
+
+  const formatNumber = (value: number) =>
+    new Intl.NumberFormat("en-US").format(value);
 
   const channels = [
     {
@@ -122,6 +175,27 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     [data.agents.sessions]
   );
 
+  const chartData = useMemo(() => {
+    return data.usage.dailyCosts.map((entry) => {
+      let value = entry.cost;
+      if (metricFilter === "Tokens") value = entry.tokens;
+      if (metricFilter === "Conversations") value = Math.max(1, Math.round(entry.tokens / 900));
+      if (metricFilter === "Activity") value = Math.max(1, Math.round(entry.tokens / 140));
+      return {
+        dateLabel: new Date(entry.date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        value,
+      };
+    });
+  }, [data.usage.dailyCosts, metricFilter]);
+
+  const maxChartValue = useMemo(() => {
+    if (chartData.length === 0) return 0;
+    return Math.max(...chartData.map((entry) => entry.value));
+  }, [chartData]);
+
   const radarPositions = [
     { top: "15%", left: "20%" },
     { top: "26%", left: "58%" },
@@ -133,6 +207,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     { top: "78%", left: "36%" },
     { top: "24%", left: "78%" },
     { top: "52%", left: "12%" },
+  ];
+
+  const timeFilters = ["Today", "This Week", "This Month", "This Year"];
+  const metricTabs: Array<"Cost" | "Tokens" | "Conversations" | "Activity"> = [
+    "Cost",
+    "Tokens",
+    "Conversations",
+    "Activity",
   ];
 
   return (
@@ -256,14 +338,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <div className="rounded-2xl border border-emerald-400/20 bg-zinc-950/60 p-4">
               <h3 className="text-sm font-semibold text-emerald-100">Sessions</h3>
               <div className="mt-3 space-y-2">
-                {(data.loading ? Array.from({ length: 4 }) : data.agents.sessions)
-                  .slice(0, 5)
-                  .map((session, index) => {
-                    if (data.loading) {
-                      return (
-                        <div key={`loading-${index}`} className="h-8 rounded-lg bg-emerald-500/10 animate-pulse" />
-                      );
-                    }
+                {data.loading ? (
+                  Array.from({ length: 4 }).map((_, index) => (
+                    <div key={`loading-${index}`} className="h-8 rounded-lg bg-emerald-500/10 animate-pulse" />
+                  ))
+                ) : (
+                  data.agents.sessions.slice(0, 5).map((session) => {
                     const statusColor =
                       session.status === "active" ? "bg-emerald-400" : "bg-zinc-500";
                     return (
@@ -281,60 +361,225 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         </span>
                       </div>
                     );
-                  })}
+                  })
+                )}
               </div>
             </div>
 
             <div className="rounded-2xl border border-emerald-400/20 bg-zinc-950/60 p-4">
               <h3 className="text-sm font-semibold text-emerald-100">Recent Completions</h3>
               <div className="mt-3 space-y-2 text-xs">
-                {(data.loading ? Array.from({ length: 3 }) : data.agents.recentCompletions)
-                  .slice(0, 3)
-                  .map((completion, index) => {
-                    if (data.loading) {
-                      return (
-                        <div key={`completion-${index}`} className="h-8 rounded-lg bg-emerald-500/10 animate-pulse" />
-                      );
-                    }
-                    return (
-                      <div
-                        key={completion.id}
-                        className="flex flex-col gap-1 rounded-lg border border-emerald-400/10 bg-emerald-500/5 px-3 py-2"
-                      >
-                        <p className="text-emerald-100">{completion.title}</p>
-                        <p className="text-emerald-100/60">
-                          {completion.agent} • {completion.completedAt}
-                        </p>
-                      </div>
-                    );
-                  })}
+                {data.loading ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <div key={`completion-${index}`} className="h-8 rounded-lg bg-emerald-500/10 animate-pulse" />
+                  ))
+                ) : (
+                  data.agents.recentCompletions.slice(0, 3).map((completion) => (
+                    <div
+                      key={completion.id}
+                      className="flex flex-col gap-1 rounded-lg border border-emerald-400/10 bg-emerald-500/5 px-3 py-2"
+                    >
+                      <p className="text-emerald-100">{completion.title}</p>
+                      <p className="text-emerald-100/60">
+                        {completion.agent} • {completion.completedAt}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
             <div className="rounded-2xl border border-emerald-400/20 bg-zinc-950/60 p-4">
               <h3 className="text-sm font-semibold text-emerald-100">Current Focus</h3>
               <div className="mt-3 space-y-2 text-xs">
-                {(data.loading ? Array.from({ length: 3 }) : activeSessions)
-                  .slice(0, 3)
-                  .map((session, index) => {
-                    if (data.loading) {
-                      return (
-                        <div key={`focus-${index}`} className="h-8 rounded-lg bg-emerald-500/10 animate-pulse" />
-                      );
-                    }
-                    return (
-                      <div
-                        key={session.id}
-                        className="flex items-center justify-between rounded-lg border border-emerald-400/10 bg-emerald-500/5 px-3 py-2"
-                      >
-                        <p className="text-emerald-100">{session.currentTask}</p>
-                        <span className="text-emerald-200/70">{session.progress}%</span>
-                      </div>
-                    );
-                  })}
+                {data.loading ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <div key={`focus-${index}`} className="h-8 rounded-lg bg-emerald-500/10 animate-pulse" />
+                  ))
+                ) : (
+                  activeSessions.slice(0, 3).map((session) => (
+                    <div
+                      key={session.id}
+                      className="flex items-center justify-between rounded-lg border border-emerald-400/10 bg-emerald-500/5 px-3 py-2"
+                    >
+                      <p className="text-emerald-100">{session.currentTask}</p>
+                      <span className="text-emerald-200/70">{session.progress}%</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Usage & Costs */}
+      <div className="rounded-2xl border border-cyan-900/40 bg-zinc-950/80 p-4 md:p-6 space-y-4 md:space-y-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg md:text-2xl font-semibold text-cyan-100">
+              Usage &amp; Costs
+            </h2>
+            <p className="text-sm text-zinc-500">
+              Track spend, tokens, and activity across the agent mesh.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {timeFilters.map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setTimeFilter(filter)}
+                className={`rounded-full border px-3 py-1 text-xs transition ${
+                  timeFilter === filter
+                    ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100"
+                    : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                }`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-4">
+          {[
+            { label: "Total Cost", value: formatCurrency(data.usage.totalCost) },
+            { label: "Total Tokens", value: formatNumber(data.usage.totalTokens) },
+            { label: "Conversations", value: formatNumber(data.usage.conversations) },
+            { label: "Activity", value: formatNumber(data.usage.activity) },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-xl border border-cyan-900/40 bg-zinc-900/70 p-3"
+            >
+              <p className="text-xs uppercase tracking-[0.25em] text-cyan-200/60">
+                {stat.label}
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-zinc-100">
+                {data.loading ? "—" : stat.value}
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">
+                {data.loading ? "Syncing metrics" : "Across selected window"}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-2xl border border-cyan-900/40 bg-zinc-900/60 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-cyan-100">Cost Over Time</h3>
+              <p className="text-xs text-zinc-500">
+                Daily trend for the selected metric.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {metricTabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setMetricFilter(tab)}
+                  className={`rounded-full border px-3 py-1 text-xs transition ${
+                    metricFilter === tab
+                      ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100"
+                      : "border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+            {data.loading ? (
+              <div className="h-48 md:h-56 grid grid-cols-7 gap-2 items-end">
+                {Array.from({ length: 7 }).map((_, index) => (
+                  <div key={index} className="w-full h-20 rounded-md bg-cyan-500/10 animate-pulse" />
+                ))}
+              </div>
+            ) : chartData.length === 0 ? (
+              <div className="h-40 flex items-center justify-center text-sm text-zinc-500">
+                No usage data available.
+              </div>
+            ) : (
+              <div className="h-48 md:h-56 flex items-end gap-2">
+                {chartData.map((entry, index) => {
+                  const height = maxChartValue
+                    ? Math.max(8, (entry.value / maxChartValue) * 100)
+                    : 0;
+                  return (
+                    <div key={`${entry.dateLabel}-${index}`} className="flex-1 flex flex-col items-center">
+                      <div
+                        className="w-full rounded-t-md bg-gradient-to-t from-cyan-400/80 to-blue-500/80"
+                        style={{ height: `${height}%` }}
+                      />
+                      <span className="mt-2 text-[10px] text-zinc-500">{entry.dateLabel}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          {[
+            { title: "By Agent", rows: data.usage.byAgent },
+            { title: "By Model", rows: data.usage.byModel },
+          ].map((table) => (
+            <div
+              key={table.title}
+              className="rounded-2xl border border-cyan-900/40 bg-zinc-900/60 p-4"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-cyan-100">{table.title}</h3>
+                <span className="text-xs text-zinc-500">Cost share</span>
+              </div>
+              <div className="mt-3 grid grid-cols-[minmax(0,1fr)_70px_70px] gap-3 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                <span>Name</span>
+                <span className="text-right">Cost</span>
+                <span className="text-right">Tokens</span>
+              </div>
+              <div className="mt-3 space-y-3">
+                {data.loading ? (
+                  Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                      key={`loading-${table.title}-${index}`}
+                      className="h-12 rounded-lg bg-cyan-500/10 animate-pulse"
+                    />
+                  ))
+                ) : (
+                  table.rows.map((row) => (
+                    <div
+                      key={`${table.title}-${row.name}`}
+                      className="grid grid-cols-[minmax(0,1fr)_70px_70px] gap-3 items-center text-xs"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-zinc-100">{row.name}</p>
+                          <span className="text-[10px] text-cyan-200/70">
+                            {row.percentage}%
+                          </span>
+                        </div>
+                        <div className="mt-2 h-1.5 rounded-full bg-zinc-800">
+                          <div
+                            className="h-1.5 rounded-full bg-gradient-to-r from-cyan-400/80 to-blue-500/80"
+                            style={{ width: `${row.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="text-right text-zinc-200">
+                        {formatCurrency(row.cost)}
+                      </div>
+                      <div className="text-right text-zinc-500">
+                        {formatNumber(row.tokens)}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

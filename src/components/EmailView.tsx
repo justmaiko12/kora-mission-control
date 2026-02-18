@@ -254,41 +254,17 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const visibleEmails = emails.filter((e) => !ignoredIds.has(e.id));
   const unreadCount = visibleEmails.filter((e) => !e.read).length;
 
-  // If an email is selected, show debug view (TEMPORARY)
+  // If an email is selected, show ULTRA SIMPLE static view
   if (selectedEmail) {
-    // Dump the entire selectedEmail to see what's in it
-    let debugDump = "ERROR";
-    try {
-      debugDump = JSON.stringify(selectedEmail, null, 2);
-    } catch (e) {
-      debugDump = "Failed to stringify: " + String(e);
-    }
-    
-    const debugId = safeString(selectedEmail.id);
-    const debugSubject = safeString(selectedEmail.subject);
-    const debugFrom = safeString(selectedEmail.from);
-    
-    // Log to console
-    console.log("[EmailView DEBUG] selectedEmail:", selectedEmail);
-    console.log("[EmailView DEBUG] typeof selectedEmail:", typeof selectedEmail);
-    
     return (
-      <div className="h-full p-8 bg-zinc-900 overflow-auto">
-        <h2 className="text-xl font-bold mb-4">Debug: Email Selected</h2>
-        <div className="space-y-2 text-sm bg-zinc-800 p-4 rounded-lg">
-          <p><strong>ID:</strong> {debugId}</p>
-          <p><strong>Subject:</strong> {debugSubject}</p>
-          <p><strong>From:</strong> {debugFrom}</p>
-        </div>
-        <div className="mt-4">
-          <p className="text-xs text-zinc-500 mb-2">Raw email object (copy this for debugging):</p>
-          <pre className="text-xs bg-zinc-950 p-4 rounded overflow-auto max-h-60 select-all">{debugDump}</pre>
-        </div>
+      <div className="h-full p-8 bg-zinc-900">
+        <h2 className="text-xl font-bold mb-4">Email Selected</h2>
+        <p className="text-sm text-zinc-400">An email was clicked. This is a static test.</p>
         <button 
           onClick={() => setSelectedEmail(null)} 
           className="mt-6 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg"
         >
-          Back to Inbox
+          Back
         </button>
       </div>
     );

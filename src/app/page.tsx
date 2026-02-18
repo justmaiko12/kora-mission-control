@@ -254,45 +254,43 @@ function HomeContent() {
           </div>
         )}
 
-        {/* Desktop: Persistent Activity Feed - always visible */}
         {/* Desktop: Persistent Activity Feed */}
         <div className={`hidden md:block border-t border-zinc-800 transition-all ${chatCollapsed ? "h-12" : "h-[35%] min-h-[200px] max-h-[300px]"}`}>
-            {chatCollapsed ? (
-              <button
-                onClick={() => setChatCollapsed(false)}
-                className="w-full h-full flex items-center justify-center gap-2 text-zinc-400 hover:text-white hover:bg-zinc-900/50 transition-colors"
-              >
-                <span>📋</span>
-                <span className="text-sm">Activity & Commands</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
-              </button>
-            ) : (
-              <div className="h-full flex flex-col">
-                <div className="flex items-center justify-end px-4 py-1 border-b border-zinc-800/50">
-                  <button
-                    onClick={() => setChatCollapsed(true)}
-                    className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white"
-                    title="Collapse"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <ErrorBoundary name="DesktopActivity">
-                    <ActivityFeed
-                      context={viewToActivityContext[activeView]}
-                      onCommand={() => handleRefreshEmails()}
-                    />
-                  </ErrorBoundary>
-                </div>
+          {chatCollapsed ? (
+            <button
+              onClick={() => setChatCollapsed(false)}
+              className="w-full h-full flex items-center justify-center gap-2 text-zinc-400 hover:text-white hover:bg-zinc-900/50 transition-colors"
+            >
+              <span>📋</span>
+              <span className="text-sm">Activity & Commands</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </button>
+          ) : (
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-end px-4 py-1 border-b border-zinc-800/50">
+                <button
+                  onClick={() => setChatCollapsed(true)}
+                  className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white"
+                  title="Collapse"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
               </div>
-            )}
-          </div>
-        )}
+              <div className="flex-1 overflow-hidden">
+                <ErrorBoundary name="DesktopActivity">
+                  <ActivityFeed
+                    context={viewToActivityContext[activeView]}
+                    onCommand={() => handleRefreshEmails()}
+                  />
+                </ErrorBoundary>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Mobile Activity FAB - hidden when panel is open */}

@@ -308,6 +308,33 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const dismissSimilarPrompt = () => {
     setSimilarPrompt(null);
   };
+  
+  // Mark as Done (read, no action needed - different from archive/ignore)
+  const handleDone = (email: EmailThread) => {
+    // OPTIMISTIC: Hide from UI immediately
+    setIgnoredIds((prev) => new Set([...prev, email.id]));
+    setSelectedEmail(null);
+    
+    // Fire API in background - uses "done" action for learning
+    fetch("/api/emails/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: email.id,
+        account: activeAccount,
+        action: "done", // Different from archive for learning
+        email: { from: email.from, subject: email.subject, labels: email.labels },
+      }),
+    }).catch(err => {
+      console.error("Failed to mark as done:", err);
+      // Rollback on error
+      setIgnoredIds((prev) => {
+        const next = new Set(prev);
+        next.delete(email.id);
+        return next;
+      });
+    });
+  };
 
   const formatDate = (dateStr: string) => {
     const now = new Date();
@@ -354,6 +381,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           account={activeAccount}
           onClose={() => setSelectedEmail(null)}
           onIgnore={() => handleIgnore(selectedEmail)}
+          onDone={() => handleDone(selectedEmail)}
           onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
           onMarkAsRequest={(e) => handleMarkAsRequest(e, selectedEmail)}
           isMarking={markingDeal === selectedEmail.id}

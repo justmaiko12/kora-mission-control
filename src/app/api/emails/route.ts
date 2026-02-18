@@ -20,14 +20,40 @@ async function bridgeFetch(path: string) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const account = searchParams.get("account");
-  const query = searchParams.get("query") || "newer_than:7d";
-  const max = searchParams.get("max") || "20";
+  const query = searchParams.get("query") || "newer_than:14d";
+  const max = searchParams.get("max") || "50";
+  const dashboard = searchParams.get("dashboard"); // For dashboard, fetch all
 
   try {
-    // If no account specified, get accounts list first
-    if (!account) {
+    // Dashboard view - get accounts AND all emails
+    if (dashboard === "true" || !account) {
       const { accounts } = await bridgeFetch("/api/email/accounts");
-      return NextResponse.json({ accounts });
+      
+      // For dashboard, fetch emails from all accounts
+      const allEmails: Array<{ account: string; id: string; subject: string; from: string; read: boolean; date: string; labels: string[] }> = [];
+      
+      for (const acc of accounts || []) {
+        try {
+          const data = await bridgeFetch(
+            `/api/email/messages?account=${encodeURIComponent(acc.email)}&max=30`
+          );
+          if (data.emails) {
+            // Add account identifier to each email
+            const emailsWithAccount = data.emails.map((e: { id: string; subject: string; from: string; read: boolean; date: string; labels: string[] }) => ({
+              ...e,
+              account: acc.email,
+            }));
+            allEmails.push(...emailsWithAccount);
+          }
+        } catch (err) {
+          console.error(`Failed to fetch emails for ${acc.email}:`, err);
+        }
+      }
+      
+      return NextResponse.json({ 
+        accounts: accounts?.map((a: { email: string }) => a.email) || [],
+        emails: allEmails,
+      });
     }
 
     // Fetch emails for specific account
@@ -39,7 +65,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Failed to fetch emails:", error);
     return NextResponse.json(
-      { error: "Failed to fetch emails" },
+      { error: "Failed to fetch emails", accounts: [], emails: [] },
       { status: 500 }
     );
   }

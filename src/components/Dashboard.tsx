@@ -39,8 +39,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        // Fetch emails from all accounts
-        const emailsRes = await fetch("/api/emails");
+        // Fetch emails from all accounts (dashboard mode)
+        const emailsRes = await fetch("/api/emails?dashboard=true");
         const emailsData = await emailsRes.json();
         
         // Fetch deals pipeline
@@ -122,7 +122,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       id: "business" as ViewType,
       icon: "💼",
       title: "Deals",
-      count: data.deals.newLeads,
+      count: data.deals.total,
       color: "from-green-500 to-emerald-500",
       items: data.deals.recentDeals.length > 0 
         ? data.deals.recentDeals 
@@ -168,17 +168,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       )}
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 md:p-4">
           <p className="text-xs md:text-sm text-zinc-500">Unread Emails</p>
           <p className="text-2xl md:text-3xl font-bold mt-1">
             {data.loading ? "—" : data.totalUnread}
-          </p>
-        </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 md:p-4">
-          <p className="text-xs md:text-sm text-zinc-500">New Leads</p>
-          <p className="text-2xl md:text-3xl font-bold mt-1">
-            {data.loading ? "—" : data.deals.newLeads}
           </p>
         </div>
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 md:p-4">

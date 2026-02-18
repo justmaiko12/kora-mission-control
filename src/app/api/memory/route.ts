@@ -1,33 +1,71 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Mock memory data - TODO: connect to actual OpenClaw workspace
-const mockMemoryFiles = {
-  "MEMORY.md": {
-    content: "# MEMORY.md — Kora's Long-Term Memory\n\nLast updated: 2026-02-17\n\n---\n\n## About Michael\n\n- Professional dancer, creator, entrepreneur...",
-    lastModified: "2026-02-17",
-  },
-  "SOUL.md": {
-    content: "# SOUL.md - Who I Am\n\n*I'm Kora. Not a chatbot. Not a cheerleader. An operator.*\n\n## Core Truths...",
-    lastModified: "2026-02-15",
-  },
-};
+const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
+const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 
-export async function GET(req: NextRequest) {
-  const path = req.nextUrl.searchParams.get("path");
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const path = searchParams.get("path");
 
-  if (path && mockMemoryFiles[path as keyof typeof mockMemoryFiles]) {
-    return NextResponse.json({
-      success: true,
-      file: mockMemoryFiles[path as keyof typeof mockMemoryFiles],
+  try {
+    // Fetch from Bridge API
+    const endpoint = path 
+      ? `${BRIDGE_URL}/api/memory/${encodeURIComponent(path)}`
+      : `${BRIDGE_URL}/api/memory/`;
+    
+    const res = await fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${BRIDGE_SECRET}`,
+      },
+      cache: "no-store",
     });
+
+    if (!res.ok) {
+      throw new Error(`Bridge API error: ${res.status}`);
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Memory API error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch memory files" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const path = searchParams.get("path");
+
+  if (!path) {
+    return NextResponse.json({ error: "Path required" }, { status: 400 });
   }
 
-  // Return list of files
-  return NextResponse.json({
-    success: true,
-    files: Object.keys(mockMemoryFiles).map((name) => ({
-      name,
-      lastModified: mockMemoryFiles[name as keyof typeof mockMemoryFiles].lastModified,
-    })),
-  });
+  try {
+    const body = await request.json();
+    
+    const res = await fetch(`${BRIDGE_URL}/api/memory/${encodeURIComponent(path)}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${BRIDGE_SECRET}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Bridge API error: ${res.status}`);
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Memory API error:", error);
+    return NextResponse.json(
+      { error: "Failed to update memory file" },
+      { status: 500 }
+    );
+  }
 }

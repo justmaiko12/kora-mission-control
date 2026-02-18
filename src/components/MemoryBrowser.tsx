@@ -1,45 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface MemoryFile {
   name: string;
   path: string;
   type: "core" | "daily" | "project";
-  lastModified: string;
-  preview?: string;
+  lastModified?: string;
 }
 
-const memoryFiles: MemoryFile[] = [
-  { name: "MEMORY.md", path: "MEMORY.md", type: "core", lastModified: "Today", preview: "Long-term memory and key information about Michael..." },
-  { name: "SOUL.md", path: "SOUL.md", type: "core", lastModified: "Feb 15", preview: "Core personality and communication style..." },
-  { name: "USER.md", path: "USER.md", type: "core", lastModified: "Feb 10", preview: "Information about Michael - preferences, timezone..." },
-  { name: "AGENTS.md", path: "AGENTS.md", type: "core", lastModified: "Feb 12", preview: "Operating rules and session guidelines..." },
-  { name: "2026-02-17.md", path: "memory/2026-02-17.md", type: "daily", lastModified: "Today", preview: "OpenClaw connection, Kora platform setup..." },
-  { name: "2026-02-16.md", path: "memory/2026-02-16.md", type: "daily", lastModified: "Yesterday", preview: "Automation challenges, integration needs..." },
-  { name: "2026-02-15.md", path: "memory/2026-02-15.md", type: "daily", lastModified: "2 days ago", preview: "Notion-Discord webhook work..." },
-  { name: "kora-app-prd.md", path: "memory/kora-app-prd.md", type: "project", lastModified: "Feb 15", preview: "Product requirements document for Kora app..." },
-  { name: "notion-integration.md", path: "memory/notion-integration.md", type: "project", lastModified: "Feb 15", preview: "Notion API credentials and database IDs..." },
-  { name: "pending-tasks.md", path: "memory/pending-tasks.md", type: "project", lastModified: "Feb 15", preview: "Tasks waiting to be completed..." },
-];
+// Categorize files based on path
+function categorizeFile(path: string): MemoryFile["type"] {
+  if (path.startsWith("memory/") && /\d{4}-\d{2}-\d{2}\.md$/.test(path)) {
+    return "daily";
+  }
+  if (path.startsWith("memory/")) {
+    return "project";
+  }
+  return "core";
+}
 
 export default function MemoryBrowser() {
+  const [files, setFiles] = useState<MemoryFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<MemoryFile | null>(null);
+  const [fileContent, setFileContent] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadingContent, setLoadingContent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredFiles = memoryFiles.filter(
-    (file) =>
-      file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      file.preview?.toLowerCase().includes(searchQuery.toLowerCase())
+  // Fetch file list
+  useEffect(() => {
+    async function fetchFiles() {
+      try {
+        const res = await fetch("/api/memory");
+        if (!res.ok) throw new Error("Failed to fetch memory files");
+        const data = await res.json();
+        
+        if (data.files) {
+          const categorized = data.files.map((f: { name: string; lastModified?: string }) => ({
+            name: f.name,
+            path: f.name,
+            type: categorizeFile(f.name),
+            lastModified: f.lastModified,
+          }));
+          setFiles(categorized);
+        }
+      } catch (err) {
+        console.error("Memory fetch error:", err);
+        setError("Failed to load memory files");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchFiles();
+  }, []);
+
+  // Fetch file content when selected
+  const loadFileContent = useCallback(async (file: MemoryFile) => {
+    setSelectedFile(file);
+    setLoadingContent(true);
+    setFileContent("");
+    
+    try {
+      const res = await fetch(`/api/memory?path=${encodeURIComponent(file.path)}`);
+      if (!res.ok) throw new Error("Failed to fetch file");
+      const data = await res.json();
+      setFileContent(data.file?.content || data.content || "");
+    } catch (err) {
+      console.error("File content error:", err);
+      setFileContent("Failed to load file content");
+    } finally {
+      setLoadingContent(false);
+    }
+  }, []);
+
+  const filteredFiles = files.filter(
+    (file) => file.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const coreFiles = filteredFiles.filter((f) => f.type === "core");
-  const dailyFiles = filteredFiles.filter((f) => f.type === "daily");
+  const dailyFiles = filteredFiles.filter((f) => f.type === "daily").sort((a, b) => b.name.localeCompare(a.name));
   const projectFiles = filteredFiles.filter((f) => f.type === "project");
 
   const FileItem = ({ file }: { file: MemoryFile }) => (
     <button
-      onClick={() => setSelectedFile(file)}
+      onClick={() => loadFileContent(file)}
       className={`w-full text-left p-3 rounded-lg border transition-all ${
         selectedFile?.path === file.path
           ? "bg-indigo-600/20 border-indigo-500/30"
@@ -49,8 +95,10 @@ export default function MemoryBrowser() {
       <div className="flex items-center gap-3">
         <span className="text-lg">📄</span>
         <div className="flex-1 min-w-0">
-          <p className="font-medium truncate">{file.name}</p>
-          <p className="text-xs text-zinc-500">{file.lastModified}</p>
+          <p className="font-medium truncate text-sm">{file.name}</p>
+          {file.lastModified && (
+            <p className="text-xs text-zinc-500">{file.lastModified}</p>
+          )}
         </div>
       </div>
     </button>
@@ -72,28 +120,16 @@ export default function MemoryBrowser() {
           </button>
           <div className="flex-1 min-w-0">
             <h2 className="font-semibold truncate">{selectedFile.name}</h2>
-            <p className="text-xs text-zinc-500">Last modified: {selectedFile.lastModified}</p>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="flex gap-2 mb-4">
-            <button className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors">
-              Edit
-            </button>
-            <button className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
-              Ask Kora
-            </button>
-          </div>
-          <div className="prose prose-invert max-w-none">
-            <p className="text-zinc-400">{selectedFile.preview}</p>
-            <div className="mt-4 p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
-              <p className="text-sm text-zinc-500">
-                Full file content will be loaded from OpenClaw workspace.
-                <br />
-                Path: <code className="text-indigo-400 text-xs">~/.openclaw/workspace/{selectedFile.path}</code>
-              </p>
-            </div>
-          </div>
+          {loadingContent ? (
+            <div className="text-zinc-500 animate-pulse">Loading...</div>
+          ) : (
+            <pre className="text-sm text-zinc-300 whitespace-pre-wrap font-mono leading-relaxed">
+              {fileContent}
+            </pre>
+          )}
         </div>
       </div>
     );
@@ -118,43 +154,63 @@ export default function MemoryBrowser() {
           />
         </div>
 
+        {/* Loading/Error State */}
+        {loading && (
+          <div className="p-4 text-zinc-500 animate-pulse">Loading files...</div>
+        )}
+        {error && (
+          <div className="p-4 text-red-400 text-sm">{error}</div>
+        )}
+
         {/* File List */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
           {/* Core Files */}
-          <div>
-            <h2 className="px-2 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              📁 Core Files
-            </h2>
-            <div className="space-y-1">
-              {coreFiles.map((file) => (
-                <FileItem key={file.path} file={file} />
-              ))}
+          {coreFiles.length > 0 && (
+            <div>
+              <h2 className="px-2 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                📁 Core Files
+              </h2>
+              <div className="space-y-1">
+                {coreFiles.map((file) => (
+                  <FileItem key={file.path} file={file} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Daily Logs */}
-          <div>
-            <h2 className="px-2 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              📅 Daily Logs
-            </h2>
-            <div className="space-y-1">
-              {dailyFiles.map((file) => (
-                <FileItem key={file.path} file={file} />
-              ))}
+          {dailyFiles.length > 0 && (
+            <div>
+              <h2 className="px-2 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                📅 Daily Logs
+              </h2>
+              <div className="space-y-1">
+                {dailyFiles.map((file) => (
+                  <FileItem key={file.path} file={file} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Project Notes */}
-          <div>
-            <h2 className="px-2 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              📂 Project Notes
-            </h2>
-            <div className="space-y-1">
-              {projectFiles.map((file) => (
-                <FileItem key={file.path} file={file} />
-              ))}
+          {projectFiles.length > 0 && (
+            <div>
+              <h2 className="px-2 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                📂 Project Notes
+              </h2>
+              <div className="space-y-1">
+                {projectFiles.map((file) => (
+                  <FileItem key={file.path} file={file} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {!loading && files.length === 0 && (
+            <div className="text-center text-zinc-500 py-8">
+              No memory files found
+            </div>
+          )}
         </div>
       </div>
 
@@ -165,28 +221,19 @@ export default function MemoryBrowser() {
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold">{selectedFile.name}</h2>
-                <p className="text-sm text-zinc-500">Last modified: {selectedFile.lastModified}</p>
-              </div>
-              <div className="flex gap-2">
-                <button className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors">
-                  Edit
-                </button>
-                <button className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
-                  Ask Kora about this
-                </button>
+                <p className="text-sm text-zinc-500">
+                  {selectedFile.lastModified || "Memory file"}
+                </p>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="prose prose-invert max-w-none">
-                <p className="text-zinc-400">{selectedFile.preview}</p>
-                <div className="mt-4 p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
-                  <p className="text-sm text-zinc-500">
-                    Full file content will be loaded from OpenClaw workspace.
-                    <br />
-                    Path: <code className="text-indigo-400">~/.openclaw/workspace/{selectedFile.path}</code>
-                  </p>
-                </div>
-              </div>
+              {loadingContent ? (
+                <div className="text-zinc-500 animate-pulse">Loading content...</div>
+              ) : (
+                <pre className="text-sm text-zinc-300 whitespace-pre-wrap font-mono leading-relaxed">
+                  {fileContent}
+                </pre>
+              )}
             </div>
           </>
         ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface Task {
   id: string;
@@ -11,54 +11,8 @@ interface Task {
   dueDate?: string;
   blockedReason?: string;
   createdAt: string;
+  updatedAt?: string;
 }
-
-const initialTasks: Task[] = [
-  {
-    id: "1",
-    title: "Set up Notion webhook automation",
-    description: "Create real-time webhook integration for task status notifications",
-    priority: "high",
-    status: "in-progress",
-    dueDate: "Today",
-    createdAt: "Feb 15",
-  },
-  {
-    id: "2",
-    title: "Connect Gmail API for morning briefings",
-    description: "Integrate Gmail to pull important emails into daily briefings",
-    priority: "medium",
-    status: "pending",
-    dueDate: "This week",
-    createdAt: "Feb 16",
-  },
-  {
-    id: "3",
-    title: "Build editor task ping automation",
-    description: "Auto-ping editors on Discord when tasks need review",
-    priority: "medium",
-    status: "blocked",
-    blockedReason: "Waiting for Notion API access verification",
-    createdAt: "Feb 15",
-  },
-  {
-    id: "4",
-    title: "Set up Kora heartbeat service",
-    description: "Create persistent connection to Kora platform",
-    priority: "high",
-    status: "completed",
-    createdAt: "Feb 17",
-  },
-  {
-    id: "5",
-    title: "Build Mission Control dashboard",
-    description: "Create the main dashboard interface for managing everything",
-    priority: "high",
-    status: "in-progress",
-    dueDate: "Today",
-    createdAt: "Feb 17",
-  },
-];
 
 const priorityColors = {
   high: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -74,9 +28,28 @@ const statusColors = {
 };
 
 export default function KoraTasks() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Fetch tasks from API
+  const fetchTasks = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tasks");
+      const data = await res.json();
+      setTasks(data.tasks || []);
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const filteredTasks = tasks.filter((task) => {
     if (filter === "active") return task.status !== "completed";
@@ -87,17 +60,69 @@ export default function KoraTasks() {
   const activeTasks = filteredTasks.filter((t) => t.status !== "completed");
   const completedTasks = filteredTasks.filter((t) => t.status === "completed");
 
-  const addTask = () => {
-    if (!newTaskTitle.trim()) return;
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title: newTaskTitle,
-      priority: "medium",
-      status: "pending",
-      createdAt: "Just now",
-    };
-    setTasks([newTask, ...tasks]);
-    setNewTaskTitle("");
+  const addTask = async () => {
+    if (!newTaskTitle.trim() || saving) return;
+    
+    setSaving(true);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTaskTitle,
+          priority: "medium",
+        }),
+      });
+      const data = await res.json();
+      if (data.task) {
+        setTasks([data.task, ...tasks]);
+        setNewTaskTitle("");
+      }
+    } catch (err) {
+      console.error("Failed to add task:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleComplete = async (task: Task) => {
+    const newStatus = task.status === "completed" ? "pending" : "completed";
+    
+    // Optimistic update
+    setTasks(tasks.map((t) => 
+      t.id === task.id ? { ...t, status: newStatus } : t
+    ));
+
+    try {
+      await fetch("/api/tasks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: task.id,
+          status: newStatus,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to update task:", err);
+      // Revert on error
+      setTasks(tasks);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const TaskCard = ({ task }: { task: Task }) => (
@@ -110,15 +135,7 @@ export default function KoraTasks() {
     >
       <div className="flex items-start gap-3">
         <button
-          onClick={() => {
-            setTasks(
-              tasks.map((t) =>
-                t.id === task.id
-                  ? { ...t, status: t.status === "completed" ? "pending" : "completed" }
-                  : t
-              )
-            );
-          }}
+          onClick={() => toggleComplete(task)}
           className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 transition-all ${
             task.status === "completed"
               ? "bg-green-500 border-green-500"
@@ -132,7 +149,7 @@ export default function KoraTasks() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3
-              className={`font-medium ${
+              className={`font-medium text-sm ${
                 task.status === "completed" ? "line-through text-zinc-500" : ""
               }`}
             >
@@ -153,7 +170,7 @@ export default function KoraTasks() {
           )}
           <div className="flex items-center gap-4 mt-2 text-xs text-zinc-600">
             {task.dueDate && <span>Due: {task.dueDate}</span>}
-            <span>Created: {task.createdAt}</span>
+            <span>Created: {formatDate(task.createdAt)}</span>
           </div>
         </div>
       </div>
@@ -167,7 +184,9 @@ export default function KoraTasks() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h1 className="text-lg md:text-xl font-bold">📋 Kora's Tasks</h1>
-            <p className="text-xs md:text-sm text-zinc-500">Things Michael has assigned to me</p>
+            <p className="text-xs md:text-sm text-zinc-500">
+              {loading ? "Loading..." : `${activeTasks.length} active tasks`}
+            </p>
           </div>
           <div className="flex gap-1 md:gap-2">
             {(["all", "active", "completed"] as const).map((f) => (
@@ -198,43 +217,64 @@ export default function KoraTasks() {
           />
           <button
             onClick={addTask}
-            className="px-4 md:px-5 py-2 md:py-2.5 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-medium text-sm transition-colors"
+            disabled={saving || !newTaskTitle.trim()}
+            className="px-4 md:px-5 py-2 md:py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl font-medium text-sm transition-colors"
           >
-            Add Task
+            {saving ? "Adding..." : "Add Task"}
           </button>
         </div>
       </div>
 
-      {/* Task List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Active Tasks */}
-        {activeTasks.length > 0 && (
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-              Active ({activeTasks.length})
-            </h2>
-            <div className="space-y-2">
-              {activeTasks.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Loading State */}
+      {loading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-zinc-500 animate-pulse">Loading tasks...</div>
+        </div>
+      )}
 
-        {/* Completed Tasks */}
-        {completedTasks.length > 0 && filter !== "active" && (
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-              Completed ({completedTasks.length})
-            </h2>
-            <div className="space-y-2">
-              {completedTasks.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
+      {/* Empty State */}
+      {!loading && tasks.length === 0 && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-zinc-500">
+            <span className="text-4xl">📋</span>
+            <p className="mt-2">No tasks yet</p>
+            <p className="text-sm">Add a task above to get started</p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Task List */}
+      {!loading && tasks.length > 0 && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {/* Active Tasks */}
+          {activeTasks.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+                Active ({activeTasks.length})
+              </h2>
+              <div className="space-y-2">
+                {activeTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Completed Tasks */}
+          {completedTasks.length > 0 && filter !== "active" && (
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+                Completed ({completedTasks.length})
+              </h2>
+              <div className="space-y-2">
+                {completedTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

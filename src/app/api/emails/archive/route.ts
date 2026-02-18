@@ -5,7 +5,7 @@ const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 
 export async function POST(request: NextRequest) {
   try {
-    const { id, account } = await request.json();
+    const { id, account, action = "archive" } = await request.json();
 
     if (!id || !account) {
       return NextResponse.json(
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${BRIDGE_SECRET}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ id, account }),
+      body: JSON.stringify({ id, account, action }),
     });
 
     if (!res.ok) {

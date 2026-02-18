@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
         context,
         chatContext,
         userId: "michael",
+        account: context?.metadata?.account || null, // Pass email account if available
       }),
     });
 
@@ -37,6 +38,15 @@ export async function POST(req: NextRequest) {
 
     const sendData = await sendRes.json();
     const messageId = sendData.messageId;
+
+    // If this was an immediate response (email command executed), return it
+    if (sendData.immediate && sendData.response) {
+      return NextResponse.json({
+        response: sendData.response,
+        messageId,
+        immediate: true,
+      });
+    }
 
     // Poll for response (with timeout)
     const startTime = Date.now();

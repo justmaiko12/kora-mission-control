@@ -207,6 +207,7 @@ export default function InlineChat({
             type: focusedItem.type,
             id: focusedItem.id,
             title: focusedItem.title,
+            metadata: focusedItem.metadata, // Include account info
           } : null,
           chatContext,
         }),

@@ -19,6 +19,7 @@ export interface EmailThread {
   messageCount: number;
   read: boolean;
   snippet: string;
+  importanceScore?: number; // 0-100, learned from user actions
 }
 
 interface EmailsState {
@@ -69,12 +70,37 @@ export function useEmails() {
       if (!res.ok) throw new Error("Failed to fetch emails");
       const data = await res.json();
 
-      const emailList: EmailThread[] = (data.emails || []).map(
+      let emailList: EmailThread[] = (data.emails || []).map(
         (email: EmailThread) => ({
           ...email,
           read: !email.labels?.includes("UNREAD"),
         })
       );
+
+      // Fetch importance scores from Bridge API
+      try {
+        const scoreRes = await fetch("/api/emails/score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            emails: emailList.map(e => ({ 
+              from: e.from, 
+              subject: e.subject, 
+              labels: e.labels 
+            })) 
+          }),
+        });
+        if (scoreRes.ok) {
+          const scoreData = await scoreRes.json();
+          // Merge scores back into email list
+          emailList = emailList.map((email, idx) => ({
+            ...email,
+            importanceScore: scoreData.emails?.[idx]?.importanceScore ?? 50,
+          }));
+        }
+      } catch (scoreErr) {
+        console.warn("Failed to fetch email scores:", scoreErr);
+      }
 
       // Cache it
       emailCache[account] = emailList;

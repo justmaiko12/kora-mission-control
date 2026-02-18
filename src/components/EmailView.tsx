@@ -496,9 +496,18 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className={`font-medium truncate ${isRead ? "text-zinc-400" : "text-white"}`}>
-                    {senderName}
-                  </p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className={`font-medium truncate ${isRead ? "text-zinc-400" : "text-white"}`}>
+                      {senderName}
+                    </p>
+                    {/* Importance indicator */}
+                    {email.importanceScore !== undefined && email.importanceScore >= 70 && (
+                      <span className="text-amber-400 flex-shrink-0" title={`Importance: ${email.importanceScore}`}>⭐</span>
+                    )}
+                    {email.importanceScore !== undefined && email.importanceScore < 30 && (
+                      <span className="text-zinc-600 flex-shrink-0 text-xs" title={`Likely noise (${email.importanceScore})`}>📉</span>
+                    )}
+                  </div>
                   <span className="text-xs text-zinc-500 flex-shrink-0">
                     {emailDate}
                   </span>

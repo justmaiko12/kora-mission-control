@@ -54,6 +54,19 @@ const REQUEST_STAGES = {
 };
 
 type TabType = "deals" | "requests";
+type BusinessFilter = "all" | "shluv" | "mtr";
+
+// Map email accounts to businesses
+const getBusinessFromAccount = (account: string): "shluv" | "mtr" => {
+  if (account?.includes("meettherodz")) return "mtr";
+  return "shluv"; // Default to Shluv for shluv.com accounts
+};
+
+const BUSINESS_LABELS: Record<BusinessFilter, string> = {
+  all: "All",
+  shluv: "Shluv",
+  mtr: "Meet The Rodz",
+};
 
 export default function DealsView() {
   const [pipelineData, setPipelineData] = useState<PipelineData | null>(null);
@@ -64,6 +77,13 @@ export default function DealsView() {
   const [draft, setDraft] = useState<string>("");
   const [activeTab, setActiveTab] = useState<TabType>("deals");
   const [showPaid, setShowPaid] = useState(false);
+  const [businessFilter, setBusinessFilter] = useState<BusinessFilter>("all");
+  
+  // Filter deals by business
+  const filterByBusiness = (deals: Deal[]): Deal[] => {
+    if (businessFilter === "all") return deals;
+    return deals.filter(d => getBusinessFromAccount(d.account) === businessFilter);
+  };
 
   const fetchPipeline = useCallback(async () => {
     setLoading(true);
@@ -147,6 +167,23 @@ export default function DealsView() {
           </button>
         </div>
         
+        {/* Business Filter */}
+        <div className="flex gap-1 mb-3">
+          {(["all", "shluv", "mtr"] as BusinessFilter[]).map((biz) => (
+            <button
+              key={biz}
+              onClick={() => setBusinessFilter(biz)}
+              className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                businessFilter === biz
+                  ? "bg-zinc-700 text-white"
+                  : "text-zinc-500 hover:text-white hover:bg-zinc-800/50"
+              }`}
+            >
+              {BUSINESS_LABELS[biz]}
+            </button>
+          ))}
+        </div>
+        
         {/* Tabs */}
         <div className="flex gap-2">
           <button
@@ -186,7 +223,9 @@ export default function DealsView() {
         <div className="flex gap-2 md:gap-4 min-w-max h-full">
           {/* Deals Pipeline */}
           {activeTab === "deals" && pipelineData?.deals &&
-            (Object.keys(DEAL_STAGES) as Array<keyof typeof DEAL_STAGES>).map((stage) => (
+            (Object.keys(DEAL_STAGES) as Array<keyof typeof DEAL_STAGES>).map((stage) => {
+              const filteredDeals = filterByBusiness(pipelineData.deals[stage] || []);
+              return (
               <div
                 key={stage}
                 className="w-56 md:w-72 flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800"
@@ -196,11 +235,11 @@ export default function DealsView() {
                     {DEAL_STAGES[stage].label}
                   </span>
                   <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
-                    {pipelineData.deals[stage]?.length || 0}
+                    {filteredDeals.length}
                   </span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {pipelineData.deals[stage]?.map((deal) => (
+                  {filteredDeals.map((deal) => (
                     <div
                       key={deal.id}
                       onClick={() => { setSelectedDeal(deal); setDraft(""); }}
@@ -219,15 +258,19 @@ export default function DealsView() {
                       </div>
                     </div>
                   ))}
-                  {pipelineData.deals[stage]?.length === 0 && (
+                  {filteredDeals.length === 0 && (
                     <div className="text-center text-zinc-500 text-xs py-4">No deals</div>
                   )}
                 </div>
               </div>
-            ))}
+            );
+            })}
 
           {/* Paid (Collapsible) */}
-          {activeTab === "deals" && pipelineData?.deals?.paid && pipelineData.deals.paid.length > 0 && (
+          {activeTab === "deals" && pipelineData?.deals?.paid && (() => {
+            const filteredPaid = filterByBusiness(pipelineData.deals.paid || []);
+            if (filteredPaid.length === 0) return null;
+            return (
             <div className={`flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800 transition-all ${showPaid ? "w-56 md:w-72" : "w-14"}`}>
               <button
                 onClick={() => setShowPaid(!showPaid)}
@@ -237,19 +280,19 @@ export default function DealsView() {
                   <>
                     <span className="font-medium text-sm text-emerald-400">💰 Paid</span>
                     <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
-                      {pipelineData.deals.paid.length}
+                      {filteredPaid.length}
                     </span>
                   </>
                 ) : (
                   <div className="flex flex-col items-center w-full">
                     <span className="text-lg">💰</span>
-                    <span className="text-[10px] text-zinc-500 mt-1">{pipelineData.deals.paid.length}</span>
+                    <span className="text-[10px] text-zinc-500 mt-1">{filteredPaid.length}</span>
                   </div>
                 )}
               </button>
               {showPaid && (
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {pipelineData.deals.paid.map((deal) => (
+                  {filteredPaid.map((deal) => (
                     <div
                       key={deal.id}
                       onClick={() => { setSelectedDeal(deal); setDraft(""); }}
@@ -262,11 +305,14 @@ export default function DealsView() {
                 </div>
               )}
             </div>
-          )}
+            );
+          })()}
 
           {/* Requests Pipeline */}
           {activeTab === "requests" && pipelineData?.requests &&
-            (Object.keys(REQUEST_STAGES) as Array<keyof typeof REQUEST_STAGES>).map((stage) => (
+            (Object.keys(REQUEST_STAGES) as Array<keyof typeof REQUEST_STAGES>).map((stage) => {
+              const filteredRequests = filterByBusiness(pipelineData.requests[stage] || []);
+              return (
               <div
                 key={stage}
                 className="w-56 md:w-72 flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800"
@@ -276,11 +322,11 @@ export default function DealsView() {
                     {REQUEST_STAGES[stage].label}
                   </span>
                   <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
-                    {pipelineData.requests[stage]?.length || 0}
+                    {filteredRequests.length}
                   </span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {pipelineData.requests[stage]?.map((req) => (
+                  {filteredRequests.map((req) => (
                     <div
                       key={req.id}
                       onClick={() => { setSelectedDeal(req); setDraft(""); }}
@@ -299,12 +345,13 @@ export default function DealsView() {
                       </div>
                     </div>
                   ))}
-                  {pipelineData.requests[stage]?.length === 0 && (
+                  {filteredRequests.length === 0 && (
                     <div className="text-center text-zinc-500 text-xs py-4">No requests</div>
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
         </div>
       </div>
 

@@ -129,23 +129,25 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   };
 
   const handleSelectEmail = (email: EmailThread) => {
+    console.log("[EmailView] handleSelectEmail called with:", email);
     setSelectedEmail(email);
+    // TEMPORARILY DISABLED to debug error
     // Also set as focused item for chat context
-    if (onFocusItem) {
-      onFocusItem({
-        type: "email",
-        id: safeString(email.id),
-        title: safeString(email.subject) || "(no subject)",
-        preview: `${safeString(email.from)} • ${safeString(email.snippet)}`,
-        metadata: {
-          from: safeString(email.from),
-          date: safeString(email.date),
-          labels: email.labels,
-          messageCount: email.messageCount,
-          account: activeAccount,
-        },
-      });
-    }
+    // if (onFocusItem) {
+    //   onFocusItem({
+    //     type: "email",
+    //     id: safeString(email.id),
+    //     title: safeString(email.subject) || "(no subject)",
+    //     preview: `${safeString(email.from)} • ${safeString(email.snippet)}`,
+    //     metadata: {
+    //       from: safeString(email.from),
+    //       date: safeString(email.date),
+    //       labels: email.labels,
+    //       messageCount: email.messageCount,
+    //       account: activeAccount,
+    //     },
+    //   });
+    // }
   };
 
   const handleMarkAsDeal = async (e: React.MouseEvent, email: EmailThread) => {
@@ -254,17 +256,33 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
 
   // If an email is selected, show debug view (TEMPORARY)
   if (selectedEmail) {
+    // Dump the entire selectedEmail to see what's in it
+    let debugDump = "ERROR";
+    try {
+      debugDump = JSON.stringify(selectedEmail, null, 2);
+    } catch (e) {
+      debugDump = "Failed to stringify: " + String(e);
+    }
+    
     const debugId = safeString(selectedEmail.id);
     const debugSubject = safeString(selectedEmail.subject);
     const debugFrom = safeString(selectedEmail.from);
     
+    // Log to console
+    console.log("[EmailView DEBUG] selectedEmail:", selectedEmail);
+    console.log("[EmailView DEBUG] typeof selectedEmail:", typeof selectedEmail);
+    
     return (
-      <div className="h-full p-8 bg-zinc-900">
+      <div className="h-full p-8 bg-zinc-900 overflow-auto">
         <h2 className="text-xl font-bold mb-4">Debug: Email Selected</h2>
         <div className="space-y-2 text-sm bg-zinc-800 p-4 rounded-lg">
           <p><strong>ID:</strong> {debugId}</p>
           <p><strong>Subject:</strong> {debugSubject}</p>
           <p><strong>From:</strong> {debugFrom}</p>
+        </div>
+        <div className="mt-4">
+          <p className="text-xs text-zinc-500 mb-2">Raw email object (copy this for debugging):</p>
+          <pre className="text-xs bg-zinc-950 p-4 rounded overflow-auto max-h-60 select-all">{debugDump}</pre>
         </div>
         <button 
           onClick={() => setSelectedEmail(null)} 

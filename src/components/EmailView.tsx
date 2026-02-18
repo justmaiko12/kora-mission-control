@@ -524,29 +524,34 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
       {/* Email List */}
       <div className="flex-1 overflow-y-auto px-2">
         {filteredEmails.map((email) => {
-          const isPreview = previewEmailIds.includes(email.id);
-          const isSelected = selectedIds.has(email.id);
+          const emailId = safeString(email.id);
+          const isPreview = previewEmailIds.includes(emailId);
+          const isSelected = selectedIds.has(emailId);
           const fromStr = safeString(email.from);
           const senderName = fromStr.split("<")[0].trim();
+          const emailSubject = safeString(email.subject) || "(no subject)";
+          const emailDate = formatDate(safeString(email.date));
+          const isRead = Boolean(email.read);
+          const isFocused = safeString(focusedItem?.id) === emailId;
           
           return (
             <div
-              key={email.id}
-              onClick={() => selectionMode ? toggleSelect(email.id) : handleSelectEmail(email)}
+              key={emailId}
+              onClick={() => selectionMode ? toggleSelect(emailId) : handleSelectEmail(email)}
               className={`group flex items-center gap-3 px-3 py-3 mx-1 my-0.5 rounded-xl cursor-pointer transition-all ${
                 isSelected
                   ? "bg-indigo-600/20"
                   : isPreview 
                   ? "bg-amber-900/20" 
                   : "hover:bg-zinc-800/50"
-              } ${focusedItem?.id === email.id ? "bg-zinc-800" : ""}`}
+              } ${isFocused ? "bg-zinc-800" : ""}`}
             >
               {/* Checkbox or Avatar */}
               {selectionMode ? (
                 <input
                   type="checkbox"
                   checked={isSelected}
-                  onChange={() => toggleSelect(email.id)}
+                  onChange={() => toggleSelect(emailId)}
                   onClick={(e) => e.stopPropagation()}
                   className="w-5 h-5 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"
                 />
@@ -555,7 +560,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                   <div className={`w-10 h-10 rounded-full ${getAvatarColor(fromStr)} flex items-center justify-center text-white font-semibold`}>
                     {getSenderInitial(fromStr)}
                   </div>
-                  {!email.read && (
+                  {!isRead && (
                     <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-zinc-950" />
                   )}
                 </div>
@@ -564,15 +569,15 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className={`font-medium truncate ${email.read ? "text-zinc-400" : "text-white"}`}>
-                    {safeString(senderName)}
+                  <p className={`font-medium truncate ${isRead ? "text-zinc-400" : "text-white"}`}>
+                    {senderName}
                   </p>
                   <span className="text-xs text-zinc-500 flex-shrink-0">
-                    {formatDate(safeString(email.date))}
+                    {emailDate}
                   </span>
                 </div>
-                <p className={`text-sm truncate ${email.read ? "text-zinc-500" : "text-zinc-300"}`}>
-                  {safeString(email.subject) || "(no subject)"}
+                <p className={`text-sm truncate ${isRead ? "text-zinc-500" : "text-zinc-300"}`}>
+                  {emailSubject}
                 </p>
               </div>
 

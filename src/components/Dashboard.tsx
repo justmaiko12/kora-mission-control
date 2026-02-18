@@ -193,33 +193,33 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       </div>
 
-      {/* Channel Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+      {/* Channel Cards - Always side by side */}
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
         {channels.map((channel) => (
           <button
             key={channel.id}
             onClick={() => onNavigate(channel.id)}
-            className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 md:p-5 text-left hover:border-zinc-700 hover:bg-zinc-900/80 transition-all group"
+            className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-2 md:p-5 text-left hover:border-zinc-700 hover:bg-zinc-900/80 transition-all group"
           >
-            <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br ${channel.color} flex items-center justify-center text-xl md:text-2xl`}>
+            <div className="flex flex-col items-center md:items-start md:flex-row md:justify-between mb-2 md:mb-4">
+              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br ${channel.color} flex items-center justify-center text-lg md:text-2xl`}>
                 {channel.icon}
               </div>
               {channel.count > 0 && (
-                <span className="px-2 py-0.5 text-xs md:text-sm font-semibold rounded-full bg-indigo-600 text-white">
+                <span className="mt-1 md:mt-0 px-1.5 py-0.5 text-[10px] md:text-sm font-semibold rounded-full bg-indigo-600 text-white">
                   {channel.count}
                 </span>
               )}
             </div>
-            <h3 className="text-base md:text-lg font-semibold mb-2 group-hover:text-indigo-400 transition-colors">
+            <h3 className="text-xs md:text-lg font-semibold text-center md:text-left mb-1 md:mb-2 group-hover:text-indigo-400 transition-colors">
               {channel.title}
             </h3>
-            <ul className="space-y-1">
+            <ul className="hidden md:block space-y-1">
               {data.loading ? (
-                <li className="text-xs md:text-sm text-zinc-500 animate-pulse">Loading...</li>
+                <li className="text-sm text-zinc-500 animate-pulse">Loading...</li>
               ) : (
                 channel.items.slice(0, 2).map((item, i) => (
-                  <li key={i} className="text-xs md:text-sm text-zinc-500 truncate">
+                  <li key={i} className="text-sm text-zinc-500 truncate">
                     • {item}
                   </li>
                 ))

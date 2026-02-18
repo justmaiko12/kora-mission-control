@@ -53,6 +53,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(data);
     }
 
+    if (action === "create") {
+      // Create a deal from an email (manual)
+      const data = await bridgeFetch("/api/deals/create", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      return NextResponse.json(data);
+    }
+
+    if (action === "update") {
+      // Update deal stage, add deadline, etc.
+      const data = await bridgeFetch("/api/deals/update", {
+        method: "PUT",
+        body: JSON.stringify(body),
+      });
+      return NextResponse.json(data);
+    }
+
+    if (action === "delete") {
+      const data = await bridgeFetch("/api/deals/delete", {
+        method: "DELETE",
+        body: JSON.stringify(body),
+      });
+      return NextResponse.json(data);
+    }
+
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
     console.error("Deals action failed:", error);

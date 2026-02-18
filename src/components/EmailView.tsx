@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useEmails, EmailThread } from "@/lib/useEmails";
 import EmailTabs from "@/components/EmailTabs";
 import { FocusedItem } from "@/lib/types";
@@ -12,6 +13,7 @@ interface EmailViewProps {
 export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) {
   const { accounts, emails, loading, error, activeAccount, setActiveAccount, refresh } =
     useEmails();
+  const [markingDeal, setMarkingDeal] = useState<string | null>(null);
 
   const handleFocusItem = (email: EmailThread) => {
     if (!onFocusItem) return;
@@ -30,8 +32,66 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
     });
   };
 
+  const handleMarkAsDeal = async (e: React.MouseEvent, email: EmailThread) => {
+    e.stopPropagation(); // Don't trigger focus
+    setMarkingDeal(email.id);
+    try {
+      const res = await fetch("/api/deals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          email: {
+            id: email.id,
+            subject: email.subject,
+            from: email.from,
+            date: email.date,
+            account: activeAccount,
+            labels: email.labels,
+            messageCount: email.messageCount,
+          },
+          type: "deal", // or "request"
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create deal");
+      // Could show a toast here
+    } catch (err) {
+      console.error("Failed to mark as deal:", err);
+    } finally {
+      setMarkingDeal(null);
+    }
+  };
+
+  const handleMarkAsRequest = async (e: React.MouseEvent, email: EmailThread) => {
+    e.stopPropagation();
+    setMarkingDeal(email.id);
+    try {
+      const res = await fetch("/api/deals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          email: {
+            id: email.id,
+            subject: email.subject,
+            from: email.from,
+            date: email.date,
+            account: activeAccount,
+            labels: email.labels,
+            messageCount: email.messageCount,
+          },
+          type: "request",
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create request");
+    } catch (err) {
+      console.error("Failed to mark as request:", err);
+    } finally {
+      setMarkingDeal(null);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
-    // dateStr is like "2026-02-17 19:11"
     const now = new Date();
     const date = new Date(dateStr.replace(" ", "T"));
     const diffMs = now.getTime() - date.getTime();
@@ -62,21 +122,16 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
             {loading ? "Loading..." : `${unreadCount} unread`}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={refresh}
-            disabled={loading}
-            className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {loading ? "⏳" : "🔄"} Refresh
-          </button>
-          <button className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors">
-            Filter
-          </button>
-        </div>
+        <button
+          onClick={refresh}
+          disabled={loading}
+          className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {loading ? "⏳" : "🔄"} Refresh
+        </button>
       </div>
 
-      {/* Account Tabs */}
+      {/* Account Tabs - Shows actual email addresses */}
       {accounts.length > 0 && (
         <EmailTabs
           accounts={accounts}
@@ -104,7 +159,7 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
       {/* Empty State */}
       {!loading && emails.length === 0 && !error && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-zinc-500">No emails found</div>
+          <div className="text-zinc-500">No actionable emails</div>
         </div>
       )}
 
@@ -122,15 +177,15 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
                 handleFocusItem(email);
               }
             }}
-            className={`p-4 rounded-xl border transition-all focus:outline-none ${
+            className={`p-4 rounded-xl border transition-all focus:outline-none group ${
               email.read
-                ? "bg-zinc-900/30 border-zinc-800/50 opacity-60"
+                ? "bg-zinc-900/30 border-zinc-800/50 opacity-70"
                 : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
             } ${focusedItem?.id === email.id ? "ring-2 ring-indigo-500/70" : ""} ${
               onFocusItem ? "cursor-pointer hover:shadow-md" : ""
             }`}
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p
                   className={`truncate ${
@@ -148,14 +203,39 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
                 <span className="text-xs text-zinc-600">{formatDate(email.date)}</span>
               </div>
             </div>
+            
             {email.snippet && (
               <p className="text-xs text-zinc-500 mt-2 line-clamp-2">{email.snippet}</p>
             )}
-            {email.messageCount > 1 && (
-              <p className="text-xs text-zinc-600 mt-1">
-                {email.messageCount} messages in thread
-              </p>
-            )}
+            
+            {/* Quick Actions - Show on hover */}
+            <div className="flex items-center justify-between mt-3 pt-2 border-t border-zinc-800/50">
+              <div className="flex items-center gap-1">
+                {email.messageCount > 1 && (
+                  <span className="text-xs text-zinc-600 mr-2">
+                    {email.messageCount} messages
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => handleMarkAsDeal(e, email)}
+                  disabled={markingDeal === email.id}
+                  className="px-2 py-1 text-xs bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded transition-colors disabled:opacity-50"
+                  title="Add to Brand Deals pipeline"
+                >
+                  💰 Deal
+                </button>
+                <button
+                  onClick={(e) => handleMarkAsRequest(e, email)}
+                  disabled={markingDeal === email.id}
+                  className="px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded transition-colors disabled:opacity-50"
+                  title="Add to Requests pipeline"
+                >
+                  📋 Request
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>

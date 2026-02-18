@@ -72,10 +72,17 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     
     try {
       for (const id of selectedIds) {
+        // Find email to pass metadata for learning
+        const email = emails.find(e => e.id === id);
         await fetch("/api/emails/archive", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, account: activeAccount, action: "trash" }),
+          body: JSON.stringify({ 
+            id, 
+            account: activeAccount, 
+            action: "trash",
+            email: email ? { from: email.from, subject: email.subject, labels: email.labels } : null,
+          }),
         });
       }
       // Hide from UI
@@ -96,10 +103,17 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     
     try {
       for (const id of selectedIds) {
+        // Find email to pass metadata for learning
+        const email = emails.find(e => e.id === id);
         await fetch("/api/emails/archive", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, account: activeAccount, action: "archive" }),
+          body: JSON.stringify({ 
+            id, 
+            account: activeAccount, 
+            action: "archive",
+            email: email ? { from: email.from, subject: email.subject, labels: email.labels } : null,
+          }),
         });
       }
       setIgnoredIds(prev => new Set([...prev, ...selectedIds]));
@@ -193,13 +207,14 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const handleIgnore = async (email: EmailThread) => {
     setMarkingDeal(email.id);
     try {
-      // Archive the email via API
+      // Archive the email via API (with metadata for learning)
       await fetch("/api/emails/archive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: email.id,
           account: activeAccount,
+          email: { from: email.from, subject: email.subject, labels: email.labels },
         }),
       });
       // Hide from UI immediately

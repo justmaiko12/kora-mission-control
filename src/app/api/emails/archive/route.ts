@@ -5,7 +5,7 @@ const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 
 export async function POST(request: NextRequest) {
   try {
-    const { id, account, action = "archive" } = await request.json();
+    const { id, account, action = "archive", email } = await request.json();
 
     if (!id || !account) {
       return NextResponse.json(
@@ -14,13 +14,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Pass email metadata for learning system
     const res = await fetch(`${BRIDGE_URL}/api/email/archive`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${BRIDGE_SECRET}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ id, account, action }),
+      body: JSON.stringify({ id, account, action, email }),
     });
 
     if (!res.ok) {

@@ -89,12 +89,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       statLabel: "pending",
     },
     {
-      id: "kora-activity" as ViewType,
-      icon: "🤖",
-      title: "Kora",
-      color: "from-emerald-500 to-teal-500",
+      id: "automations" as ViewType,
+      icon: "⚡",
+      title: "Automations",
+      color: "from-violet-500 to-purple-500",
       stat: stats.koraStatus === "active" ? "●" : "○",
-      statLabel: stats.koraStatus,
+      statLabel: stats.koraStatus === "active" ? "running" : "idle",
     },
   ];
 

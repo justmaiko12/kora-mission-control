@@ -125,7 +125,7 @@ export default function EmailDetail({
         body: JSON.stringify({
           account,
           to: replyTo,
-          subject: email.subject?.startsWith("Re:") ? email.subject : `Re: ${email.subject}`,
+          subject: safeString(email.subject).startsWith("Re:") ? safeString(email.subject) : `Re: ${safeString(email.subject)}`,
           body: replyText,
           threadId: email.id,
         }),
@@ -161,10 +161,10 @@ export default function EmailDetail({
             </svg>
           </button>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base md:text-lg font-semibold line-clamp-2">{email.subject || "(no subject)"}</h2>
+            <h2 className="text-base md:text-lg font-semibold line-clamp-2">{safeString(email.subject) || "(no subject)"}</h2>
             <p className="text-sm text-zinc-400 truncate mt-0.5">{extractName(email.from)}</p>
             <p className="text-xs text-zinc-500 mt-1">
-              {email.messageCount} message{email.messageCount !== 1 ? "s" : ""} in thread
+              {safeString(email.messageCount)} message{email.messageCount !== 1 ? "s" : ""} in thread
             </p>
           </div>
         </div>
@@ -249,11 +249,11 @@ export default function EmailDetail({
                       [&_h1]:!text-white [&_h2]:!text-white [&_h3]:!text-white
                       [&_td]:!bg-transparent [&_th]:!bg-transparent [&_table]:!bg-transparent
                       [&_div]:!bg-transparent"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.bodyHtml) }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(safeString(msg.bodyHtml)) }}
                   />
                 ) : (
                   <pre className="whitespace-pre-wrap text-sm text-zinc-300 font-sans leading-relaxed">
-                    {msg.body}
+                    {safeString(msg.body)}
                   </pre>
                 )}
               </div>

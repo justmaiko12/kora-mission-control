@@ -250,7 +250,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
               </p>
             </div>
             <button
-              onClick={refresh}
+              onClick={() => refresh()}
               disabled={loading}
               className="p-2 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
             >
@@ -317,55 +317,113 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     );
   }
 
+  // Get sender initial for avatar
+  const getSenderInitial = (from: string) => {
+    const name = from.split("<")[0].trim();
+    return name.charAt(0).toUpperCase();
+  };
+
+  // Get avatar color based on sender
+  const getAvatarColor = (from: string) => {
+    const colors = [
+      "bg-rose-600", "bg-orange-600", "bg-amber-600", "bg-emerald-600", 
+      "bg-teal-600", "bg-cyan-600", "bg-blue-600", "bg-indigo-600", 
+      "bg-violet-600", "bg-purple-600", "bg-pink-600"
+    ];
+    const hash = from.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+
+  // Filter state
+  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const filteredEmails = filter === "unread" 
+    ? visibleEmails.filter(e => !e.read)
+    : visibleEmails;
+
   // Default: full email list view
   return (
-    <div className="h-full flex flex-col">
-      {/* Account Tabs + Actions */}
-      <div className="flex items-center border-b border-zinc-800">
-        {accounts.length > 0 && (
-          <div className="flex-1">
-            <EmailTabs
-              accounts={accounts}
-              activeAccount={activeAccount}
-              onChange={setActiveAccount}
-            />
+    <div className="h-full flex flex-col bg-zinc-950">
+      {/* Header with Search */}
+      <div className="p-4 space-y-3">
+        {/* Account Tabs */}
+        <div className="flex items-center gap-2">
+          {accounts.length > 0 && (
+            <div className="flex-1">
+              <EmailTabs
+                accounts={accounts}
+                activeAccount={activeAccount}
+                onChange={setActiveAccount}
+              />
+            </div>
+          )}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                setSelectionMode(!selectionMode);
+                if (selectionMode) setSelectedIds(new Set());
+              }}
+              className={`p-2 rounded-lg transition-colors ${
+                selectionMode 
+                  ? "bg-indigo-600 text-white" 
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+              }`}
+              title="Select mode"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            </button>
+            <button
+              onClick={() => refresh()}
+              disabled={loading}
+              className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
           </div>
-        )}
-        <div className="flex items-center gap-1 px-2">
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => {
-              setSelectionMode(!selectionMode);
-              if (selectionMode) setSelectedIds(new Set());
-            }}
-            className={`px-2 py-1 text-xs rounded transition-colors ${
-              selectionMode 
-                ? "bg-indigo-600 text-white" 
-                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+            onClick={() => setFilter("unread")}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              filter === "unread"
+                ? "bg-zinc-700 text-white"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
             }`}
-            title="Toggle selection mode"
           >
-            ☑️
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            Unread
+            {unreadCount > 0 && (
+              <span className="text-xs text-zinc-400">{unreadCount}</span>
+            )}
           </button>
           <button
-            onClick={() => refresh()}
-            disabled={loading}
-            className="px-2 py-1 text-xs text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+            onClick={() => setFilter("all")}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              filter === "all"
+                ? "bg-zinc-700 text-white"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+            }`}
           >
-            {loading ? "⏳" : "🔄"}
+            All
           </button>
         </div>
       </div>
 
       {/* Bulk Action Bar */}
       {selectionMode && (
-        <div className="px-3 py-2 bg-zinc-900 border-b border-zinc-800 flex items-center gap-2">
+        <div className="px-4 py-2 bg-zinc-900/80 border-y border-zinc-800 flex items-center gap-3">
           <button
             onClick={toggleSelectAll}
-            className="px-2 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 rounded transition-colors"
+            className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
           >
-            {visibleEmails.every(e => selectedIds.has(e.id)) ? "Deselect All" : "Select All"}
+            {filteredEmails.every(e => selectedIds.has(e.id)) ? "Deselect All" : "Select All"}
           </button>
-          <span className="text-xs text-zinc-500">
+          <span className="text-sm text-zinc-400">
             {selectedIds.size} selected
           </span>
           <div className="flex-1" />
@@ -374,16 +432,16 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
               <button
                 onClick={handleBulkArchive}
                 disabled={bulkProcessing}
-                className="px-3 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 rounded transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg transition-colors disabled:opacity-50"
               >
-                {bulkProcessing ? "..." : "Archive"}
+                Archive
               </button>
               <button
                 onClick={handleBulkDelete}
                 disabled={bulkProcessing}
-                className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 text-sm bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
               >
-                {bulkProcessing ? "..." : "Delete"}
+                Delete
               </button>
             </>
           )}
@@ -392,85 +450,100 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
               setSelectionMode(false);
               setSelectedIds(new Set());
             }}
-            className="px-2 py-1 text-xs text-zinc-400 hover:text-white"
+            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
           >
-            ✕
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
       )}
 
       {/* Error State */}
       {error && (
-        <div className="px-3 py-2 bg-red-900/20 text-red-400 text-xs">
+        <div className="mx-4 mb-2 px-4 py-2 bg-red-900/20 text-red-400 text-sm rounded-lg">
           {error}
+        </div>
+      )}
+
+      {/* Preview Banner */}
+      {previewEmailIds.length > 0 && (
+        <div className="mx-4 mb-2 px-4 py-2 bg-amber-900/30 border border-amber-700/50 text-amber-300 text-sm rounded-lg flex items-center gap-2">
+          <span className="animate-pulse">⚠️</span>
+          <span>{previewEmailIds.length} emails selected for action</span>
         </div>
       )}
 
       {/* Loading State */}
       {loading && emails.length === 0 && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-zinc-500 text-sm animate-pulse">Loading...</div>
+          <div className="text-zinc-500 animate-pulse">Loading emails...</div>
         </div>
       )}
 
       {/* Empty State */}
-      {!loading && emails.length === 0 && !error && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-zinc-500 text-sm">No emails</div>
+      {!loading && filteredEmails.length === 0 && !error && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-zinc-500">
+          <svg className="w-12 h-12 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          <p>{filter === "unread" ? "No unread emails" : "No emails"}</p>
         </div>
       )}
 
-      {/* Preview Banner */}
-      {previewEmailIds.length > 0 && (
-        <div className="px-3 py-2 bg-amber-900/30 border-b border-amber-700/50 text-amber-300 text-xs flex items-center gap-2">
-          <span className="animate-pulse">⚠️</span>
-          <span>{previewEmailIds.length} emails selected for action - confirm in chat below</span>
-        </div>
-      )}
-
-      {/* Compact Emails List */}
-      <div className="flex-1 overflow-y-auto">
-        {visibleEmails.map((email) => {
+      {/* Email List */}
+      <div className="flex-1 overflow-y-auto px-2">
+        {filteredEmails.map((email) => {
           const isPreview = previewEmailIds.includes(email.id);
           const isSelected = selectedIds.has(email.id);
+          const senderName = email.from.split("<")[0].trim();
+          
           return (
             <div
               key={email.id}
               onClick={() => selectionMode ? toggleSelect(email.id) : handleSelectEmail(email)}
-              className={`px-3 py-2 border-b border-zinc-800/50 cursor-pointer transition-all ${
+              className={`flex items-center gap-3 px-3 py-3 mx-1 my-0.5 rounded-xl cursor-pointer transition-all ${
                 isSelected
-                  ? "bg-indigo-600/20 border-l-2 border-l-indigo-500"
+                  ? "bg-indigo-600/20"
                   : isPreview 
-                  ? "bg-amber-900/30 border-l-2 border-l-amber-500 animate-pulse" 
-                  : email.read 
-                  ? "opacity-60" 
+                  ? "bg-amber-900/20" 
                   : "hover:bg-zinc-800/50"
-              } ${focusedItem?.id === email.id ? "bg-indigo-600/20" : ""}`}
+              } ${focusedItem?.id === email.id ? "bg-zinc-800" : ""}`}
             >
-              <div className="flex items-center gap-2">
-                {selectionMode ? (
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelect(email.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"
-                  />
-                ) : isPreview ? (
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
-                ) : !email.read ? (
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
-                ) : null}
-                <p className={`flex-1 text-sm truncate ${isPreview ? "text-amber-300 font-medium" : email.read ? "text-zinc-400" : "font-medium"}`}>
+              {/* Checkbox or Avatar */}
+              {selectionMode ? (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelect(email.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-5 h-5 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"
+                />
+              ) : (
+                <div className="relative flex-shrink-0">
+                  <div className={`w-10 h-10 rounded-full ${getAvatarColor(email.from)} flex items-center justify-center text-white font-semibold`}>
+                    {getSenderInitial(email.from)}
+                  </div>
+                  {!email.read && (
+                    <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-zinc-950" />
+                  )}
+                </div>
+              )}
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className={`font-medium truncate ${email.read ? "text-zinc-400" : "text-white"}`}>
+                    {senderName}
+                  </p>
+                  <span className="text-xs text-zinc-500 flex-shrink-0">
+                    {formatDate(email.date)}
+                  </span>
+                </div>
+                <p className={`text-sm truncate ${email.read ? "text-zinc-500" : "text-zinc-300"}`}>
                   {email.subject || "(no subject)"}
                 </p>
-                <span className="text-[10px] text-zinc-600 flex-shrink-0">
-                  {formatDate(email.date)}
-                </span>
               </div>
-              <p className="text-xs text-zinc-500 truncate mt-0.5 pl-3.5">
-                {email.from.split("<")[0].trim()}
-              </p>
             </div>
           );
         })}

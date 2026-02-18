@@ -1,6 +1,7 @@
 "use client";
 
 import { FocusedItem } from "@/lib/types";
+import { safeString } from "@/lib/safeRender";
 
 interface ContextBadgeProps {
   item: FocusedItem;
@@ -12,14 +13,6 @@ const typeEmoji: Record<FocusedItem["type"], string> = {
   email: "📧",
   task: "✅",
   notification: "🔔",
-};
-
-// Ensure value is always a string
-const safeString = (val: unknown): string => {
-  if (val === null || val === undefined) return "";
-  if (typeof val === "string") return val;
-  if (typeof val === "object") return JSON.stringify(val);
-  return String(val);
 };
 
 export default function ContextBadge({ item, onClear, compact }: ContextBadgeProps) {

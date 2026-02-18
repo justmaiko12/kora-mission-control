@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { EmailThread } from "@/lib/useEmails";
+import { safeString } from "@/lib/safeRender";
 
 interface EmailDetailProps {
   email: EmailThread;
@@ -88,15 +89,6 @@ export default function EmailDetail({
       hour: "numeric",
       minute: "2-digit",
     });
-  };
-
-  // Safely convert any value to string
-  const safeString = (val: unknown): string => {
-    if (val === null || val === undefined) return "";
-    if (typeof val === "string") return val;
-    if (Array.isArray(val)) return val.join(", ");
-    if (typeof val === "object") return JSON.stringify(val);
-    return String(val);
   };
 
   const extractName = (from: unknown) => {

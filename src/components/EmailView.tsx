@@ -5,15 +5,7 @@ import { useEmails, EmailThread } from "@/lib/useEmails";
 import EmailTabs from "@/components/EmailTabs";
 import EmailDetail from "@/components/EmailDetail";
 import { FocusedItem } from "@/lib/types";
-
-// Safely convert any value to string to prevent React Error #300
-const safeString = (val: unknown): string => {
-  if (val === null || val === undefined) return "";
-  if (typeof val === "string") return val;
-  if (Array.isArray(val)) return val.map(safeString).join(", ");
-  if (typeof val === "object") return JSON.stringify(val);
-  return String(val);
-};
+import { safeString } from "@/lib/safeRender";
 
 interface EmailViewProps {
   focusedItem?: FocusedItem | null;
@@ -135,26 +127,18 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     }
   };
 
-  // Ensure value is always a string
-  const safeStr = (val: unknown): string => {
-    if (val === null || val === undefined) return "";
-    if (typeof val === "string") return val;
-    if (typeof val === "object") return JSON.stringify(val);
-    return String(val);
-  };
-
   const handleSelectEmail = (email: EmailThread) => {
     setSelectedEmail(email);
     // Also set as focused item for chat context
     if (onFocusItem) {
       onFocusItem({
         type: "email",
-        id: safeStr(email.id),
-        title: safeStr(email.subject) || "(no subject)",
-        preview: `${safeStr(email.from)} • ${safeStr(email.snippet)}`,
+        id: safeString(email.id),
+        title: safeString(email.subject) || "(no subject)",
+        preview: `${safeString(email.from)} • ${safeString(email.snippet)}`,
         metadata: {
-          from: safeStr(email.from),
-          date: safeStr(email.date),
+          from: safeString(email.from),
+          date: safeString(email.date),
           labels: email.labels,
           messageCount: email.messageCount,
           account: activeAccount,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { safeString } from "@/lib/safeRender";
 
 interface Deal {
   id: string;
@@ -208,7 +209,7 @@ export default function DealsView() {
                       } ${selectedDeal?.id === deal.id ? "ring-2 ring-indigo-500" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium line-clamp-2">{deal.subject}</p>
+                        <p className="text-sm font-medium line-clamp-2">{safeString(deal.subject)}</p>
                         {deal.unread && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1" />}
                       </div>
                       <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(deal.from)}</p>
@@ -254,7 +255,7 @@ export default function DealsView() {
                       onClick={() => { setSelectedDeal(deal); setDraft(""); }}
                       className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md bg-emerald-500/20 border-emerald-500/50 ${selectedDeal?.id === deal.id ? "ring-2 ring-indigo-500" : ""}`}
                     >
-                      <p className="text-sm font-medium line-clamp-2">{deal.subject}</p>
+                      <p className="text-sm font-medium line-clamp-2">{safeString(deal.subject)}</p>
                       <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(deal.from)}</p>
                     </div>
                   ))}
@@ -288,7 +289,7 @@ export default function DealsView() {
                       } ${selectedDeal?.id === req.id ? "ring-2 ring-indigo-500" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium line-clamp-2">{req.subject}</p>
+                        <p className="text-sm font-medium line-clamp-2">{safeString(req.subject)}</p>
                         {req.unread && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1" />}
                       </div>
                       <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(req.from)}</p>
@@ -313,7 +314,7 @@ export default function DealsView() {
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 md:gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between">
-                <h3 className="font-medium line-clamp-1 md:truncate text-sm md:text-base">{selectedDeal.subject}</h3>
+                <h3 className="font-medium line-clamp-1 md:truncate text-sm md:text-base">{safeString(selectedDeal.subject)}</h3>
                 <button
                   onClick={() => setSelectedDeal(null)}
                   className="md:hidden p-1 text-zinc-500 hover:text-white"

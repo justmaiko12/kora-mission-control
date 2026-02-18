@@ -6,6 +6,7 @@ import Avatar from "@/components/Avatar";
 import { FocusedItem } from "@/lib/types";
 import { ChannelSuggestion, createCustomChannel } from "@/lib/channelStorage";
 import { getSettings, onSettingsChange, AppSettings } from "@/lib/settings";
+import { safeString } from "@/lib/safeRender";
 
 // Chat context types - each view can have its own chat
 export type ChatContext = "dashboard" | "email" | "deals" | "tasks" | "memory" | "integrations" | "payables" | "general";
@@ -460,10 +461,10 @@ export default function InlineChat({
             >
               {message.context && (
                 <p className="text-[10px] uppercase tracking-wide opacity-60 mb-1">
-                  Re: {typeof message.context.title === "string" ? message.context.title : String(message.context.title || "")}
+                  Re: {safeString(message.context.title)}
                 </p>
               )}
-              {typeof message.content === "string" ? message.content : String(message.content || "")}
+              {safeString(message.content)}
             </div>
           </div>
         ))}
@@ -493,7 +494,7 @@ export default function InlineChat({
               disabled={isLoading}
               className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
             >
-              {isLoading ? "Processing..." : `Yes, ${pendingAction.actionType} ${pendingAction.emails.length} emails`}
+              {isLoading ? "Processing..." : `Yes, ${safeString(pendingAction.actionType)} ${pendingAction.emails.length} emails`}
             </button>
           </div>
         ) : (
@@ -503,7 +504,7 @@ export default function InlineChat({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder={focusedItem ? `Ask about "${focusedItem.title}"...` : `Message ${chatTitles[chatContext]}...`}
+              placeholder={focusedItem ? `Ask about "${safeString(focusedItem.title)}"...` : `Message ${chatTitles[chatContext]}...`}
               className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
             />
             <button

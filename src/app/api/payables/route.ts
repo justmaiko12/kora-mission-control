@@ -26,23 +26,47 @@ interface ExpensePayable {
   updatedAt?: string;
 }
 
-const statusFilter: ExpensePayableStatus[] = ["planned", "approved", "partial"];
+interface PromoTask {
+  id: string;
+  title: string;
+  clientName?: string;
+  fee?: number;
+  status: string;
+  workStatus?: string;
+  paymentStatus?: string;
+  createdAt?: string;
+}
+
+const expenseStatusFilter: ExpensePayableStatus[] = ["planned", "approved", "partial"];
 
 export async function GET() {
-  const { data, error } = await getInvoicerSupabase()
+  const supabase = getInvoicerSupabase();
+  
+  // Fetch expense payables (bills to pay)
+  const { data: expenseData, error: expenseError } = await supabase
     .from("expense_payables")
     .select("*")
-    .in("status", statusFilter)
+    .in("status", expenseStatusFilter)
     .order("due_date", { ascending: true });
 
-  if (error) {
+  // Fetch promo tasks that need invoicing or payment
+  // payment_status: null/unpaid = needs to be invoiced/paid
+  const { data: promoData, error: promoError } = await supabase
+    .from("promo_tasks")
+    .select("*")
+    .or("payment_status.is.null,payment_status.eq.unpaid,payment_status.eq.partial")
+    .not("status", "eq", "cancelled")
+    .order("created_at", { ascending: false });
+
+  if (expenseError && promoError) {
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: expenseError?.message || promoError?.message },
       { status: 500 }
     );
   }
 
-  const payables: ExpensePayable[] = (data ?? []).map((row) => ({
+  // Map expense payables
+  const payables: ExpensePayable[] = (expenseData ?? []).map((row) => ({
     id: row.id,
     ownerCompanyId: row.owner_company_id,
     submissionId: row.submission_id ?? undefined,
@@ -65,5 +89,27 @@ export async function GET() {
     updatedAt: row.updated_at ?? undefined,
   }));
 
-  return NextResponse.json({ success: true, payables });
+  // Map promo tasks (deals awaiting payment)
+  const promoTasks: PromoTask[] = (promoData ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    clientName: row.client_name ?? undefined,
+    fee: row.fee ?? undefined,
+    status: row.status,
+    workStatus: row.work_status ?? undefined,
+    paymentStatus: row.payment_status ?? undefined,
+    createdAt: row.created_at ?? undefined,
+  }));
+
+  return NextResponse.json({ 
+    success: true, 
+    payables,
+    promoTasks,
+    summary: {
+      pendingPayables: payables.length,
+      pendingDeals: promoTasks.length,
+      totalPayablesAmount: payables.reduce((sum, p) => sum + (p.amount || 0), 0),
+      totalDealsAmount: promoTasks.reduce((sum, t) => sum + (t.fee || 0), 0),
+    }
+  });
 }

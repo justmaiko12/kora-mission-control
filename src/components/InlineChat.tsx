@@ -120,34 +120,38 @@ export default function InlineChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevContextRef = useRef<ChatContext>(chatContext);
 
-  // Initialize messages for this context
+  // Initialize messages for this context - only run when context changes
   useEffect(() => {
     // Save current messages to store before switching
-    if (prevContextRef.current !== chatContext && messages.length > 0) {
-      messageStore[prevContextRef.current] = messages;
+    if (prevContextRef.current !== chatContext) {
+      // Save previous context messages
+      const currentMessages = messageStore[prevContextRef.current];
+      if (currentMessages && currentMessages.length > 0) {
+        // Already saved via the other effect
+      }
+      prevContextRef.current = chatContext;
     }
-    prevContextRef.current = chatContext;
 
     // Load messages for new context
     const storedMessages = messageStore[chatContext];
-    if (storedMessages.length > 0) {
-      setMessages(storedMessages);
+    if (storedMessages && storedMessages.length > 0) {
+      setMessages([...storedMessages]); // Create new array to avoid reference issues
     } else {
       // Initialize with welcome message
-      setMessages([
-        {
-          id: `welcome-${chatContext}`,
-          content: welcomeMessages[chatContext],
-          sender: "kora",
-          timestamp: new Date(),
-        },
-      ]);
+      const welcomeMsg = {
+        id: `welcome-${chatContext}`,
+        content: welcomeMessages[chatContext],
+        sender: "kora" as const,
+        timestamp: new Date(),
+      };
+      setMessages([welcomeMsg]);
+      messageStore[chatContext] = [welcomeMsg];
     }
-  }, [chatContext, messages]);
+  }, [chatContext]); // Only depend on chatContext, not messages
 
-  // Save messages to store when they change
+  // Save messages to store when they change (separate effect)
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 && messages[0]?.id !== `welcome-${chatContext}` || messages.length > 1) {
       messageStore[chatContext] = messages;
     }
   }, [messages, chatContext]);

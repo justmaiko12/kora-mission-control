@@ -265,9 +265,10 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           email={selectedEmail}
           account={activeAccount}
           onClose={() => setSelectedEmail(null)}
-          onIgnore={handleIgnore}
-          onMarkDeal={handleMarkAsDeal}
-          onMarkRequest={handleMarkAsRequest}
+          onIgnore={() => handleIgnore(selectedEmail)}
+          onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
+          onMarkAsRequest={(e) => handleMarkAsRequest(e, selectedEmail)}
+          isMarking={markingDeal === selectedEmail.id}
         />
       </ErrorBoundary>
     );

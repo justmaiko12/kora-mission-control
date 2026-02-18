@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useEmails, EmailThread } from "@/lib/useEmails";
 import EmailTabs from "@/components/EmailTabs";
+import EmailDetail from "@/components/EmailDetail";
 import { FocusedItem } from "@/lib/types";
 
 interface EmailViewProps {
@@ -13,27 +14,31 @@ interface EmailViewProps {
 export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) {
   const { accounts, emails, loading, error, activeAccount, setActiveAccount, refresh } =
     useEmails();
+  const [selectedEmail, setSelectedEmail] = useState<EmailThread | null>(null);
   const [markingDeal, setMarkingDeal] = useState<string | null>(null);
 
-  const handleFocusItem = (email: EmailThread) => {
-    if (!onFocusItem) return;
-    onFocusItem({
-      type: "email",
-      id: email.id,
-      title: email.subject,
-      preview: `${email.from} • ${email.snippet || ""}`,
-      metadata: {
-        from: email.from,
-        date: email.date,
-        labels: email.labels,
-        messageCount: email.messageCount,
-        account: activeAccount,
-      },
-    });
+  const handleSelectEmail = (email: EmailThread) => {
+    setSelectedEmail(email);
+    // Also set as focused item for chat context
+    if (onFocusItem) {
+      onFocusItem({
+        type: "email",
+        id: email.id,
+        title: email.subject,
+        preview: `${email.from} • ${email.snippet || ""}`,
+        metadata: {
+          from: email.from,
+          date: email.date,
+          labels: email.labels,
+          messageCount: email.messageCount,
+          account: activeAccount,
+        },
+      });
+    }
   };
 
   const handleMarkAsDeal = async (e: React.MouseEvent, email: EmailThread) => {
-    e.stopPropagation(); // Don't trigger focus
+    e.stopPropagation();
     setMarkingDeal(email.id);
     try {
       const res = await fetch("/api/deals", {
@@ -50,11 +55,10 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
             labels: email.labels,
             messageCount: email.messageCount,
           },
-          type: "deal", // or "request"
+          type: "deal",
         }),
       });
       if (!res.ok) throw new Error("Failed to create deal");
-      // Could show a toast here
     } catch (err) {
       console.error("Failed to mark as deal:", err);
     } finally {
@@ -112,6 +116,88 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
 
   const unreadCount = emails.filter((e) => !e.read).length;
 
+  // If an email is selected, show split view
+  if (selectedEmail) {
+    return (
+      <div className="h-full flex">
+        {/* Email List (narrower) */}
+        <div className="w-80 flex-shrink-0 border-r border-zinc-800 flex flex-col">
+          {/* Header */}
+          <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-bold">📧 Email</h1>
+              <p className="text-xs text-zinc-500">
+                {loading ? "Loading..." : `${unreadCount} unread`}
+              </p>
+            </div>
+            <button
+              onClick={refresh}
+              disabled={loading}
+              className="p-2 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {loading ? "⏳" : "🔄"}
+            </button>
+          </div>
+
+          {/* Account Tabs */}
+          {accounts.length > 0 && (
+            <EmailTabs
+              accounts={accounts}
+              activeAccount={activeAccount}
+              onChange={(acc) => {
+                setActiveAccount(acc);
+                setSelectedEmail(null);
+              }}
+            />
+          )}
+
+          {/* Compact Email List */}
+          <div className="flex-1 overflow-y-auto">
+            {emails.map((email) => (
+              <div
+                key={email.id}
+                onClick={() => handleSelectEmail(email)}
+                className={`p-3 border-b border-zinc-800/50 cursor-pointer transition-colors ${
+                  selectedEmail?.id === email.id
+                    ? "bg-indigo-600/20 border-l-2 border-l-indigo-500"
+                    : "hover:bg-zinc-800/50"
+                } ${email.read ? "opacity-60" : ""}`}
+              >
+                <div className="flex items-start gap-2">
+                  {!email.read && (
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm truncate ${email.read ? "text-zinc-400" : "font-medium"}`}>
+                      {email.subject || "(no subject)"}
+                    </p>
+                    <p className="text-xs text-zinc-500 truncate mt-0.5">{email.from}</p>
+                  </div>
+                  <span className="text-[10px] text-zinc-600 flex-shrink-0">
+                    {formatDate(email.date)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Email Detail */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <EmailDetail
+            email={selectedEmail}
+            account={activeAccount}
+            onClose={() => setSelectedEmail(null)}
+            onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
+            onMarkAsRequest={(e) => handleMarkAsRequest(e, selectedEmail)}
+            isMarking={markingDeal === selectedEmail.id}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Default: full email list view
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -131,7 +217,7 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
         </button>
       </div>
 
-      {/* Account Tabs - Shows actual email addresses */}
+      {/* Account Tabs */}
       {accounts.length > 0 && (
         <EmailTabs
           accounts={accounts}
@@ -168,22 +254,12 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
         {emails.map((email) => (
           <div
             key={email.id}
-            role={onFocusItem ? "button" : undefined}
-            tabIndex={onFocusItem ? 0 : -1}
-            onClick={() => onFocusItem && handleFocusItem(email)}
-            onKeyDown={(event) => {
-              if (!onFocusItem) return;
-              if (event.key === "Enter") {
-                handleFocusItem(email);
-              }
-            }}
-            className={`p-4 rounded-xl border transition-all focus:outline-none group ${
+            onClick={() => handleSelectEmail(email)}
+            className={`p-4 rounded-xl border transition-all cursor-pointer group ${
               email.read
                 ? "bg-zinc-900/30 border-zinc-800/50 opacity-70"
                 : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
-            } ${focusedItem?.id === email.id ? "ring-2 ring-indigo-500/70" : ""} ${
-              onFocusItem ? "cursor-pointer hover:shadow-md" : ""
-            }`}
+            } ${focusedItem?.id === email.id ? "ring-2 ring-indigo-500/70" : ""} hover:shadow-md`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
@@ -208,7 +284,7 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
               <p className="text-xs text-zinc-500 mt-2 line-clamp-2">{email.snippet}</p>
             )}
             
-            {/* Quick Actions - Show on hover */}
+            {/* Quick Actions */}
             <div className="flex items-center justify-between mt-3 pt-2 border-t border-zinc-800/50">
               <div className="flex items-center gap-1">
                 {email.messageCount > 1 && (

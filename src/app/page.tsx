@@ -9,6 +9,7 @@ import KoraTasks from "@/components/KoraTasks";
 import Integrations from "@/components/Integrations";
 import ChatPanel from "@/components/ChatPanel";
 import EmailView from "@/components/EmailView";
+import DealsView from "@/components/DealsView";
 import Dashboard from "@/components/Dashboard";
 import { FocusedItem } from "@/lib/types";
 import { CustomChannel, listCustomChannels, onCustomChannelsUpdated } from "@/lib/channelStorage";
@@ -22,7 +23,8 @@ export type ViewType =
   | "memory"
   | "kora-tasks"
   | "integrations"
-  | "payables";
+  | "payables"
+  | "business";
 
 const viewOptions: ViewType[] = [
   "dashboard",
@@ -34,6 +36,7 @@ const viewOptions: ViewType[] = [
   "kora-tasks",
   "integrations",
   "payables",
+  "business",
 ];
 
 function HomeContent() {
@@ -122,6 +125,8 @@ function HomeContent() {
         return <KoraTasks />;
       case "integrations":
         return <Integrations />;
+      case "business":
+        return <DealsView />;
       default:
         return <Dashboard onNavigate={setActiveView} />;
     }

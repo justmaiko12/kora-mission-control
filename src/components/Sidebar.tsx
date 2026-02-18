@@ -25,6 +25,7 @@ interface NavItem {
 const channelItems: NavItem[] = [
   { id: "dashboard", icon: "🏠", label: "Dashboard" },
   { id: "email", icon: "📧", label: "Email", badge: 3 },
+  { id: "business", icon: "💼", label: "Deals" },
   { id: "tasks", icon: "✅", label: "Tasks", badge: 5 },
   { id: "chat", icon: "💬", label: "Chat" },
   { id: "payables", icon: "💸", label: "Payables", href: "/payables" },

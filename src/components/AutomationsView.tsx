@@ -148,22 +148,75 @@ export default function AutomationsView() {
     fetchJobs();
   }, [fetchJobs]);
 
+  // Convert cron expression to human-readable schedule
   const formatSchedule = (schedule: CronJob["schedule"]): string => {
     if (schedule.kind === "cron" && schedule.expr) {
-      return `Cron: ${schedule.expr}`;
+      // Parse common cron patterns
+      const parts = schedule.expr.split(" ");
+      if (parts.length >= 5) {
+        const [min, hour, dom, mon, dow] = parts;
+        
+        // Daily at specific time
+        if (dom === "*" && mon === "*" && dow === "*") {
+          const h = parseInt(hour);
+          const m = parseInt(min);
+          const period = h >= 12 ? "PM" : "AM";
+          const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+          const minStr = m === 0 ? "" : `:${m.toString().padStart(2, "0")}`;
+          return `Every day at ${hour12}${minStr} ${period}`;
+        }
+        
+        // Weekly
+        if (dom === "*" && mon === "*" && dow !== "*") {
+          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          const dayName = days[parseInt(dow)] || dow;
+          const h = parseInt(hour);
+          const period = h >= 12 ? "PM" : "AM";
+          const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+          return `Every ${dayName} at ${hour12} ${period}`;
+        }
+      }
+      return schedule.expr; // Fallback to raw expression
     }
     if (schedule.kind === "every" && schedule.everyMs) {
       const seconds = schedule.everyMs / 1000;
-      if (seconds < 60) return `Every ${seconds}s`;
+      if (seconds < 60) return `Every ${seconds} seconds`;
       const minutes = seconds / 60;
-      if (minutes < 60) return `Every ${Math.round(minutes)}m`;
+      if (minutes < 60) return `Every ${Math.round(minutes)} minute${minutes !== 1 ? "s" : ""}`;
       const hours = minutes / 60;
-      return `Every ${Math.round(hours)}h`;
+      return `Every ${Math.round(hours)} hour${hours !== 1 ? "s" : ""}`;
     }
     if (schedule.kind === "at" && schedule.at) {
-      return `At: ${new Date(schedule.at).toLocaleString()}`;
+      return `One-time: ${new Date(schedule.at).toLocaleString()}`;
     }
-    return "Unknown";
+    return "Unknown schedule";
+  };
+
+  // Get a human-readable description of what the automation does
+  const getAutomationDescription = (job: CronJob): string => {
+    const name = job.name?.toLowerCase() || "";
+    const message = job.payload.message?.toLowerCase() || job.payload.text?.toLowerCase() || "";
+    
+    if (name.includes("morning briefing") || message.includes("briefing")) {
+      return "Sends you a morning summary with tasks, emails, calendar, and news";
+    }
+    if (name.includes("editor task") || message.includes("editor")) {
+      return "Pings editors on Discord about upcoming task deadlines";
+    }
+    if (name.includes("session") && name.includes("sync")) {
+      return "Keeps Mission Control in sync with Kora's activity";
+    }
+    if (name.includes("chat processor")) {
+      return "Processes chat messages from Mission Control";
+    }
+    if (message.includes("reminder")) {
+      return "Sends you a reminder notification";
+    }
+    
+    // Fallback: show truncated message
+    const text = job.payload.message || job.payload.text || "";
+    if (text.length > 100) return text.slice(0, 100) + "...";
+    return text || "No description";
   };
 
   const formatRelativeTime = (dateStr?: string): string => {
@@ -197,7 +250,7 @@ export default function AutomationsView() {
           <div>
             <h1 className="text-xl md:text-2xl font-bold">⚡ Automations</h1>
             <p className="text-sm text-zinc-500 mt-1">
-              Cron jobs and scheduled tasks running in OpenClaw
+              Scheduled tasks that run automatically
             </p>
           </div>
           <button
@@ -250,36 +303,24 @@ export default function AutomationsView() {
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                           <h3 className="font-semibold truncate">
-                            {job.name || job.payload.text?.slice(0, 50) || "Unnamed"}
+                            {job.name || "Unnamed Automation"}
                           </h3>
                         </div>
-                        <p className="text-sm text-zinc-400 mt-1">
-                          {formatSchedule(job.schedule)}
+                        <p className="text-sm text-indigo-400 mt-1">
+                          🕐 {formatSchedule(job.schedule)}
                         </p>
-                        {job.payload.text && (
-                          <p className="text-xs text-zinc-500 mt-2 line-clamp-2">
-                            {job.payload.text}
-                          </p>
-                        )}
+                        <p className="text-sm text-zinc-400 mt-2">
+                          {getAutomationDescription(job)}
+                        </p>
                       </div>
                       <div className="text-right text-xs text-zinc-500 flex-shrink-0">
-                        <div>Next: {formatRelativeTime(job.nextRun)}</div>
+                        {job.nextRun && (
+                          <div className="text-emerald-400">Next: {formatRelativeTime(job.nextRun)}</div>
+                        )}
                         {job.lastRun && (
-                          <div className="mt-1">Last: {formatRelativeTime(job.lastRun)}</div>
+                          <div className="mt-1">Last ran: {formatRelativeTime(job.lastRun)}</div>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800">
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        job.sessionTarget === "main" 
-                          ? "bg-indigo-900/50 text-indigo-300" 
-                          : "bg-zinc-800 text-zinc-400"
-                      }`}>
-                        {job.sessionTarget}
-                      </span>
-                      <span className="px-2 py-0.5 text-xs bg-zinc-800 text-zinc-400 rounded-full">
-                        {job.payload.kind}
-                      </span>
                     </div>
                   </div>
                 ))}
@@ -291,7 +332,7 @@ export default function AutomationsView() {
           {disabledJobs.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-                Disabled ({disabledJobs.length})
+                Paused ({disabledJobs.length})
               </h2>
               <div className="space-y-2">
                 {disabledJobs.map((job) => (
@@ -303,13 +344,16 @@ export default function AutomationsView() {
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-zinc-600" />
                         <span className="text-sm text-zinc-400 truncate">
-                          {job.name || job.payload.text?.slice(0, 40) || "Unnamed"}
+                          {job.name || "Unnamed"}
                         </span>
                       </div>
-                      <span className="text-xs text-zinc-600">
-                        {formatSchedule(job.schedule)}
+                      <span className="text-xs text-zinc-500">
+                        Was: {formatSchedule(job.schedule)}
                       </span>
                     </div>
+                    <p className="text-xs text-zinc-500 mt-1 ml-4">
+                      {getAutomationDescription(job)}
+                    </p>
                   </div>
                 ))}
               </div>

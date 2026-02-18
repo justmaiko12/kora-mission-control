@@ -27,20 +27,11 @@ interface NavItem {
   external?: boolean;
 }
 
-const channelItems: NavItem[] = [
-  { id: "dashboard", icon: "🏠", label: "Dashboard" },
-  { id: "email", icon: "📧", label: "Email", badge: 3 },
-  { id: "business", icon: "💼", label: "Deals" },
-  { id: "tasks", icon: "✅", label: "Tasks", badge: 5 },
-  { id: "chat", icon: "💬", label: "Chat" },
-  { id: "payables", icon: "💸", label: "Payables", href: "/payables" },
-];
-
-const koraItems: NavItem[] = [
-  { id: "memory", icon: "🧠", label: "Memory" },
-  { id: "kora-tasks", icon: "📋", label: "My Tasks", badge: 3 },
-  { id: "integrations", icon: "🔌", label: "Integrations" },
-];
+interface BadgeCounts {
+  email: number;
+  deals: number;
+  tasks: number;
+}
 
 const appLinks = [
   { name: "Kreatrix AI", url: "https://kreatrix.vercel.app", emoji: "🎨" },
@@ -63,11 +54,61 @@ export default function Sidebar({
   const [appsOpen, setAppsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [badges, setBadges] = useState<BadgeCounts>({ email: 0, deals: 0, tasks: 0 });
 
   useEffect(() => {
     setSettings(getSettings());
     return onSettingsChange(setSettings);
   }, []);
+
+  // Fetch real badge counts
+  useEffect(() => {
+    async function fetchBadges() {
+      try {
+        // Fetch email counts
+        const emailRes = await fetch("/api/emails");
+        const emailData = await emailRes.json();
+        const unreadEmails = emailData.emails?.filter((e: { read: boolean }) => !e.read).length || 0;
+
+        // Fetch deal counts
+        const dealsRes = await fetch("/api/deals?view=pipeline");
+        const dealsData = await dealsRes.json();
+        const newLeads = dealsData.deals?.new_lead?.length || 0;
+
+        // Fetch task counts
+        const tasksRes = await fetch("/api/tasks");
+        const tasksData = await tasksRes.json();
+        const activeTasks = tasksData.tasks?.filter((t: { status: string }) => t.status !== "completed").length || 0;
+
+        setBadges({
+          email: unreadEmails,
+          deals: newLeads,
+          tasks: activeTasks,
+        });
+      } catch (err) {
+        console.error("Failed to fetch badge counts:", err);
+      }
+    }
+
+    fetchBadges();
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchBadges, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const channelItems: NavItem[] = [
+    { id: "dashboard", icon: "🏠", label: "Dashboard" },
+    { id: "email", icon: "📧", label: "Email", badge: badges.email || undefined },
+    { id: "business", icon: "💼", label: "Deals", badge: badges.deals || undefined },
+    { id: "chat", icon: "💬", label: "Chat" },
+    { id: "payables", icon: "💸", label: "Payables", href: "/payables" },
+  ];
+
+  const koraItems: NavItem[] = [
+    { id: "memory", icon: "🧠", label: "Memory" },
+    { id: "kora-tasks", icon: "📋", label: "My Tasks", badge: badges.tasks || undefined },
+    { id: "integrations", icon: "🔌", label: "Integrations" },
+  ];
 
   const handleNavigate = (view: ViewType) => {
     onNavigate(view);
@@ -86,7 +127,7 @@ export default function Sidebar({
       <>
         <span className="text-xl">{item.icon}</span>
         <span className="flex-1 font-medium">{item.label}</span>
-        {item.badge && (
+        {item.badge !== undefined && item.badge > 0 && (
           <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-600 text-white">
             {item.badge}
           </span>
@@ -182,7 +223,7 @@ export default function Sidebar({
             </h2>
             <div className="space-y-1">
               {channelItems.map((item) => (
-                <NavButton key={item.id} item={item} />
+                <NavButton key={item.id || item.href} item={item} />
               ))}
             </div>
           </div>

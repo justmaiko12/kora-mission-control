@@ -180,28 +180,24 @@ export default function InlineChat({ focusedItem, onClearFocus, chatContext = "g
       return;
     }
 
-    // Simulate context-aware response (TODO: integrate with OpenClaw)
-    setTimeout(() => {
-      let response = "";
-      
-      if (focusedItem) {
-        response = `Got it — you're asking about "${focusedItem.title}". Full OpenClaw integration coming soon! 🦞`;
-      } else {
-        // Context-aware responses
-        switch (chatContext) {
-          case "email":
-            response = "I can help you with emails! Click an email to focus on it, then ask me to draft a reply or summarize it.";
-            break;
-          case "deals":
-            response = "Need help with a deal? Select one from the pipeline and I can help draft rates or follow-ups.";
-            break;
-          case "tasks":
-            response = "I can help manage tasks! Try 'add task: [description]' or ask me to prioritize your list.";
-            break;
-          default:
-            response = "I hear you! Full chat integration coming soon. 🦞";
-        }
-      }
+    // Call the chat API
+    try {
+      const res = await fetch("/api/openclaw/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage.content,
+          context: focusedItem ? {
+            type: focusedItem.type,
+            id: focusedItem.id,
+            title: focusedItem.title,
+          } : null,
+          chatContext,
+        }),
+      });
+
+      const data = await res.json();
+      const response = data.response || data.error || "I received your message!";
 
       const koraMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -210,8 +206,18 @@ export default function InlineChat({ focusedItem, onClearFocus, chatContext = "g
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, koraMessage]);
+    } catch (err) {
+      console.error("Chat error:", err);
+      const koraMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Sorry, I had trouble processing that. Please try again!",
+        sender: "kora",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, koraMessage]);
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   }, [input, isLoading, focusedItem, chatContext]);
 
   return (

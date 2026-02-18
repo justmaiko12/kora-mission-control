@@ -172,19 +172,20 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile overlay - only captures clicks on mobile */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden lg:pointer-events-none"
           onClick={onClose}
+          aria-hidden="true"
         />
       )}
       
       {/* Sidebar */}
       <aside className={`
-        fixed lg:relative inset-y-0 left-0 z-50
+        fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
         w-64 bg-zinc-900 lg:bg-zinc-900/50 border-r border-zinc-800 
-        flex flex-col
+        flex flex-col flex-shrink-0
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>

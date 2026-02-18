@@ -54,15 +54,15 @@ const viewTitles: Record<ViewType, string> = {
   business: "Deals",
 };
 
-// Map views to their chat context (email and deals share context)
+// Map views to their chat context (email and deals share context, dashboard/tasks/memory share context)
 const viewToChatContext: Record<ViewType, ChatContext> = {
-  dashboard: "dashboard",
+  dashboard: "general",
   email: "email",
   tasks: "tasks",
   chat: "general",
   custom: "general",
-  memory: "memory",
-  "kora-tasks": "tasks",
+  memory: "general",
+  "kora-tasks": "general",
   integrations: "integrations",
   payables: "payables",
   business: "email", // Deals uses same chat as email (deals come from emails)

@@ -292,11 +292,13 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
         <div className="flex items-center gap-2">
           {accounts.length > 0 && (
             <div className="flex-1">
-              <EmailTabs
-                accounts={accounts}
-                activeAccount={activeAccount}
-                onChange={setActiveAccount}
-              />
+              <ErrorBoundary name="EmailTabs-Main">
+                <EmailTabs
+                  accounts={accounts}
+                  activeAccount={activeAccount}
+                  onChange={setActiveAccount}
+                />
+              </ErrorBoundary>
             </div>
           )}
           <div className="flex items-center gap-1">

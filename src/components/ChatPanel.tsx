@@ -100,19 +100,43 @@ export default function ChatPanel({ onClose, focusedItem, onClearFocus }: ChatPa
       return;
     }
 
-    // Simulate response (TODO: integrate with OpenClaw)
-    setTimeout(() => {
+    // Call the chat API
+    try {
+      const res = await fetch("/api/openclaw/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage.content,
+          context: focusedItem ? {
+            type: focusedItem.type,
+            id: focusedItem.id,
+            title: focusedItem.title,
+          } : null,
+        }),
+      });
+
+      const data = await res.json();
+      const response = data.response || data.error || "I received your message!";
+
       const koraMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: focusedItem
-          ? `Got it. I'll focus on "${focusedItem.title}" while I help.`
-          : "I received your message! Integration with OpenClaw coming soon. 🦞",
+        content: response,
         sender: "kora",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, koraMessage]);
+    } catch (err) {
+      console.error("Chat error:", err);
+      const koraMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Sorry, I had trouble processing that. Please try again!",
+        sender: "kora",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, koraMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (

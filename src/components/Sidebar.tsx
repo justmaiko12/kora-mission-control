@@ -100,7 +100,6 @@ export default function Sidebar({
     { id: "dashboard", icon: "🏠", label: "Dashboard" },
     { id: "email", icon: "📧", label: "Email", badge: badges.email || undefined },
     { id: "business", icon: "💼", label: "Deals", badge: badges.deals || undefined },
-    { id: "chat", icon: "💬", label: "Chat" },
     { id: "payables", icon: "💸", label: "Payables", href: "/payables" },
   ];
 

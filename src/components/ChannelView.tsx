@@ -189,11 +189,21 @@ export default function ChannelView({
     return [];
   }, [activeAccount, channel, customChannel]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
-    // TODO: Integrate with OpenClaw
-    console.log("Sending:", input);
+    const message = input;
     setInput("");
+    
+    // Send via chat API
+    try {
+      await fetch("/api/openclaw/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+    } catch (err) {
+      console.error("Send failed:", err);
+    }
   };
 
   const handleFocusItem = (item: ChannelItem) => {

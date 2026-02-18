@@ -1,34 +1,42 @@
 import { NextResponse } from "next/server";
 
+const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
+const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
+
 export async function GET() {
-  // TODO: Connect to actual OpenClaw gateway
-  return NextResponse.json({
-    connected: true,
-    version: "2026.2.9",
-    model: "anthropic/claude-opus-4-5",
-    uptime: "2 hours",
-    channels: {
-      telegram: { status: "connected", lastMessage: new Date().toISOString() },
-      discord: { status: "connected", lastMessage: new Date().toISOString() },
-      github: { status: "connected" },
-      notion: { status: "connected", lastSync: new Date().toISOString() },
-    },
-    tools: [
-      "exec",
-      "read",
-      "write",
-      "edit",
-      "web_search",
-      "web_fetch",
-      "browser",
-      "cron",
-      "message",
-      "memory_search",
-      "memory_get",
-      "nodes",
-      "sessions_spawn",
-      "tts",
-      "image",
-    ],
-  });
+  try {
+    // Check if Bridge API is reachable
+    const res = await fetch(`${BRIDGE_URL}/health`, {
+      headers: {
+        Authorization: `Bearer ${BRIDGE_SECRET}`,
+      },
+      cache: "no-store",
+    });
+
+    const isConnected = res.ok;
+    const healthData = isConnected ? await res.json() : null;
+
+    return NextResponse.json({
+      connected: isConnected,
+      status: isConnected ? "online" : "offline",
+      gateway: {
+        url: BRIDGE_URL,
+        lastCheck: new Date().toISOString(),
+        ...(healthData || {}),
+      },
+      version: "2026.2.9",
+      model: "claude-opus-4-5",
+    });
+  } catch (error) {
+    console.error("OpenClaw status error:", error);
+    return NextResponse.json({
+      connected: false,
+      status: "error",
+      error: error instanceof Error ? error.message : "Connection failed",
+      gateway: {
+        url: BRIDGE_URL,
+        lastCheck: new Date().toISOString(),
+      },
+    });
+  }
 }

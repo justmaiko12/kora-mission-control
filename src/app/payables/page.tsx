@@ -200,8 +200,20 @@ export default function PayablesPage() {
       maximumFractionDigits: 2,
     }).format(amount);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Mobile hamburger */}
+      <button
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-zinc-800 rounded-lg"
+        onClick={() => setSidebarOpen(true)}
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
       <Sidebar
         activeView="payables"
         onNavigate={handleNavigate}
@@ -211,6 +223,8 @@ export default function PayablesPage() {
           setActiveCustomChannelId(channelId);
           router.push(`/?view=custom&channelId=${channelId}`);
         }}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       <main className="flex-1 overflow-auto p-6 space-y-6">

@@ -1,37 +1,51 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ViewType } from "@/app/page";
 
 interface DashboardProps {
   onNavigate: (view: ViewType) => void;
 }
 
-interface EmailSummary {
-  account: string;
-  unreadCount: number;
-  recentSubjects: string[];
+type AgentStatus = "active" | "idle" | "paused";
+
+interface AgentSession {
+  id: string;
+  name: string;
+  status: AgentStatus;
+  currentTask: string;
+  lastHeartbeat: string;
+  progress: number;
+  type: string;
 }
 
-interface DealSummary {
-  total: number;
-  newLeads: number;
-  recentDeals: string[];
+interface RecentCompletion {
+  id: string;
+  title: string;
+  agent: string;
+  completedAt: string;
+}
+
+interface AgentStatusResponse {
+  sessions: AgentSession[];
+  activeCount: number;
+  recentCompletions: RecentCompletion[];
+  updatedAt?: string;
 }
 
 interface DashboardData {
-  emails: EmailSummary[];
-  deals: DealSummary;
-  totalUnread: number;
+  agents: AgentStatusResponse;
   loading: boolean;
   error: string | null;
 }
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const [data, setData] = useState<DashboardData>({
-    emails: [],
-    deals: { total: 0, newLeads: 0, recentDeals: [] },
-    totalUnread: 0,
+    agents: {
+      sessions: [],
+      activeCount: 0,
+      recentCompletions: [],
+    },
     loading: true,
     error: null,
   });
@@ -39,52 +53,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        // Fetch emails from all accounts (dashboard mode)
-        const emailsRes = await fetch("/api/emails?dashboard=true");
-        const emailsData = await emailsRes.json();
-        
-        // Fetch deals pipeline
-        const dealsRes = await fetch("/api/deals?view=pipeline");
-        const dealsData = await dealsRes.json();
-
-        // Process email data
-        const emailSummaries: EmailSummary[] = [];
-        let totalUnread = 0;
-
-        if (emailsData.accounts && emailsData.emails) {
-          for (const account of emailsData.accounts) {
-            const accountEmails = emailsData.emails.filter(
-              (e: { account: string }) => e.account === account
-            );
-            const unreadCount = accountEmails.filter((e: { read: boolean }) => !e.read).length;
-            totalUnread += unreadCount;
-            
-            emailSummaries.push({
-              account,
-              unreadCount,
-              recentSubjects: accountEmails.slice(0, 3).map((e: { subject: string }) => e.subject || "(no subject)"),
-            });
-          }
-        }
-
-        // Process deals data
-        const dealSummary: DealSummary = {
-          total: 0,
-          newLeads: 0,
-          recentDeals: [],
-        };
-
-        if (dealsData.deals) {
-          const allDeals = Object.values(dealsData.deals).flat() as { subject: string }[];
-          dealSummary.total = allDeals.length;
-          dealSummary.newLeads = dealsData.deals.new_lead?.length || 0;
-          dealSummary.recentDeals = allDeals.slice(0, 3).map((d) => d.subject || "Untitled deal");
-        }
+        const agentRes = await fetch("/api/agents/status");
+        const agentData = await agentRes.json();
 
         setData({
-          emails: emailSummaries,
-          deals: dealSummary,
-          totalUnread,
+          agents: agentData,
           loading: false,
           error: null,
         });
@@ -108,34 +81,58 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     return "Good evening";
   };
 
-  // Build channel cards from real data
   const channels = [
     {
       id: "email" as ViewType,
       icon: "📧",
       title: "Email",
-      count: data.totalUnread,
-      color: "from-blue-500 to-cyan-500",
-      items: data.emails.flatMap((e) => e.recentSubjects).slice(0, 3),
+      color: "from-sky-500 to-cyan-500",
+      items: ["Priority inbox", "Client follow-ups", "Outreach drafts"],
     },
     {
       id: "business" as ViewType,
       icon: "💼",
       title: "Deals",
-      count: data.deals.total,
       color: "from-green-500 to-emerald-500",
-      items: data.deals.recentDeals.length > 0 
-        ? data.deals.recentDeals 
-        : ["No active deals"],
+      items: ["Pipeline review", "New lead scoring", "Contract status"],
+    },
+    {
+      id: "tasks" as ViewType,
+      icon: "✅",
+      title: "Tasks",
+      color: "from-amber-500 to-orange-500",
+      items: ["Agent follow-ups", "Today’s priorities", "Blocked items"],
     },
     {
       id: "chat" as ViewType,
       icon: "💬",
       title: "Chat",
-      count: 0,
       color: "from-indigo-500 to-violet-500",
-      items: ["Talk to Kora..."],
+      items: ["Brief Kora", "Brainstorm", "Ask about progress"],
     },
+  ];
+
+  const activeSessions = useMemo(
+    () => data.agents.sessions.filter((session) => session.status === "active"),
+    [data.agents.sessions]
+  );
+
+  const idleSessions = useMemo(
+    () => data.agents.sessions.filter((session) => session.status !== "active"),
+    [data.agents.sessions]
+  );
+
+  const radarPositions = [
+    { top: "15%", left: "20%" },
+    { top: "26%", left: "58%" },
+    { top: "38%", left: "30%" },
+    { top: "42%", left: "72%" },
+    { top: "55%", left: "46%" },
+    { top: "62%", left: "18%" },
+    { top: "68%", left: "68%" },
+    { top: "78%", left: "36%" },
+    { top: "24%", left: "78%" },
+    { top: "52%", left: "12%" },
   ];
 
   return (
@@ -167,28 +164,182 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       )}
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4">
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 md:p-4">
-          <p className="text-xs md:text-sm text-zinc-500">Unread Emails</p>
-          <p className="text-2xl md:text-3xl font-bold mt-1">
-            {data.loading ? "—" : data.totalUnread}
-          </p>
-        </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 md:p-4">
-          <p className="text-xs md:text-sm text-zinc-500">Active Deals</p>
-          <p className="text-2xl md:text-3xl font-bold mt-1">
-            {data.loading ? "—" : data.deals.total}
-          </p>
-        </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 md:p-4">
-          <p className="text-xs md:text-sm text-zinc-500">Kora</p>
-          <p className="text-base md:text-lg font-bold mt-1 text-green-500">● Online</p>
+      {/* Agent Activity Hero */}
+      <div className="relative overflow-hidden rounded-2xl border border-emerald-900/40 bg-gradient-to-br from-emerald-950/80 via-zinc-950 to-zinc-900/70 p-4 md:p-6">
+        <div className="absolute -left-24 -top-24 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="absolute -bottom-32 right-0 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.18),transparent_55%),radial-gradient(circle_at_80%_30%,rgba(56,189,248,0.14),transparent_45%)]" />
+
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-stretch">
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-lg md:text-2xl font-semibold text-emerald-100">Agent Activity</h2>
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-emerald-200">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+                </span>
+                Live Mesh
+              </span>
+            </div>
+            <p className="mt-2 text-sm md:text-base text-emerald-100/70">
+              Monitoring sub-agents and active sessions across the Kora mesh. Live telemetry, handoffs, and completions.
+            </p>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_200px]">
+              <div className="relative aspect-square w-full max-w-[420px] rounded-full border border-emerald-400/30 bg-emerald-500/5 p-6">
+                <div className="absolute inset-6 rounded-full border border-emerald-400/20" />
+                <div className="absolute inset-12 rounded-full border border-emerald-400/10" />
+                <div className="absolute inset-0 rounded-full border border-emerald-400/10" />
+                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.12),transparent_60%)]" />
+                <div className="absolute inset-0 rounded-full border border-emerald-400/30 shadow-[0_0_60px_rgba(16,185,129,0.15)]" />
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-400/15 via-transparent to-transparent animate-[spin_14s_linear_infinite]" />
+                <div className="absolute left-1/2 top-0 h-full w-px bg-emerald-400/10" />
+                <div className="absolute top-1/2 left-0 h-px w-full bg-emerald-400/10" />
+
+                {data.loading && (
+                  <div className="absolute inset-0 flex items-center justify-center text-sm text-emerald-200/80">
+                    Loading telemetry...
+                  </div>
+                )}
+
+                {!data.loading &&
+                  data.agents.sessions.map((session, index) => {
+                    const position = radarPositions[index % radarPositions.length];
+                    const isActive = session.status === "active";
+                    return (
+                      <div
+                        key={session.id}
+                        className="absolute"
+                        style={{ top: position.top, left: position.left }}
+                      >
+                        <div className="relative flex items-center">
+                          <span
+                            className={`h-2.5 w-2.5 rounded-full ${
+                              isActive ? "bg-emerald-300" : "bg-zinc-500"
+                            }`}
+                          />
+                          {isActive && (
+                            <span className="absolute -inset-2 animate-ping rounded-full bg-emerald-400/40" />
+                          )}
+                          <span className="absolute left-3 top-1 text-[10px] text-emerald-100/70">
+                            {session.name}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
+                  <p className="text-xs uppercase tracking-[0.25em] text-emerald-200/70">Active</p>
+                  <p className="text-3xl font-semibold text-emerald-100">
+                    {data.loading ? "—" : data.agents.activeCount}
+                  </p>
+                  <p className="text-xs text-emerald-100/70">
+                    {data.loading ? "Telemetry syncing" : `${activeSessions.length} running sessions`}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-3">
+                  <p className="text-xs uppercase tracking-[0.25em] text-emerald-200/70">Idle</p>
+                  <p className="text-2xl font-semibold text-emerald-100">
+                    {data.loading ? "—" : idleSessions.length}
+                  </p>
+                  <p className="text-xs text-emerald-100/60">Ready for next task</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex w-full flex-col gap-4 lg:w-[320px]">
+            <div className="rounded-2xl border border-emerald-400/20 bg-zinc-950/60 p-4">
+              <h3 className="text-sm font-semibold text-emerald-100">Sessions</h3>
+              <div className="mt-3 space-y-2">
+                {(data.loading ? Array.from({ length: 4 }) : data.agents.sessions)
+                  .slice(0, 5)
+                  .map((session, index) => {
+                    if (data.loading) {
+                      return (
+                        <div key={`loading-${index}`} className="h-8 rounded-lg bg-emerald-500/10 animate-pulse" />
+                      );
+                    }
+                    const statusColor =
+                      session.status === "active" ? "bg-emerald-400" : "bg-zinc-500";
+                    return (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between rounded-lg border border-emerald-400/10 bg-emerald-500/5 px-3 py-2 text-xs"
+                      >
+                        <div>
+                          <p className="text-emerald-100">{session.name}</p>
+                          <p className="text-emerald-100/60">{session.currentTask}</p>
+                        </div>
+                        <span className="flex items-center gap-2 text-emerald-200/70">
+                          <span className={`h-2 w-2 rounded-full ${statusColor}`} />
+                          {session.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-400/20 bg-zinc-950/60 p-4">
+              <h3 className="text-sm font-semibold text-emerald-100">Recent Completions</h3>
+              <div className="mt-3 space-y-2 text-xs">
+                {(data.loading ? Array.from({ length: 3 }) : data.agents.recentCompletions)
+                  .slice(0, 3)
+                  .map((completion, index) => {
+                    if (data.loading) {
+                      return (
+                        <div key={`completion-${index}`} className="h-8 rounded-lg bg-emerald-500/10 animate-pulse" />
+                      );
+                    }
+                    return (
+                      <div
+                        key={completion.id}
+                        className="flex flex-col gap-1 rounded-lg border border-emerald-400/10 bg-emerald-500/5 px-3 py-2"
+                      >
+                        <p className="text-emerald-100">{completion.title}</p>
+                        <p className="text-emerald-100/60">
+                          {completion.agent} • {completion.completedAt}
+                        </p>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-400/20 bg-zinc-950/60 p-4">
+              <h3 className="text-sm font-semibold text-emerald-100">Current Focus</h3>
+              <div className="mt-3 space-y-2 text-xs">
+                {(data.loading ? Array.from({ length: 3 }) : activeSessions)
+                  .slice(0, 3)
+                  .map((session, index) => {
+                    if (data.loading) {
+                      return (
+                        <div key={`focus-${index}`} className="h-8 rounded-lg bg-emerald-500/10 animate-pulse" />
+                      );
+                    }
+                    return (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between rounded-lg border border-emerald-400/10 bg-emerald-500/5 px-3 py-2"
+                      >
+                        <p className="text-emerald-100">{session.currentTask}</p>
+                        <span className="text-emerald-200/70">{session.progress}%</span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Channel Cards - Always side by side */}
-      <div className="grid grid-cols-3 gap-2 md:gap-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
         {channels.map((channel) => (
           <button
             key={channel.id}
@@ -199,50 +350,24 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br ${channel.color} flex items-center justify-center text-lg md:text-2xl`}>
                 {channel.icon}
               </div>
-              {channel.count > 0 && (
-                <span className="mt-1 md:mt-0 px-1.5 py-0.5 text-[10px] md:text-sm font-semibold rounded-full bg-indigo-600 text-white">
-                  {channel.count}
-                </span>
-              )}
             </div>
             <h3 className="text-xs md:text-lg font-semibold text-center md:text-left mb-1 md:mb-2 group-hover:text-indigo-400 transition-colors">
               {channel.title}
             </h3>
             <ul className="hidden md:block space-y-1">
-              {data.loading ? (
-                <li className="text-sm text-zinc-500 animate-pulse">Loading...</li>
-              ) : (
-                channel.items.slice(0, 2).map((item, i) => (
-                  <li key={i} className="text-sm text-zinc-500 truncate">
-                    • {typeof item === "string" ? item : String(item || "")}
-                  </li>
-                ))
-              )}
+              {channel.items.slice(0, 2).map((item, i) => (
+                <li key={i} className="text-sm text-zinc-500 truncate">
+                  • {typeof item === "string" ? item : String(item || "")}
+                </li>
+              ))}
             </ul>
           </button>
         ))}
       </div>
 
-      {/* Email Accounts Summary */}
-      {data.emails.length > 0 && (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 md:p-5">
-          <h2 className="text-base md:text-lg font-semibold mb-3 md:mb-4">📧 Email Accounts</h2>
-          <div className="space-y-2">
-            {data.emails.map((email, i) => (
-              <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-800/50">
-                <span className="text-sm text-zinc-300">{typeof email.account === "string" ? email.account : String(email.account || "")}</span>
-                <span className={`text-sm ${email.unreadCount > 0 ? "text-indigo-400 font-medium" : "text-zinc-500"}`}>
-                  {email.unreadCount} unread
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Status Footer */}
       <div className="text-center text-xs text-zinc-600 pt-2">
-        Data from Gmail + Deals Pipeline • Last updated: just now
+        Agent telemetry stream • Last updated: {data.agents.updatedAt ?? "just now"}
       </div>
     </div>
   );

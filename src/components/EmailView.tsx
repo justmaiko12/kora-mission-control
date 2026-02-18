@@ -254,20 +254,10 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const visibleEmails = emails.filter((e) => !ignoredIds.has(e.id));
   const unreadCount = visibleEmails.filter((e) => !e.read).length;
 
-  // If an email is selected, show ULTRA SIMPLE static view
+  // DISABLED - just log when email selected, don't change the view
   if (selectedEmail) {
-    return (
-      <div className="h-full p-8 bg-zinc-900">
-        <h2 className="text-xl font-bold mb-4">Email Selected</h2>
-        <p className="text-sm text-zinc-400">An email was clicked. This is a static test.</p>
-        <button 
-          onClick={() => setSelectedEmail(null)} 
-          className="mt-6 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg"
-        >
-          Back
-        </button>
-      </div>
-    );
+    console.log("[EmailView] Email selected but NOT changing view");
+    // Don't return anything different - let it fall through to normal view
   }
 
   // Get sender initial for avatar

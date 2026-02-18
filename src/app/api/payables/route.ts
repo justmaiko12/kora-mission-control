@@ -42,9 +42,9 @@ const expenseStatusFilter: ExpensePayableStatus[] = ["planned", "approved", "par
 export async function GET() {
   const supabase = getInvoicerSupabase();
   
-  // Fetch expense payables (bills to pay)
+  // Fetch expense tasks (bills to pay) - this is the table Invoicer uses
   const { data: expenseData, error: expenseError } = await supabase
-    .from("expense_payables")
+    .from("expense_tasks")
     .select("*")
     .in("status", expenseStatusFilter)
     .order("due_date", { ascending: true });

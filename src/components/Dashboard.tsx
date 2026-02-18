@@ -214,7 +214,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               ) : (
                 channel.items.slice(0, 2).map((item, i) => (
                   <li key={i} className="text-sm text-zinc-500 truncate">
-                    • {item}
+                    • {typeof item === "string" ? item : String(item || "")}
                   </li>
                 ))
               )}
@@ -230,7 +230,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <div className="space-y-2">
             {data.emails.map((email, i) => (
               <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-800/50">
-                <span className="text-sm text-zinc-300">{email.account}</span>
+                <span className="text-sm text-zinc-300">{typeof email.account === "string" ? email.account : String(email.account || "")}</span>
                 <span className={`text-sm ${email.unreadCount > 0 ? "text-indigo-400 font-medium" : "text-zinc-500"}`}>
                   {email.unreadCount} unread
                 </span>

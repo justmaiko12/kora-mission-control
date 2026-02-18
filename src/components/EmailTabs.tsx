@@ -16,7 +16,8 @@ interface EmailTabsProps {
   onChange: (accountId: string) => void;
 }
 
-const STORAGE_KEY = "kora-email-tab-names";
+// Version bump forces localStorage reset for all users
+const STORAGE_KEY = "kora-email-tab-names-v2";
 
 export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTabsProps) {
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
@@ -32,11 +33,25 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        console.log("[EmailTabs] Loaded custom names:", parsed);
-        setCustomNames(parsed);
+        // Validate that parsed is a plain object with string values
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const validated: Record<string, string> = {};
+          for (const [key, value] of Object.entries(parsed)) {
+            if (typeof key === "string" && typeof value === "string") {
+              validated[key] = value;
+            }
+          }
+          console.log("[EmailTabs] Loaded custom names:", validated);
+          setCustomNames(validated);
+        } else {
+          // Invalid format, clear it
+          console.warn("[EmailTabs] Invalid format, clearing localStorage");
+          localStorage.removeItem(STORAGE_KEY);
+        }
       }
     } catch (err) {
-      console.error("[EmailTabs] Failed to load custom names:", err);
+      console.error("[EmailTabs] Failed to load custom names, clearing:", err);
+      localStorage.removeItem(STORAGE_KEY);
     }
   }, []);
 

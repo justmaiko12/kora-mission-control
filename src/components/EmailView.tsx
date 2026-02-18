@@ -478,7 +478,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
       {/* Error State */}
       {error && (
         <div className="mx-4 mb-2 px-4 py-2 bg-red-900/20 text-red-400 text-sm rounded-lg">
-          {error}
+          {safeString(error)}
         </div>
       )}
 
@@ -551,7 +551,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className={`font-medium truncate ${email.read ? "text-zinc-400" : "text-white"}`}>
-                    {senderName}
+                    {safeString(senderName)}
                   </p>
                   <span className="text-xs text-zinc-500 flex-shrink-0">
                     {formatDate(safeString(email.date))}

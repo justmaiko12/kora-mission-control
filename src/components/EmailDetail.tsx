@@ -90,14 +90,25 @@ export default function EmailDetail({
     });
   };
 
-  const extractName = (from: string) => {
-    const match = from.match(/^([^<]+)/);
-    return match ? match[1].trim() : from;
+  // Safely convert any value to string
+  const safeString = (val: unknown): string => {
+    if (val === null || val === undefined) return "";
+    if (typeof val === "string") return val;
+    if (Array.isArray(val)) return val.join(", ");
+    if (typeof val === "object") return JSON.stringify(val);
+    return String(val);
   };
 
-  const extractEmail = (from: string) => {
-    const match = from.match(/<([^>]+)>/);
-    return match ? match[1] : from;
+  const extractName = (from: unknown) => {
+    const str = safeString(from);
+    const match = str.match(/^([^<]+)/);
+    return match ? match[1].trim() : str;
+  };
+
+  const extractEmail = (from: unknown) => {
+    const str = safeString(from);
+    const match = str.match(/<([^>]+)>/);
+    return match ? match[1] : str;
   };
 
   const handleReply = async () => {
@@ -215,10 +226,10 @@ export default function EmailDetail({
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-medium text-sm truncate">{extractName(msg.from)}</p>
-                    <p className="text-xs text-zinc-500 truncate">to {msg.to}</p>
+                    <p className="text-xs text-zinc-500 truncate">to {safeString(msg.to)}</p>
                   </div>
                   <span className="text-xs text-zinc-500 flex-shrink-0">
-                    {formatDate(msg.date)}
+                    {formatDate(safeString(msg.date))}
                   </span>
                 </div>
               </div>

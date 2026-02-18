@@ -517,7 +517,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
             <div
               key={email.id}
               onClick={() => selectionMode ? toggleSelect(email.id) : handleSelectEmail(email)}
-              className={`flex items-center gap-3 px-3 py-3 mx-1 my-0.5 rounded-xl cursor-pointer transition-all ${
+              className={`group flex items-center gap-3 px-3 py-3 mx-1 my-0.5 rounded-xl cursor-pointer transition-all ${
                 isSelected
                   ? "bg-indigo-600/20"
                   : isPreview 
@@ -559,6 +559,33 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                   {email.subject || "(no subject)"}
                 </p>
               </div>
+
+              {/* Quick Actions (visible on hover) */}
+              {!selectionMode && (
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleIgnore(email);
+                    }}
+                    className="p-2 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-white"
+                    title="Archive (train as noise)"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => handleMarkAsDeal(e, email)}
+                    className="p-2 hover:bg-green-600/30 rounded-lg transition-colors text-zinc-400 hover:text-green-400"
+                    title="Mark as Deal (train as important)"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}

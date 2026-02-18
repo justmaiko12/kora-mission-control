@@ -35,6 +35,8 @@ export default function EmailDetail({
   const [messages, setMessages] = useState<EmailMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     async function fetchThread() {
@@ -57,7 +59,28 @@ export default function EmailDetail({
   }, [email.id, account]);
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr.replace(" ", "T"));
+    if (!dateStr) return "";
+    
+    // Try parsing the date string
+    let date = new Date(dateStr);
+    
+    // If invalid, try replacing space with T for ISO format
+    if (isNaN(date.getTime())) {
+      date = new Date(dateStr.replace(" ", "T"));
+    }
+    
+    // If still invalid, try parsing common email date formats
+    if (isNaN(date.getTime())) {
+      // Try removing timezone abbreviation like "(PST)"
+      const cleaned = dateStr.replace(/\s*\([^)]+\)\s*$/, "").trim();
+      date = new Date(cleaned);
+    }
+    
+    // If still invalid, return the original string
+    if (isNaN(date.getTime())) {
+      return dateStr;
+    }
+    
     return date.toLocaleString("en-US", {
       weekday: "short",
       month: "short",
@@ -70,6 +93,47 @@ export default function EmailDetail({
   const extractName = (from: string) => {
     const match = from.match(/^([^<]+)/);
     return match ? match[1].trim() : from;
+  };
+
+  const extractEmail = (from: string) => {
+    const match = from.match(/<([^>]+)>/);
+    return match ? match[1] : from;
+  };
+
+  const handleReply = async () => {
+    if (!replyText.trim() || sending) return;
+    
+    setSending(true);
+    try {
+      const lastMessage = messages[messages.length - 1];
+      const replyTo = lastMessage ? extractEmail(lastMessage.from) : extractEmail(email.from);
+      
+      const res = await fetch("/api/emails/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          account,
+          to: replyTo,
+          subject: email.subject?.startsWith("Re:") ? email.subject : `Re: ${email.subject}`,
+          body: replyText,
+          threadId: email.id,
+        }),
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to send");
+      }
+      
+      // Clear input and show success
+      setReplyText("");
+      alert("Reply sent!");
+    } catch (err) {
+      console.error("Send error:", err);
+      alert(err instanceof Error ? err.message : "Failed to send reply");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -183,21 +247,27 @@ export default function EmailDetail({
       </div>
 
       {/* Quick Reply Footer */}
-      <div className="p-4 border-t border-zinc-800 bg-zinc-900/50">
+      <div className="p-3 md:p-4 border-t border-zinc-800 bg-zinc-900/50">
         <div className="flex gap-2">
           <input
             type="text"
-            placeholder="Quick reply... (coming soon)"
-            disabled
-            className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleReply()}
+            placeholder="Type a quick reply..."
+            className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-colors"
           />
           <button
-            disabled
+            onClick={handleReply}
+            disabled={sending || !replyText.trim()}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-sm transition-colors"
           >
-            Reply
+            {sending ? "Sending..." : "Reply"}
           </button>
         </div>
+        <p className="text-[10px] text-zinc-600 mt-1 text-center">
+          Sends from {account}
+        </p>
       </div>
     </div>
   );

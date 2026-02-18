@@ -233,6 +233,7 @@ function HomeContent() {
         {/* Mobile Chat - bottom half when open */}
         {mobileChatOpen && !chatFullscreen && (
           <div className="md:hidden h-[50%] border-t border-zinc-800">
+            <ErrorBoundary name="MobileChat">
             <InlineChat
               focusedItem={focusedItem}
               onClearFocus={() => setFocusedItem(null)}
@@ -245,42 +246,47 @@ function HomeContent() {
               onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
               activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
             />
+            </ErrorBoundary>
           </div>
         )}
 
         {/* Desktop: Persistent Chat - always visible */}
         {!chatFullscreen && (
           <div className={`hidden md:block border-t border-zinc-800 transition-all ${chatCollapsed ? "h-auto" : "h-[40%] min-h-[250px] max-h-[350px]"}`}>
-            <InlineChat
-              focusedItem={focusedItem}
-              onClearFocus={() => setFocusedItem(null)}
-              chatContext={viewToChatContext[activeView]}
-              isCollapsed={chatCollapsed}
-              onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
-              isFullscreen={false}
-              onToggleFullscreen={() => setChatFullscreen(true)}
-              onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
-              onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
-              activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
-            />
+            <ErrorBoundary name="DesktopChat">
+              <InlineChat
+                focusedItem={focusedItem}
+                onClearFocus={() => setFocusedItem(null)}
+                chatContext={viewToChatContext[activeView]}
+                isCollapsed={chatCollapsed}
+                onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
+                isFullscreen={false}
+                onToggleFullscreen={() => setChatFullscreen(true)}
+                onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
+                onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
+                activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
+              />
+            </ErrorBoundary>
           </div>
         )}
 
         {/* Fullscreen Chat Overlay */}
         {chatFullscreen && (
           <div className="fixed inset-0 z-50">
-            <InlineChat
-              focusedItem={focusedItem}
-              onClearFocus={() => setFocusedItem(null)}
-              chatContext={viewToChatContext[activeView]}
-              isCollapsed={false}
-              onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
-              isFullscreen={true}
-              onToggleFullscreen={() => setChatFullscreen(false)}
-              onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
-              onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
-              activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
-            />
+            <ErrorBoundary name="FullscreenChat">
+              <InlineChat
+                focusedItem={focusedItem}
+                onClearFocus={() => setFocusedItem(null)}
+                chatContext={viewToChatContext[activeView]}
+                isCollapsed={false}
+                onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
+                isFullscreen={true}
+                onToggleFullscreen={() => setChatFullscreen(false)}
+                onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
+                onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
+                activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
+              />
+            </ErrorBoundary>
           </div>
         )}
       </div>

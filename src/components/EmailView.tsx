@@ -258,17 +258,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   if (selectedEmail) {
     return (
       <div className="h-full p-8 bg-zinc-900">
-        <h2 className="text-xl font-bold mb-4">Email Selected</h2>
-        <div className="space-y-2 text-sm bg-zinc-800 p-4 rounded-lg">
-          <p><strong>Subject:</strong> {safeString(selectedEmail.subject) || "(no subject)"}</p>
-          <p><strong>From:</strong> {safeString(selectedEmail.from)}</p>
-        </div>
-        <button 
-          onClick={() => setSelectedEmail(null)} 
-          className="mt-6 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg"
-        >
-          ← Back to Inbox
-        </button>
+        <p>Static text only - no variables</p>
       </div>
     );
   }

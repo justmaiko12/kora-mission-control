@@ -5,62 +5,22 @@ const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 
 export async function GET() {
   try {
-    // Check if Bridge API (Kora) is online
-    const healthRes = await fetch(`${BRIDGE_URL}/health`, {
+    // Get real activity from Bridge API
+    const res = await fetch(`${BRIDGE_URL}/api/activity`, {
       headers: { Authorization: `Bearer ${BRIDGE_SECRET}` },
       cache: "no-store",
     });
     
-    const isOnline = healthRes.ok;
-    const now = new Date().toISOString();
+    if (!res.ok) {
+      throw new Error(`Bridge API error: ${res.status}`);
+    }
 
-    // Build real agent status
-    const sessions = [
-      {
-        id: "kora-main",
-        name: "Kora",
-        status: isOnline ? "active" : "idle",
-        currentTask: isOnline ? "Ready to assist" : "Offline",
-        lastHeartbeat: now,
-        progress: 100,
-        type: "assistant",
-      },
-    ];
-
-    // Check for any running background processes (placeholder - would need pm2/process check)
-    // For now, show Kora as the only real agent
-
-    const recentCompletions = [
-      {
-        id: "comp-1",
-        title: "Usage tracking connected",
-        agent: "Kora",
-        completedAt: "Just now",
-      },
-      {
-        id: "comp-2", 
-        title: "Dashboard redesign deployed",
-        agent: "Codex",
-        completedAt: "10 min ago",
-      },
-      {
-        id: "comp-3",
-        title: "Email rewrite feature added",
-        agent: "Codex", 
-        completedAt: "15 min ago",
-      },
-    ];
-
-    return NextResponse.json({
-      sessions,
-      activeCount: isOnline ? 1 : 0,
-      recentCompletions,
-      updatedAt: now,
-    });
+    const data = await res.json();
+    return NextResponse.json(data);
   } catch (error) {
     console.error("Agent status error:", error);
     
-    // Fallback - show offline status
+    // Fallback
     return NextResponse.json({
       sessions: [
         {
@@ -77,5 +37,27 @@ export async function GET() {
       recentCompletions: [],
       updatedAt: new Date().toISOString(),
     });
+  }
+}
+
+// POST - Update activity from external sources
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    
+    const res = await fetch(`${BRIDGE_URL}/api/activity/${body.endpoint || 'kora'}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${BRIDGE_SECRET}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Activity update error:", error);
+    return NextResponse.json({ error: "Failed to update activity" }, { status: 500 });
   }
 }

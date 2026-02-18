@@ -114,7 +114,21 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       }
     }
 
+    // Initial fetch
     fetchDashboardData();
+    
+    // Poll agent status every 5 seconds for real-time updates
+    const interval = setInterval(async () => {
+      try {
+        const agentRes = await fetch("/api/agents/status");
+        const agentData = await agentRes.json();
+        setData((prev) => ({ ...prev, agents: agentData }));
+      } catch (err) {
+        console.error("Agent status poll error:", err);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const getGreeting = () => {

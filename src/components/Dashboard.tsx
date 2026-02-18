@@ -174,6 +174,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     () => data.agents.sessions.filter((session) => session.status !== "active"),
     [data.agents.sessions]
   );
+  const isAwake = activeSessions.length > 0;
 
   const chartData = useMemo(() => {
     return data.usage.dailyCosts.map((entry) => {
@@ -196,17 +197,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     return Math.max(...chartData.map((entry) => entry.value));
   }, [chartData]);
 
-  const radarPositions = [
-    { top: "15%", left: "20%" },
-    { top: "26%", left: "58%" },
-    { top: "38%", left: "30%" },
-    { top: "42%", left: "72%" },
-    { top: "55%", left: "46%" },
+  const helperPositions = [
     { top: "62%", left: "18%" },
-    { top: "68%", left: "68%" },
-    { top: "78%", left: "36%" },
-    { top: "24%", left: "78%" },
-    { top: "52%", left: "12%" },
+    { top: "64%", left: "74%" },
+    { top: "46%", left: "16%" },
+    { top: "44%", left: "78%" },
   ];
 
   const timeFilters = ["Today", "This Week", "This Month", "This Year"];
@@ -218,7 +213,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   ];
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <>
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
@@ -269,53 +265,74 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             </p>
 
             <div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_200px]">
-              <div className="relative aspect-square w-full max-w-[420px] rounded-full border border-emerald-400/30 bg-emerald-500/5 p-6">
-                <div className="absolute inset-6 rounded-full border border-emerald-400/20" />
-                <div className="absolute inset-12 rounded-full border border-emerald-400/10" />
-                <div className="absolute inset-0 rounded-full border border-emerald-400/10" />
-                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(16,185,129,0.12),transparent_60%)]" />
-                <div className="absolute inset-0 rounded-full border border-emerald-400/30 shadow-[0_0_60px_rgba(16,185,129,0.15)]" />
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-400/15 via-transparent to-transparent animate-[spin_14s_linear_infinite]" />
-                <div className="absolute left-1/2 top-0 h-full w-px bg-emerald-400/10" />
-                <div className="absolute top-1/2 left-0 h-px w-full bg-emerald-400/10" />
+              <div className="relative aspect-square w-full max-w-[420px] overflow-hidden rounded-none border-2 border-emerald-300/40 bg-[#0b1b1a] p-4 shadow-[0_0_0_2px_rgba(6,24,23,0.95),0_0_0_4px_rgba(16,185,129,0.25)]">
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,185,129,0.06)_1px,transparent_1px),linear-gradient(rgba(16,185,129,0.06)_1px,transparent_1px)] bg-[size:12px_12px] opacity-70" />
+                <div className="absolute inset-x-4 top-4 h-2 border-2 border-emerald-300/50 bg-emerald-900/60" />
 
-                {data.loading && (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm text-emerald-200/80">
-                    Loading telemetry...
+                <div className="absolute right-6 top-8 h-14 w-14 border-2 border-cyan-300/70 bg-cyan-500/20 shadow-[0_0_0_2px_rgba(8,38,40,0.9)]">
+                  <div className="absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 bg-cyan-300/60" />
+                  <div className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 bg-cyan-300/60" />
+                  <div className="absolute inset-1 bg-gradient-to-b from-cyan-300/30 to-transparent" />
+                </div>
+
+                <div className="absolute left-6 bottom-14 h-8 w-24 border-2 border-amber-300/60 bg-amber-700/60 shadow-[0_0_0_2px_rgba(34,22,8,0.9)]" />
+                <div className="absolute left-8 bottom-[88px] h-6 w-6 border-2 border-emerald-300/50 bg-emerald-700/60 shadow-[0_0_0_2px_rgba(8,24,16,0.9)]" />
+                <div className="absolute left-9 bottom-[72px] h-4 w-4 bg-emerald-300/70" />
+
+                <div className="absolute inset-x-0 bottom-0 h-20 border-t-2 border-emerald-300/30 bg-gradient-to-t from-emerald-950/80 via-emerald-900/40 to-transparent" />
+                <div className="absolute left-1/2 top-[44%] flex -translate-x-1/2 flex-col items-center">
+                  <div
+                    className={`relative h-14 w-14 border-2 border-emerald-200/80 bg-emerald-300/80 shadow-[0_0_0_2px_rgba(6,24,23,0.95)] ${
+                      isAwake ? "animate-[kora-bob_1.2s_steps(2,end)_infinite]" : "animate-[kora-snooze_1.8s_steps(2,end)_infinite]"
+                    }`}
+                  >
+                    <div className="absolute left-3 top-4 h-2 w-2 bg-emerald-950" />
+                    <div className="absolute right-3 top-4 h-2 w-2 bg-emerald-950" />
+                    <div className="absolute left-1/2 bottom-3 h-1 w-6 -translate-x-1/2 bg-emerald-900/70" />
+                  </div>
+                  <div className="mt-2 rounded-sm border-2 border-emerald-300/60 bg-emerald-950/80 px-2 py-1 text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-200">
+                    Kora
+                  </div>
+                </div>
+
+                {data.loading ? (
+                  <div className="absolute inset-0 flex items-center justify-center text-xs font-mono uppercase tracking-[0.2em] text-emerald-200/80">
+                    Loading...
+                  </div>
+                ) : (
+                  <div className="absolute left-1/2 top-[26%] -translate-x-1/2 text-[10px] font-mono uppercase tracking-[0.25em] text-emerald-200/80">
+                    {activeSessions.length > 0 ? "Awake" : "Sleeping"}
                   </div>
                 )}
 
                 {!data.loading &&
-                  data.agents.sessions.map((session, index) => {
-                    const position = radarPositions[index % radarPositions.length];
-                    const isActive = session.status === "active";
+                  activeSessions.slice(0, 4).map((session, index) => {
+                    const position = helperPositions[index % helperPositions.length];
                     return (
                       <div
                         key={session.id}
                         className="absolute"
                         style={{ top: position.top, left: position.left }}
                       >
-                        <div className="relative flex items-center">
-                          <span
-                            className={`h-2.5 w-2.5 rounded-full ${
-                              isActive ? "bg-emerald-300" : "bg-zinc-500"
-                            }`}
-                          />
-                          {isActive && (
-                            <span className="absolute -inset-2 animate-ping rounded-full bg-emerald-400/40" />
-                          )}
-                          <span className="absolute left-3 top-1 text-[10px] text-emerald-100/70">
+                        <div className="flex flex-col items-center">
+                          <div className="h-5 w-5 border-2 border-cyan-200/70 bg-cyan-300/70 shadow-[0_0_0_2px_rgba(8,26,30,0.9)] animate-[helper-hop_1.4s_steps(2,end)_infinite]" />
+                          <span className="mt-1 text-[9px] font-mono text-cyan-100/70">
                             {session.name}
                           </span>
                         </div>
                       </div>
                     );
                   })}
+                {!data.loading && !isAwake && (
+                  <div className="absolute left-[58%] top-[34%] text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-200/70 animate-[zzz-float_1.6s_steps(2,end)_infinite]">
+                    zzz
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-3">
-                <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
-                  <p className="text-xs uppercase tracking-[0.25em] text-emerald-200/70">Active</p>
+              <div className="space-y-3 font-mono">
+                <div className="rounded-none border-2 border-emerald-400/30 bg-emerald-950/70 p-3 shadow-[0_0_0_2px_rgba(6,24,23,0.95)]">
+                  <p className="text-[10px] uppercase tracking-[0.35em] text-emerald-200/70">Active</p>
                   <p className="text-3xl font-semibold text-emerald-100">
                     {data.loading ? "—" : data.agents.activeCount}
                   </p>
@@ -323,8 +340,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                     {data.loading ? "Telemetry syncing" : `${activeSessions.length} running sessions`}
                   </p>
                 </div>
-                <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-3">
-                  <p className="text-xs uppercase tracking-[0.25em] text-emerald-200/70">Idle</p>
+                <div className="rounded-none border-2 border-emerald-400/20 bg-emerald-950/50 p-3 shadow-[0_0_0_2px_rgba(6,24,23,0.9)]">
+                  <p className="text-[10px] uppercase tracking-[0.35em] text-emerald-200/70">Idle</p>
                   <p className="text-2xl font-semibold text-emerald-100">
                     {data.loading ? "—" : idleSessions.length}
                   </p>
@@ -366,8 +383,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-emerald-400/20 bg-zinc-950/60 p-4">
-              <h3 className="text-sm font-semibold text-emerald-100">Recent Completions</h3>
+            <div className="rounded-none border-2 border-emerald-400/25 bg-zinc-950/70 p-4 font-mono shadow-[0_0_0_2px_rgba(6,24,23,0.9)]">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-100">
+                Recent Completions
+              </h3>
               <div className="mt-3 space-y-2 text-xs">
                 {data.loading ? (
                   Array.from({ length: 3 }).map((_, index) => (
@@ -377,7 +396,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   data.agents.recentCompletions.slice(0, 3).map((completion) => (
                     <div
                       key={completion.id}
-                      className="flex flex-col gap-1 rounded-lg border border-emerald-400/10 bg-emerald-500/5 px-3 py-2"
+                      className="flex flex-col gap-1 rounded-none border-2 border-emerald-400/15 bg-emerald-950/60 px-3 py-2"
                     >
                       <p className="text-emerald-100">{completion.title}</p>
                       <p className="text-emerald-100/60">
@@ -389,8 +408,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-emerald-400/20 bg-zinc-950/60 p-4">
-              <h3 className="text-sm font-semibold text-emerald-100">Current Focus</h3>
+            <div className="rounded-none border-2 border-emerald-400/25 bg-zinc-950/70 p-4 font-mono shadow-[0_0_0_2px_rgba(6,24,23,0.9)]">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-100">
+                Current Focus
+              </h3>
               <div className="mt-3 space-y-2 text-xs">
                 {data.loading ? (
                   Array.from({ length: 3 }).map((_, index) => (
@@ -400,7 +421,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   activeSessions.slice(0, 3).map((session) => (
                     <div
                       key={session.id}
-                      className="flex items-center justify-between rounded-lg border border-emerald-400/10 bg-emerald-500/5 px-3 py-2"
+                      className="flex items-center justify-between rounded-none border-2 border-emerald-400/15 bg-emerald-950/60 px-3 py-2"
                     >
                       <p className="text-emerald-100">{session.currentTask}</p>
                       <span className="text-emerald-200/70">{session.progress}%</span>
@@ -614,6 +635,47 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       <div className="text-center text-xs text-zinc-600 pt-2">
         Agent telemetry stream • Last updated: {data.agents.updatedAt ?? "just now"}
       </div>
-    </div>
+      </div>
+      <style jsx>{`
+        @keyframes kora-bob {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-4px);
+          }
+        }
+        @keyframes kora-snooze {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(2px);
+          }
+        }
+        @keyframes helper-hop {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-3px);
+          }
+        }
+        @keyframes zzz-float {
+          0%,
+          100% {
+            transform: translateY(0);
+            opacity: 0.6;
+          }
+          50% {
+            transform: translateY(-4px);
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </>
   );
 }

@@ -50,8 +50,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
-  const handleSave = () => {
-    updateSettings({
+  const handleSave = async () => {
+    await updateSettings({
       avatarUrl: previewUrl,
       avatarEmoji: settings.avatarEmoji,
       appName: settings.appName,

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ViewType } from "@/app/page";
 import { CustomChannel, createCustomChannel } from "@/lib/channelStorage";
-import { getSettings, onSettingsChange, AppSettings } from "@/lib/settings";
+import { getSettings, onSettingsChange, syncSettingsFromAPI, AppSettings } from "@/lib/settings";
 import Avatar from "./Avatar";
 import SettingsModal from "./SettingsModal";
 
@@ -57,7 +57,10 @@ export default function Sidebar({
   const [badges, setBadges] = useState<BadgeCounts>({ email: 0, deals: 0, tasks: 0 });
 
   useEffect(() => {
+    // Load from localStorage first (fast)
     setSettings(getSettings());
+    // Then sync from API (for cross-device persistence)
+    syncSettingsFromAPI().then(setSettings);
     return onSettingsChange(setSettings);
   }, []);
 

@@ -11,9 +11,10 @@ interface EmailViewProps {
   onFocusItem?: (item: FocusedItem) => void;
   previewEmailIds?: string[]; // Emails to highlight (pending action)
   refreshTrigger?: number; // Increment to force refresh
+  onActiveAccountChange?: (account: string) => void; // Report active account to parent
 }
 
-export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = [], refreshTrigger = 0 }: EmailViewProps) {
+export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = [], refreshTrigger = 0, onActiveAccountChange }: EmailViewProps) {
   const { accounts, emails, loading, error, activeAccount, setActiveAccount, refresh } =
     useEmails();
   
@@ -24,6 +25,13 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
       refresh(true); // Force refresh
     }
   }, [refreshTrigger, refresh]);
+  
+  // Report active account changes to parent
+  useEffect(() => {
+    if (activeAccount && onActiveAccountChange) {
+      onActiveAccountChange(activeAccount);
+    }
+  }, [activeAccount, onActiveAccountChange]);
   const [selectedEmail, setSelectedEmail] = useState<EmailThread | null>(null);
   const [markingDeal, setMarkingDeal] = useState<string | null>(null);
   const [ignoredIds, setIgnoredIds] = useState<Set<string>>(new Set());

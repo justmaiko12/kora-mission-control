@@ -28,6 +28,7 @@ interface InlineChatProps {
   onToggleFullscreen?: () => void;
   onPreviewEmails?: (emailIds: string[]) => void; // Highlight emails in list
   onRefreshEmails?: () => void; // Trigger email list refresh
+  activeEmailAccount?: string; // Current email account tab
 }
 
 interface Message {
@@ -124,6 +125,7 @@ export default function InlineChat({
   onToggleFullscreen,
   onPreviewEmails,
   onRefreshEmails,
+  activeEmailAccount,
 }: InlineChatProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -223,6 +225,7 @@ export default function InlineChat({
             metadata: focusedItem.metadata,
           } : null,
           chatContext,
+          activeAccount: activeEmailAccount, // Pass current email account tab
         }),
       });
 
@@ -390,7 +393,12 @@ export default function InlineChat({
           <Avatar size="sm" />
           <div>
             <h3 className="font-medium text-sm">{chatTitles[chatContext]}</h3>
-            <p className="text-[10px] text-green-500">● Online</p>
+            <p className="text-[10px] text-green-500">
+              ● Online
+              {chatContext === "email" && activeEmailAccount && (
+                <span className="text-zinc-500 ml-1">· {activeEmailAccount.split("@")[0]}</span>
+              )}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">

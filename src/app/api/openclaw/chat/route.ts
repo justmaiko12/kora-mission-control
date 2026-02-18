@@ -6,7 +6,7 @@ const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { message, context, chatContext } = body;
+    const { message, context, chatContext, activeAccount } = body;
 
     if (!message) {
       return NextResponse.json({ error: "message required" }, { status: 400 });
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         context,
         chatContext,
         userId: "michael",
-        account: context?.metadata?.account || null, // Pass email account if available
+        account: activeAccount || context?.metadata?.account || null, // Prefer active tab account
       }),
     });
 

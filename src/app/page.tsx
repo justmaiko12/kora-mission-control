@@ -77,6 +77,7 @@ function HomeContent() {
   const [chatFullscreen, setChatFullscreen] = useState(false);
   const [previewEmailIds, setPreviewEmailIds] = useState<string[]>([]);
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0);
+  const [activeEmailAccount, setActiveEmailAccount] = useState<string>("");
   const searchParams = useSearchParams();
   
   // Callbacks for chat to control email view
@@ -87,6 +88,10 @@ function HomeContent() {
   const handleRefreshEmails = useCallback(() => {
     setEmailRefreshTrigger(prev => prev + 1);
     setPreviewEmailIds([]); // Clear preview after refresh
+  }, []);
+  
+  const handleActiveAccountChange = useCallback((account: string) => {
+    setActiveEmailAccount(account);
   }, []);
 
   useEffect(() => {
@@ -130,6 +135,7 @@ function HomeContent() {
             onFocusItem={setFocusedItem}
             previewEmailIds={previewEmailIds}
             refreshTrigger={emailRefreshTrigger}
+            onActiveAccountChange={handleActiveAccountChange}
           />
         );
       case "tasks":
@@ -233,6 +239,7 @@ function HomeContent() {
               onToggleFullscreen={() => setChatFullscreen(true)}
               onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
               onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
+              activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
             />
           </div>
         )}
@@ -250,6 +257,7 @@ function HomeContent() {
               onToggleFullscreen={() => setChatFullscreen(false)}
               onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
               onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
+              activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
             />
           </div>
         )}

@@ -126,18 +126,26 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     }
   };
 
+  // Ensure value is always a string
+  const safeStr = (val: unknown): string => {
+    if (val === null || val === undefined) return "";
+    if (typeof val === "string") return val;
+    if (typeof val === "object") return JSON.stringify(val);
+    return String(val);
+  };
+
   const handleSelectEmail = (email: EmailThread) => {
     setSelectedEmail(email);
     // Also set as focused item for chat context
     if (onFocusItem) {
       onFocusItem({
         type: "email",
-        id: email.id,
-        title: email.subject,
-        preview: `${email.from} • ${email.snippet || ""}`,
+        id: safeStr(email.id),
+        title: safeStr(email.subject) || "(no subject)",
+        preview: `${safeStr(email.from)} • ${safeStr(email.snippet)}`,
         metadata: {
-          from: email.from,
-          date: email.date,
+          from: safeStr(email.from),
+          date: safeStr(email.date),
           labels: email.labels,
           messageCount: email.messageCount,
           account: activeAccount,

@@ -13,7 +13,7 @@ interface Deal {
   unread?: boolean;
 }
 
-interface Pipeline {
+interface DealPipeline {
   new_lead: Deal[];
   negotiating: Deal[];
   contracted: Deal[];
@@ -23,7 +23,19 @@ interface Pipeline {
   paid: Deal[];
 }
 
-const STAGE_CONFIG = {
+interface RequestPipeline {
+  new: Deal[];
+  reviewing: Deal[];
+  approved: Deal[];
+  completed: Deal[];
+}
+
+interface PipelineData {
+  deals: DealPipeline;
+  requests: RequestPipeline;
+}
+
+const DEAL_STAGES = {
   new_lead: { label: "📧 New Lead", color: "bg-blue-500/20 border-blue-500/50" },
   negotiating: { label: "💬 Negotiating", color: "bg-yellow-500/20 border-yellow-500/50" },
   contracted: { label: "📝 Contracted", color: "bg-purple-500/20 border-purple-500/50" },
@@ -33,13 +45,23 @@ const STAGE_CONFIG = {
   paid: { label: "💰 Paid", color: "bg-emerald-500/20 border-emerald-500/50" },
 };
 
+const REQUEST_STAGES = {
+  new: { label: "📩 New", color: "bg-slate-500/20 border-slate-500/50" },
+  reviewing: { label: "👀 Reviewing", color: "bg-amber-500/20 border-amber-500/50" },
+  approved: { label: "✅ Approved", color: "bg-teal-500/20 border-teal-500/50" },
+  completed: { label: "✔️ Done", color: "bg-zinc-500/20 border-zinc-500/50" },
+};
+
+type TabType = "deals" | "requests";
+
 export default function DealsView() {
-  const [pipeline, setPipeline] = useState<Pipeline | null>(null);
+  const [pipelineData, setPipelineData] = useState<PipelineData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [draft, setDraft] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<TabType>("deals");
 
   const fetchPipeline = useCallback(async () => {
     setLoading(true);
@@ -48,7 +70,7 @@ export default function DealsView() {
       const res = await fetch("/api/deals?view=pipeline");
       if (!res.ok) throw new Error("Failed to fetch pipeline");
       const data = await res.json();
-      setPipeline(data.pipeline);
+      setPipelineData(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -100,27 +122,50 @@ export default function DealsView() {
     return match ? match[1].trim() : from;
   };
 
-  const totalDeals = pipeline
-    ? Object.values(pipeline).reduce((sum, deals) => sum + deals.length, 0)
+  const totalDeals = pipelineData?.deals
+    ? Object.values(pipelineData.deals).reduce((sum, items) => sum + items.length, 0)
+    : 0;
+  
+  const totalRequests = pipelineData?.requests
+    ? Object.values(pipelineData.requests).reduce((sum, items) => sum + items.length, 0)
     : 0;
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">💼 Deal Pipeline</h1>
-          <p className="text-sm text-zinc-500">
-            {loading ? "Loading..." : `${totalDeals} active deals`}
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <div className="p-4 border-b border-zinc-800">
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-xl font-bold">💼 Business</h1>
           <button
             onClick={fetchPipeline}
             disabled={loading}
             className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
           >
             {loading ? "⏳" : "🔄"} Refresh
+          </button>
+        </div>
+        
+        {/* Tabs */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab("deals")}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === "deals"
+                ? "bg-indigo-600 text-white"
+                : "bg-zinc-800 text-zinc-400 hover:text-white"
+            }`}
+          >
+            💰 Brand Deals {!loading && <span className="ml-1 opacity-70">({totalDeals})</span>}
+          </button>
+          <button
+            onClick={() => setActiveTab("requests")}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === "requests"
+                ? "bg-indigo-600 text-white"
+                : "bg-zinc-800 text-zinc-400 hover:text-white"
+            }`}
+          >
+            📋 Requests {!loading && <span className="ml-1 opacity-70">({totalRequests})</span>}
           </button>
         </div>
       </div>
@@ -137,67 +182,85 @@ export default function DealsView() {
       {/* Pipeline Board */}
       <div className="flex-1 overflow-x-auto p-4">
         <div className="flex gap-4 min-w-max h-full">
-          {pipeline &&
-            (Object.keys(STAGE_CONFIG) as Array<keyof typeof STAGE_CONFIG>).map((stage) => (
+          {/* Deals Pipeline */}
+          {activeTab === "deals" && pipelineData?.deals &&
+            (Object.keys(DEAL_STAGES) as Array<keyof typeof DEAL_STAGES>).map((stage) => (
               <div
                 key={stage}
                 className="w-72 flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800"
               >
-                {/* Stage Header */}
                 <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
                   <span className="font-medium text-sm">
-                    {STAGE_CONFIG[stage].label}
+                    {DEAL_STAGES[stage].label}
                   </span>
                   <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
-                    {pipeline[stage]?.length || 0}
+                    {pipelineData.deals[stage]?.length || 0}
                   </span>
                 </div>
-
-                {/* Deal Cards */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {pipeline[stage]?.map((deal) => (
+                  {pipelineData.deals[stage]?.map((deal) => (
                     <div
                       key={deal.id}
-                      onClick={() => {
-                        setSelectedDeal(deal);
-                        setDraft("");
-                      }}
+                      onClick={() => { setSelectedDeal(deal); setDraft(""); }}
                       className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                        STAGE_CONFIG[stage].color
-                      } ${
-                        selectedDeal?.id === deal.id
-                          ? "ring-2 ring-indigo-500"
-                          : ""
-                      }`}
+                        DEAL_STAGES[stage].color
+                      } ${selectedDeal?.id === deal.id ? "ring-2 ring-indigo-500" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium line-clamp-2">
-                          {deal.subject}
-                        </p>
-                        {deal.unread && (
-                          <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1" />
-                        )}
+                        <p className="text-sm font-medium line-clamp-2">{deal.subject}</p>
+                        {deal.unread && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1" />}
                       </div>
-                      <p className="text-xs text-zinc-400 mt-1 truncate">
-                        {extractSender(deal.from)}
-                      </p>
+                      <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(deal.from)}</p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-zinc-500">
-                          {formatDate(deal.date)}
-                        </span>
-                        {deal.messageCount > 1 && (
-                          <span className="text-xs text-zinc-500">
-                            {deal.messageCount} msgs
-                          </span>
-                        )}
+                        <span className="text-xs text-zinc-500">{formatDate(deal.date)}</span>
+                        {deal.messageCount > 1 && <span className="text-xs text-zinc-500">{deal.messageCount} msgs</span>}
                       </div>
                     </div>
                   ))}
+                  {pipelineData.deals[stage]?.length === 0 && (
+                    <div className="text-center text-zinc-500 text-xs py-4">No deals</div>
+                  )}
+                </div>
+              </div>
+            ))}
 
-                  {pipeline[stage]?.length === 0 && (
-                    <div className="text-center text-zinc-500 text-xs py-4">
-                      No deals
+          {/* Requests Pipeline */}
+          {activeTab === "requests" && pipelineData?.requests &&
+            (Object.keys(REQUEST_STAGES) as Array<keyof typeof REQUEST_STAGES>).map((stage) => (
+              <div
+                key={stage}
+                className="w-72 flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800"
+              >
+                <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
+                  <span className="font-medium text-sm">
+                    {REQUEST_STAGES[stage].label}
+                  </span>
+                  <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
+                    {pipelineData.requests[stage]?.length || 0}
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  {pipelineData.requests[stage]?.map((req) => (
+                    <div
+                      key={req.id}
+                      onClick={() => { setSelectedDeal(req); setDraft(""); }}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                        REQUEST_STAGES[stage].color
+                      } ${selectedDeal?.id === req.id ? "ring-2 ring-indigo-500" : ""}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium line-clamp-2">{req.subject}</p>
+                        {req.unread && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1" />}
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(req.from)}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-zinc-500">{formatDate(req.date)}</span>
+                        {req.messageCount > 1 && <span className="text-xs text-zinc-500">{req.messageCount} msgs</span>}
+                      </div>
                     </div>
+                  ))}
+                  {pipelineData.requests[stage]?.length === 0 && (
+                    <div className="text-center text-zinc-500 text-xs py-4">No requests</div>
                   )}
                 </div>
               </div>

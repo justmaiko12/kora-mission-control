@@ -57,7 +57,7 @@ const REQUEST_STAGES = {
 };
 
 type TabType = "deals" | "requests";
-type BusinessFilter = "all" | "shluv" | "mtr";
+type BusinessFilter = "shluv" | "mtr";
 
 // Map email accounts to businesses
 const getBusinessFromAccount = (account: string): "shluv" | "mtr" => {
@@ -66,14 +66,12 @@ const getBusinessFromAccount = (account: string): "shluv" | "mtr" => {
 };
 
 // Map business filter to primary email account for API calls
-const getAccountForBusiness = (business: BusinessFilter): string | null => {
-  if (business === "shluv") return "business@shluv.com";
+const getAccountForBusiness = (business: BusinessFilter): string => {
   if (business === "mtr") return "business@meettherodz.com";
-  return null; // "all" = no filter
+  return "business@shluv.com";
 };
 
 const BUSINESS_LABELS: Record<BusinessFilter, string> = {
-  all: "All",
   shluv: "Shluv",
   mtr: "Meet The Rodz",
 };
@@ -101,11 +99,10 @@ export default function DealsView() {
   const [draft, setDraft] = useState<string>("");
   const [activeTab, setActiveTab] = useState<TabType>("deals");
   const [showPaid, setShowPaid] = useState(false);
-  const [businessFilter, setBusinessFilter] = useState<BusinessFilter>("all");
+  const [businessFilter, setBusinessFilter] = useState<BusinessFilter>("shluv");
   
-  // Filter deals by business
+  // Filter deals by business (always filtered, no "all" option)
   const filterByBusiness = (deals: Deal[]): Deal[] => {
-    if (businessFilter === "all") return deals;
     return deals.filter(d => getBusinessFromAccount(d.account) === businessFilter);
   };
 
@@ -198,7 +195,7 @@ export default function DealsView() {
         
         {/* Business Filter */}
         <div className="flex gap-1 mb-3">
-          {(["all", "shluv", "mtr"] as BusinessFilter[]).map((biz) => (
+          {(["shluv", "mtr"] as BusinessFilter[]).map((biz) => (
             <button
               key={biz}
               onClick={() => setBusinessFilter(biz)}

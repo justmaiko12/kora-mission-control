@@ -108,10 +108,27 @@ export default function EmailDetail({
     return match ? match[1] : str;
   };
 
+  const [sendSuccess, setSendSuccess] = useState(false);
+  
+  // Fetch thread function (for refresh after send)
+  const fetchThread = async () => {
+    try {
+      const res = await fetch(
+        `/api/emails/thread?id=${encodeURIComponent(email.id)}&account=${encodeURIComponent(account)}`
+      );
+      if (!res.ok) throw new Error("Failed to fetch thread");
+      const data = await res.json();
+      setMessages(data.messages || []);
+    } catch (err) {
+      console.error("Failed to refresh thread:", err);
+    }
+  };
+
   const handleReply = async () => {
     if (!replyText.trim() || sending) return;
     
     setSending(true);
+    setSendSuccess(false);
     try {
       const lastMessage = messages[messages.length - 1];
       const replyTo = lastMessage ? extractEmail(lastMessage.from) : extractEmail(email.from);
@@ -135,7 +152,15 @@ export default function EmailDetail({
       
       // Clear input and show success
       setReplyText("");
-      alert("Reply sent!");
+      setSendSuccess(true);
+      
+      // Refresh thread to show the new message (after brief delay for Gmail to process)
+      setTimeout(() => {
+        fetchThread();
+      }, 1500);
+      
+      // Clear success message after 3s
+      setTimeout(() => setSendSuccess(false), 3000);
     } catch (err) {
       console.error("Send error:", err);
       alert(err instanceof Error ? err.message : "Failed to send reply");
@@ -345,6 +370,11 @@ export default function EmailDetail({
           </div>
           {rewriteError && (
             <p className="text-xs text-red-400">{rewriteError}</p>
+          )}
+          {sendSuccess && (
+            <p className="text-xs text-emerald-400 flex items-center gap-1">
+              ✓ Reply sent! Refreshing thread...
+            </p>
           )}
         </div>
         <p className="text-[10px] text-zinc-600 mt-1 text-center">

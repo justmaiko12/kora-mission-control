@@ -75,16 +75,18 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
     }
   };
 
-  const getDisplayName = (account: EmailAccount) => {
-    // Check custom names first
+  const getDisplayName = (account: EmailAccount): string => {
+    // Check custom names first - ensure it's a string
     if (mounted && customNames[account.email]) {
-      return customNames[account.email];
+      const name = customNames[account.email];
+      return typeof name === "string" ? name : String(name);
     }
     if (mounted && customNames[account.id]) {
-      return customNames[account.id];
+      const name = customNames[account.id];
+      return typeof name === "string" ? name : String(name);
     }
     // Default: username part of email
-    return account.email.split("@")[0];
+    return account.email?.split("@")[0] || "Email";
   };
 
   return (

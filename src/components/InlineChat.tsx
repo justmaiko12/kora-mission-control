@@ -232,6 +232,14 @@ export default function InlineChat({
       const data = await res.json();
       const result = data.result;
       
+      // Ensure response is always a string
+      const safeResponse = (val: unknown): string => {
+        if (val === null || val === undefined) return "";
+        if (typeof val === "string") return val;
+        if (typeof val === "object") return JSON.stringify(val);
+        return String(val);
+      };
+      
       // Check if this is a preview response
       if (result?.previewOnly && result?.emails?.length > 0) {
         // Highlight the emails
@@ -256,8 +264,8 @@ export default function InlineChat({
         };
         setMessages((prev) => [...prev, koraMessage]);
       } else {
-        // Regular response or completed action
-        const response = data.response || data.error || "Done!";
+        // Regular response or completed action - ensure string
+        const response = safeResponse(data.response) || safeResponse(data.error) || "Done!";
         
         // If action was executed, refresh the email list
         if (result?.refresh && onRefreshEmails) {
@@ -452,10 +460,10 @@ export default function InlineChat({
             >
               {message.context && (
                 <p className="text-[10px] uppercase tracking-wide opacity-60 mb-1">
-                  Re: {message.context.title}
+                  Re: {typeof message.context.title === "string" ? message.context.title : String(message.context.title || "")}
                 </p>
               )}
-              {message.content}
+              {typeof message.content === "string" ? message.content : String(message.content || "")}
             </div>
           </div>
         ))}

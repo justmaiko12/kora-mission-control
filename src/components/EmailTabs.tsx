@@ -16,29 +16,28 @@ interface EmailTabsProps {
   onChange: (accountId: string) => void;
 }
 
-const STORAGE_KEY = "email-tab-names";
-
-function getStoredNames(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function setStoredNames(names: Record<string, string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(names));
-}
+const STORAGE_KEY = "kora-email-tab-names";
 
 export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTabsProps) {
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [mounted, setMounted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Load from localStorage after mount (avoids SSR issues)
   useEffect(() => {
-    setCustomNames(getStoredNames());
+    setMounted(true);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log("[EmailTabs] Loaded custom names:", parsed);
+        setCustomNames(parsed);
+      }
+    } catch (err) {
+      console.error("[EmailTabs] Failed to load custom names:", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -58,7 +57,12 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
     if (trimmed) {
       const updated = { ...customNames, [accountId]: trimmed };
       setCustomNames(updated);
-      setStoredNames(updated);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        console.log("[EmailTabs] Saved custom names:", updated);
+      } catch (err) {
+        console.error("[EmailTabs] Failed to save:", err);
+      }
     }
     setEditingId(null);
   };
@@ -72,7 +76,11 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
   };
 
   const getDisplayName = (account: EmailAccount) => {
-    if (customNames[account.id]) {
+    // Check custom names first
+    if (mounted && customNames[account.email]) {
+      return customNames[account.email];
+    }
+    if (mounted && customNames[account.id]) {
       return customNames[account.id];
     }
     // Default: username part of email
@@ -83,7 +91,7 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
     <div className="flex items-center gap-1 px-2 overflow-x-auto">
       {accounts.map((account) => {
         const isActive = account.id === activeAccount;
-        const isEditing = editingId === account.id;
+        const isEditing = editingId === account.email;
         const displayName = getDisplayName(account);
 
         return (
@@ -94,15 +102,15 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
                 type="text"
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
-                onBlur={() => handleSave(account.id)}
-                onKeyDown={(e) => handleKeyDown(e, account.id)}
+                onBlur={() => handleSave(account.email)}
+                onKeyDown={(e) => handleKeyDown(e, account.email)}
                 className="py-1 px-2 text-xs font-medium bg-zinc-800 border border-indigo-500 rounded text-white outline-none w-24"
                 maxLength={20}
               />
             ) : (
               <button
                 onClick={() => onChange(account.id)}
-                onDoubleClick={() => handleDoubleClick(account.id, displayName)}
+                onDoubleClick={() => handleDoubleClick(account.email, displayName)}
                 title="Double-click to rename"
                 className={`relative py-2 px-2 text-xs font-medium transition-colors whitespace-nowrap ${
                   isActive ? "text-indigo-300" : "text-zinc-400 hover:text-zinc-200"

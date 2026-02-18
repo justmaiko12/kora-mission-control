@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useEmails, EmailThread } from "@/lib/useEmails";
 import EmailTabs from "@/components/EmailTabs";
 import EmailDetail from "@/components/EmailDetail";
@@ -9,11 +9,21 @@ import { FocusedItem } from "@/lib/types";
 interface EmailViewProps {
   focusedItem?: FocusedItem | null;
   onFocusItem?: (item: FocusedItem) => void;
+  previewEmailIds?: string[]; // Emails to highlight (pending action)
+  refreshTrigger?: number; // Increment to force refresh
 }
 
-export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) {
+export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = [], refreshTrigger = 0 }: EmailViewProps) {
   const { accounts, emails, loading, error, activeAccount, setActiveAccount, refresh } =
     useEmails();
+  
+  // Refresh when trigger changes
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      console.log("[EmailView] Refresh triggered");
+      refresh(true); // Force refresh
+    }
+  }, [refreshTrigger, refresh]);
   const [selectedEmail, setSelectedEmail] = useState<EmailThread | null>(null);
   const [markingDeal, setMarkingDeal] = useState<string | null>(null);
   const [ignoredIds, setIgnoredIds] = useState<Set<string>>(new Set());
@@ -267,32 +277,49 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
         </div>
       )}
 
+      {/* Preview Banner */}
+      {previewEmailIds.length > 0 && (
+        <div className="px-3 py-2 bg-amber-900/30 border-b border-amber-700/50 text-amber-300 text-xs flex items-center gap-2">
+          <span className="animate-pulse">⚠️</span>
+          <span>{previewEmailIds.length} emails selected for action - confirm in chat below</span>
+        </div>
+      )}
+
       {/* Compact Emails List */}
       <div className="flex-1 overflow-y-auto">
-        {visibleEmails.map((email) => (
-          <div
-            key={email.id}
-            onClick={() => handleSelectEmail(email)}
-            className={`px-3 py-2 border-b border-zinc-800/50 cursor-pointer transition-colors ${
-              email.read ? "opacity-60" : "hover:bg-zinc-800/50"
-            } ${focusedItem?.id === email.id ? "bg-indigo-600/20" : ""}`}
-          >
-            <div className="flex items-center gap-2">
-              {!email.read && (
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
-              )}
-              <p className={`flex-1 text-sm truncate ${email.read ? "text-zinc-400" : "font-medium"}`}>
-                {email.subject || "(no subject)"}
+        {visibleEmails.map((email) => {
+          const isPreview = previewEmailIds.includes(email.id);
+          return (
+            <div
+              key={email.id}
+              onClick={() => handleSelectEmail(email)}
+              className={`px-3 py-2 border-b border-zinc-800/50 cursor-pointer transition-all ${
+                isPreview 
+                  ? "bg-amber-900/30 border-l-2 border-l-amber-500 animate-pulse" 
+                  : email.read 
+                  ? "opacity-60" 
+                  : "hover:bg-zinc-800/50"
+              } ${focusedItem?.id === email.id ? "bg-indigo-600/20" : ""}`}
+            >
+              <div className="flex items-center gap-2">
+                {isPreview ? (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                ) : !email.read ? (
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
+                ) : null}
+                <p className={`flex-1 text-sm truncate ${isPreview ? "text-amber-300 font-medium" : email.read ? "text-zinc-400" : "font-medium"}`}>
+                  {email.subject || "(no subject)"}
+                </p>
+                <span className="text-[10px] text-zinc-600 flex-shrink-0">
+                  {formatDate(email.date)}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-500 truncate mt-0.5 pl-3.5">
+                {email.from.split("<")[0].trim()}
               </p>
-              <span className="text-[10px] text-zinc-600 flex-shrink-0">
-                {formatDate(email.date)}
-              </span>
             </div>
-            <p className="text-xs text-zinc-500 truncate mt-0.5 pl-3.5">
-              {email.from.split("<")[0].trim()}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

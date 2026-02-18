@@ -198,12 +198,19 @@ export function useEmails() {
   }, [activeAccount, getCachedEmails, fetchEmailsForAccount, state.initialLoadComplete]);
 
   // Manual refresh - invalidates cache for current account
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (force?: boolean) => {
     if (!activeAccount) return;
 
-    // Clear cache for this account
-    delete emailCache[activeAccount];
-    delete cacheTimestamps[activeAccount];
+    // Clear cache for this account (or all accounts if forced)
+    if (force) {
+      Object.keys(emailCache).forEach(key => {
+        delete emailCache[key];
+        delete cacheTimestamps[key];
+      });
+    } else {
+      delete emailCache[activeAccount];
+      delete cacheTimestamps[activeAccount];
+    }
 
     setState((s) => ({ ...s, loading: true, error: null }));
     try {

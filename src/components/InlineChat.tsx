@@ -10,6 +10,14 @@ import { getSettings, onSettingsChange, AppSettings } from "@/lib/settings";
 // Chat context types - each view can have its own chat
 export type ChatContext = "dashboard" | "email" | "deals" | "tasks" | "memory" | "integrations" | "payables" | "general";
 
+interface PreviewAction {
+  emails: Array<{ id: string; subject: string; from: string }>;
+  command: unknown;
+  account: string;
+  actionType: string;
+  query: string;
+}
+
 interface InlineChatProps {
   focusedItem: FocusedItem | null;
   onClearFocus: () => void;
@@ -18,6 +26,8 @@ interface InlineChatProps {
   onToggleCollapse?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  onPreviewEmails?: (emailIds: string[]) => void; // Highlight emails in list
+  onRefreshEmails?: () => void; // Trigger email list refresh
 }
 
 interface Message {
@@ -112,11 +122,14 @@ export default function InlineChat({
   onToggleCollapse,
   isFullscreen = false,
   onToggleFullscreen,
+  onPreviewEmails,
+  onRefreshEmails,
 }: InlineChatProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [pendingAction, setPendingAction] = useState<PreviewAction | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevContextRef = useRef<ChatContext>(chatContext);
 
@@ -207,22 +220,55 @@ export default function InlineChat({
             type: focusedItem.type,
             id: focusedItem.id,
             title: focusedItem.title,
-            metadata: focusedItem.metadata, // Include account info
+            metadata: focusedItem.metadata,
           } : null,
           chatContext,
         }),
       });
 
       const data = await res.json();
-      const response = data.response || data.error || "I received your message!";
-
-      const koraMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response,
-        sender: "kora",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, koraMessage]);
+      const result = data.result;
+      
+      // Check if this is a preview response
+      if (result?.previewOnly && result?.emails?.length > 0) {
+        // Highlight the emails
+        if (onPreviewEmails) {
+          onPreviewEmails(result.emails.map((e: { id: string }) => e.id));
+        }
+        
+        // Store pending action for confirm/cancel
+        setPendingAction({
+          emails: result.emails,
+          command: result.command,
+          account: result.account,
+          actionType: result.actionType,
+          query: result.query,
+        });
+        
+        const koraMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: `Found ${result.emails.length} emails matching "${result.query}":\n\n${result.emails.slice(0, 5).map((e: { subject: string }) => `• ${e.subject}`).join("\n")}${result.emails.length > 5 ? `\n...and ${result.emails.length - 5} more` : ""}\n\n⚠️ Confirm to ${result.actionType} these emails?`,
+          sender: "kora",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, koraMessage]);
+      } else {
+        // Regular response or completed action
+        const response = data.response || data.error || "Done!";
+        
+        // If action was executed, refresh the email list
+        if (result?.refresh && onRefreshEmails) {
+          onRefreshEmails();
+        }
+        
+        const koraMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          sender: "kora",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, koraMessage]);
+      }
     } catch (err) {
       console.error("Chat error:", err);
       const koraMessage: Message = {
@@ -235,7 +281,73 @@ export default function InlineChat({
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, focusedItem, chatContext]);
+  }, [input, isLoading, focusedItem, chatContext, onPreviewEmails, onRefreshEmails]);
+
+  // Handle confirm action
+  const handleConfirm = useCallback(async () => {
+    if (!pendingAction) return;
+    
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/openclaw/chat/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          command: pendingAction.command,
+          account: pendingAction.account,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      // Clear preview highlights
+      if (onPreviewEmails) {
+        onPreviewEmails([]);
+      }
+      
+      // Refresh email list
+      if (onRefreshEmails) {
+        onRefreshEmails();
+      }
+      
+      const koraMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: data.response || `✅ ${pendingAction.actionType}d ${pendingAction.emails.length} emails`,
+        sender: "kora",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, koraMessage]);
+      setPendingAction(null);
+    } catch (err) {
+      console.error("Confirm error:", err);
+      const koraMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Failed to execute action. Please try again.",
+        sender: "kora",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, koraMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [pendingAction, onPreviewEmails, onRefreshEmails]);
+
+  // Handle cancel action
+  const handleCancel = useCallback(() => {
+    // Clear preview highlights
+    if (onPreviewEmails) {
+      onPreviewEmails([]);
+    }
+    
+    const koraMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      content: "Cancelled. No emails were affected.",
+      sender: "kora",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, koraMessage]);
+    setPendingAction(null);
+  }, [onPreviewEmails]);
 
   // Collapsed view - just the header bar
   if (isCollapsed) {
@@ -349,25 +461,44 @@ export default function InlineChat({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
+      {/* Input or Confirm/Cancel */}
       <div className="p-3 border-t border-zinc-800 bg-zinc-900/30">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder={focusedItem ? `Ask about "${focusedItem.title}"...` : `Message ${chatTitles[chatContext]}...`}
-            className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-          />
-          <button
-            onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
-          >
-            Send
-          </button>
-        </div>
+        {pendingAction ? (
+          <div className="flex gap-2">
+            <button
+              onClick={handleCancel}
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+            >
+              {isLoading ? "Processing..." : `Yes, ${pendingAction.actionType} ${pendingAction.emails.length} emails`}
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              placeholder={focusedItem ? `Ask about "${focusedItem.title}"...` : `Message ${chatTitles[chatContext]}...`}
+              className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+            />
+            <button
+              onClick={handleSend}
+              disabled={isLoading || !input.trim()}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+            >
+              Send
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

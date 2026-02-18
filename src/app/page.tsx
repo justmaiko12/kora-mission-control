@@ -75,7 +75,19 @@ function HomeContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [chatFullscreen, setChatFullscreen] = useState(false);
+  const [previewEmailIds, setPreviewEmailIds] = useState<string[]>([]);
+  const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0);
   const searchParams = useSearchParams();
+  
+  // Callbacks for chat to control email view
+  const handlePreviewEmails = useCallback((ids: string[]) => {
+    setPreviewEmailIds(ids);
+  }, []);
+  
+  const handleRefreshEmails = useCallback(() => {
+    setEmailRefreshTrigger(prev => prev + 1);
+    setPreviewEmailIds([]); // Clear preview after refresh
+  }, []);
 
   useEffect(() => {
     const viewParam = searchParams.get("view");
@@ -116,6 +128,8 @@ function HomeContent() {
           <EmailView
             focusedItem={focusedItem}
             onFocusItem={setFocusedItem}
+            previewEmailIds={previewEmailIds}
+            refreshTrigger={emailRefreshTrigger}
           />
         );
       case "tasks":
@@ -217,6 +231,8 @@ function HomeContent() {
               onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
               isFullscreen={false}
               onToggleFullscreen={() => setChatFullscreen(true)}
+              onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
+              onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
             />
           </div>
         )}
@@ -232,6 +248,8 @@ function HomeContent() {
               onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
               isFullscreen={true}
               onToggleFullscreen={() => setChatFullscreen(false)}
+              onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
+              onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
             />
           </div>
         )}

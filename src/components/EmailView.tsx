@@ -46,6 +46,12 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   
   // Filter state (MUST be before any conditional returns!)
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  
+  // Similar emails prompt state
+  const [similarPrompt, setSimilarPrompt] = useState<{
+    domain: string;
+    emails: EmailThread[];
+  } | null>(null);
 
   // Toggle individual email selection
   const toggleSelect = (emailId: string) => {
@@ -71,64 +77,59 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     }
   };
 
-  // Bulk delete selected emails
+  // Bulk delete selected emails (OPTIMISTIC)
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    setBulkProcessing(true);
     
-    try {
-      for (const id of selectedIds) {
-        // Find email to pass metadata for learning
-        const email = emails.find(e => e.id === id);
-        await fetch("/api/emails/archive", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            id, 
-            account: activeAccount, 
-            action: "trash",
-            email: email ? { from: email.from, subject: email.subject, labels: email.labels } : null,
-          }),
-        });
-      }
-      // Hide from UI
-      setIgnoredIds(prev => new Set([...prev, ...selectedIds]));
-      setSelectedIds(new Set());
-      setSelectionMode(false);
-    } catch (err) {
-      console.error("Bulk delete error:", err);
-    } finally {
-      setBulkProcessing(false);
+    // Capture IDs to process
+    const idsToDelete = new Set(selectedIds);
+    
+    // OPTIMISTIC: Hide from UI immediately
+    setIgnoredIds(prev => new Set([...prev, ...idsToDelete]));
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+    
+    // Fire all API calls in parallel (don't await)
+    for (const id of idsToDelete) {
+      const email = emails.find(e => e.id === id);
+      fetch("/api/emails/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          id, 
+          account: activeAccount, 
+          action: "trash",
+          email: email ? { from: email.from, subject: email.subject, labels: email.labels } : null,
+        }),
+      }).catch(err => console.error(`Failed to delete ${id}:`, err));
     }
   };
 
-  // Bulk archive selected emails
+  // Bulk archive selected emails (OPTIMISTIC)
   const handleBulkArchive = async () => {
     if (selectedIds.size === 0) return;
-    setBulkProcessing(true);
     
-    try {
-      for (const id of selectedIds) {
-        // Find email to pass metadata for learning
-        const email = emails.find(e => e.id === id);
-        await fetch("/api/emails/archive", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            id, 
-            account: activeAccount, 
-            action: "archive",
-            email: email ? { from: email.from, subject: email.subject, labels: email.labels } : null,
-          }),
-        });
-      }
-      setIgnoredIds(prev => new Set([...prev, ...selectedIds]));
-      setSelectedIds(new Set());
-      setSelectionMode(false);
-    } catch (err) {
-      console.error("Bulk archive error:", err);
-    } finally {
-      setBulkProcessing(false);
+    // Capture IDs to process
+    const idsToArchive = new Set(selectedIds);
+    
+    // OPTIMISTIC: Hide from UI immediately
+    setIgnoredIds(prev => new Set([...prev, ...idsToArchive]));
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+    
+    // Fire all API calls in parallel (don't await)
+    for (const id of idsToArchive) {
+      const email = emails.find(e => e.id === id);
+      fetch("/api/emails/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          id, 
+          account: activeAccount, 
+          action: "archive",
+          email: email ? { from: email.from, subject: email.subject, labels: email.labels } : null,
+        }),
+      }).catch(err => console.error(`Failed to archive ${id}:`, err));
     }
   };
 
@@ -156,67 +157,142 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
 
   const handleMarkAsDeal = async (e: React.MouseEvent, email: EmailThread) => {
     e.stopPropagation();
-    setMarkingDeal(email.id);
-    try {
-      const res = await fetch("/api/deals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create",
-          email: {
-            id: email.id,
-            subject: email.subject,
-            from: email.from,
-            date: email.date,
-            account: activeAccount,
-            labels: email.labels,
-            messageCount: email.messageCount,
-          },
-          type: "deal",
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to create deal");
-    } catch (err) {
+    
+    // OPTIMISTIC: Hide from inbox immediately
+    setIgnoredIds((prev) => new Set([...prev, email.id]));
+    setSelectedEmail(null);
+    
+    // Fire API in background (don't await)
+    fetch("/api/deals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "create",
+        email: {
+          id: email.id,
+          subject: email.subject,
+          from: email.from,
+          date: email.date,
+          account: activeAccount,
+          labels: email.labels,
+          messageCount: email.messageCount,
+        },
+        type: "deal",
+      }),
+    }).catch(err => {
       console.error("Failed to mark as deal:", err);
-    } finally {
-      setMarkingDeal(null);
-    }
+      // Rollback on error
+      setIgnoredIds((prev) => {
+        const next = new Set(prev);
+        next.delete(email.id);
+        return next;
+      });
+    });
   };
 
   const handleMarkAsRequest = async (e: React.MouseEvent, email: EmailThread) => {
     e.stopPropagation();
-    setMarkingDeal(email.id);
-    try {
-      const res = await fetch("/api/deals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create",
-          email: {
-            id: email.id,
-            subject: email.subject,
-            from: email.from,
-            date: email.date,
-            account: activeAccount,
-            labels: email.labels,
-            messageCount: email.messageCount,
-          },
-          type: "request",
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to create request");
-    } catch (err) {
+    
+    // OPTIMISTIC: Hide from inbox immediately
+    setIgnoredIds((prev) => new Set([...prev, email.id]));
+    setSelectedEmail(null);
+    
+    // Fire API in background (don't await)
+    fetch("/api/deals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "create",
+        email: {
+          id: email.id,
+          subject: email.subject,
+          from: email.from,
+          date: email.date,
+          account: activeAccount,
+          labels: email.labels,
+          messageCount: email.messageCount,
+        },
+        type: "request",
+      }),
+    }).catch(err => {
       console.error("Failed to mark as request:", err);
-    } finally {
-      setMarkingDeal(null);
-    }
+      // Rollback on error
+      setIgnoredIds((prev) => {
+        const next = new Set(prev);
+        next.delete(email.id);
+        return next;
+      });
+    });
+  };
+
+  // Extract domain from email address
+  const extractDomain = (from: string): string | null => {
+    const match = from.match(/@([a-zA-Z0-9.-]+)/);
+    return match ? match[1].toLowerCase() : null;
+  };
+  
+  // Find similar emails (same sender domain)
+  const findSimilarEmails = (email: EmailThread, currentIgnored: Set<string>): EmailThread[] => {
+    const domain = extractDomain(email.from);
+    if (!domain) return [];
+    
+    // Skip common domains that aren't useful to batch
+    const skipDomains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com"];
+    if (skipDomains.includes(domain)) return [];
+    
+    return emails.filter(e => 
+      e.id !== email.id && 
+      !currentIgnored.has(e.id) &&
+      extractDomain(e.from) === domain
+    );
   };
 
   const handleIgnore = async (email: EmailThread) => {
-    setMarkingDeal(email.id);
-    try {
-      // Archive the email via API (with metadata for learning)
-      await fetch("/api/emails/archive", {
+    // OPTIMISTIC: Hide from UI immediately
+    const newIgnored = new Set([...ignoredIds, email.id]);
+    setIgnoredIds(newIgnored);
+    setSelectedEmail(null);
+    
+    // Check for similar emails to offer batch archive
+    const similar = findSimilarEmails(email, newIgnored);
+    if (similar.length > 0) {
+      const domain = extractDomain(email.from);
+      setSimilarPrompt({ domain: domain || "this sender", emails: similar });
+    }
+    
+    // Fire API in background (don't await)
+    fetch("/api/emails/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: email.id,
+        account: activeAccount,
+        email: { from: email.from, subject: email.subject, labels: email.labels },
+      }),
+    }).catch(err => {
+      console.error("Failed to archive email:", err);
+      // Rollback on error
+      setIgnoredIds((prev) => {
+        const next = new Set(prev);
+        next.delete(email.id);
+        return next;
+      });
+    });
+  };
+  
+  // Archive all similar emails
+  const handleArchiveSimilar = () => {
+    if (!similarPrompt) return;
+    
+    const idsToArchive = similarPrompt.emails.map(e => e.id);
+    
+    // OPTIMISTIC: Hide all immediately
+    setIgnoredIds(prev => new Set([...prev, ...idsToArchive]));
+    setSimilarPrompt(null);
+    
+    // Fire all API calls in parallel
+    for (const email of similarPrompt.emails) {
+      fetch("/api/emails/archive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -224,15 +300,13 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           account: activeAccount,
           email: { from: email.from, subject: email.subject, labels: email.labels },
         }),
-      });
-      // Hide from UI immediately
-      setIgnoredIds((prev) => new Set([...prev, email.id]));
-      setSelectedEmail(null);
-    } catch (err) {
-      console.error("Failed to ignore email:", err);
-    } finally {
-      setMarkingDeal(null);
+      }).catch(err => console.error(`Failed to archive ${email.id}:`, err));
     }
+  };
+  
+  // Dismiss similar prompt
+  const dismissSimilarPrompt = () => {
+    setSimilarPrompt(null);
   };
 
   const formatDate = (dateStr: string) => {
@@ -422,6 +496,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
               setSelectedIds(new Set());
             }}
             className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
+            title="Cancel selection"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -442,6 +517,39 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
         <div className="mx-4 mb-2 px-4 py-2 bg-amber-900/30 border border-amber-700/50 text-amber-300 text-sm rounded-lg flex items-center gap-2">
           <span className="animate-pulse">⚠️</span>
           <span>{previewEmailIds.length} emails selected for action</span>
+        </div>
+      )}
+
+      {/* Similar Emails Prompt */}
+      {similarPrompt && (
+        <div className="mx-4 mb-2 px-4 py-3 bg-indigo-900/40 border border-indigo-600/50 rounded-xl animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white font-medium">
+                🧹 {similarPrompt.emails.length} more from @{similarPrompt.domain}
+              </p>
+              <p className="text-xs text-zinc-400 mt-0.5 truncate">
+                {similarPrompt.emails.slice(0, 2).map(e => e.subject).join(", ")}
+                {similarPrompt.emails.length > 2 && "..."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={handleArchiveSimilar}
+                className="px-3 py-1.5 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
+              >
+                Archive All
+              </button>
+              <button
+                onClick={dismissSimilarPrompt}
+                className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

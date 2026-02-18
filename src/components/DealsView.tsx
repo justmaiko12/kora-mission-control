@@ -12,6 +12,9 @@ interface Deal {
   labels: string[];
   messageCount: number;
   unread?: boolean;
+  amount?: number | null;
+  ownerCompanyId?: string;
+  source?: "local" | "invoicer";
 }
 
 interface DealPipeline {
@@ -62,10 +65,31 @@ const getBusinessFromAccount = (account: string): "shluv" | "mtr" => {
   return "shluv"; // Default to Shluv for shluv.com accounts
 };
 
+// Map business filter to primary email account for API calls
+const getAccountForBusiness = (business: BusinessFilter): string | null => {
+  if (business === "shluv") return "business@shluv.com";
+  if (business === "mtr") return "business@meettherodz.com";
+  return null; // "all" = no filter
+};
+
 const BUSINESS_LABELS: Record<BusinessFilter, string> = {
   all: "All",
   shluv: "Shluv",
   mtr: "Meet The Rodz",
+};
+
+// Invoicer app URL
+const INVOICER_URL = "https://internal-promo-invoicer.vercel.app";
+
+// Format currency
+const formatMoney = (amount: number | null | undefined): string => {
+  if (amount === null || amount === undefined) return "";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount);
+};
+
+// Get deep link to Invoicer task
+const getInvoicerLink = (dealId: string): string => {
+  return `${INVOICER_URL}/?view=tracker&taskId=${dealId}`;
 };
 
 export default function DealsView() {
@@ -89,7 +113,12 @@ export default function DealsView() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/deals?view=pipeline");
+      // Pass account filter based on business selection
+      const account = getAccountForBusiness(businessFilter);
+      const queryParams = new URLSearchParams({ view: "pipeline" });
+      if (account) queryParams.set("account", account);
+      
+      const res = await fetch(`/api/deals?${queryParams}`);
       if (!res.ok) throw new Error("Failed to fetch pipeline");
       const data = await res.json();
       setPipelineData(data);
@@ -98,7 +127,7 @@ export default function DealsView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [businessFilter]);
 
   useEffect(() => {
     fetchPipeline();
@@ -254,8 +283,23 @@ export default function DealsView() {
                       <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(deal.from)}</p>
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-xs text-zinc-500">{formatDate(deal.date)}</span>
-                        {deal.messageCount > 1 && <span className="text-xs text-zinc-500">{deal.messageCount} msgs</span>}
+                        {deal.amount ? (
+                          <span className="text-xs font-semibold text-emerald-400">{formatMoney(deal.amount)}</span>
+                        ) : deal.messageCount > 1 ? (
+                          <span className="text-xs text-zinc-500">{deal.messageCount} msgs</span>
+                        ) : null}
                       </div>
+                      {deal.source === "invoicer" && (
+                        <a
+                          href={getInvoicerLink(deal.id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-2 flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300"
+                        >
+                          📋 Open in Invoicer →
+                        </a>
+                      )}
                     </div>
                   ))}
                   {filteredDeals.length === 0 && (
@@ -300,6 +344,9 @@ export default function DealsView() {
                     >
                       <p className="text-sm font-medium line-clamp-2">{safeString(deal.subject)}</p>
                       <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(deal.from)}</p>
+                      {deal.amount && (
+                        <p className="text-xs font-semibold text-emerald-300 mt-1">{formatMoney(deal.amount)}</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -369,11 +416,28 @@ export default function DealsView() {
                   ✕
                 </button>
               </div>
-              <p className="text-xs md:text-sm text-zinc-400 mt-1 truncate">
-                {extractSender(selectedDeal.from)} • {selectedDeal.account}
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-xs md:text-sm text-zinc-400 truncate">
+                  {extractSender(selectedDeal.from)} • {selectedDeal.account}
+                </p>
+                {selectedDeal.amount && (
+                  <span className="px-2 py-0.5 text-xs font-bold bg-emerald-500/20 text-emerald-400 rounded-full">
+                    {formatMoney(selectedDeal.amount)}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2 flex-shrink-0">
+              {selectedDeal.source === "invoicer" && (
+                <a
+                  href={getInvoicerLink(selectedDeal.id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  📋 Invoicer
+                </a>
+              )}
               <button
                 onClick={() => generateDraft(selectedDeal, "send rates")}
                 disabled={draftLoading}

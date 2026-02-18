@@ -22,6 +22,7 @@ async function bridgeFetch(path: string, options?: RequestInit) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view") || "pipeline";
+  const account = searchParams.get("account"); // e.g., "business@shluv.com"
 
   try {
     if (view === "inbox") {
@@ -29,7 +30,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data);
     }
     
-    const data = await bridgeFetch("/api/deals/pipeline");
+    // Pass account filter to pipeline endpoint
+    const queryString = account ? `?account=${encodeURIComponent(account)}` : "";
+    const data = await bridgeFetch(`/api/deals/pipeline${queryString}`);
     return NextResponse.json(data);
   } catch (error) {
     console.error("Failed to fetch deals:", error);

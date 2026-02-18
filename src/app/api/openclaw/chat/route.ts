@@ -3,47 +3,115 @@ import { NextRequest, NextResponse } from "next/server";
 const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
 const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { message, context } = await request.json();
+    const body = await req.json();
+    const { message, context, chatContext } = body;
 
     if (!message) {
-      return NextResponse.json(
-        { error: "Message is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "message required" }, { status: 400 });
     }
 
-    // Send to Bridge API which will forward to OpenClaw
-    const res = await fetch(`${BRIDGE_URL}/api/chat`, {
+    // Send message to Bridge API chat queue
+    const sendRes = await fetch(`${BRIDGE_URL}/api/chat/send`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${BRIDGE_SECRET}`,
         "Content-Type": "application/json",
+        Authorization: `Bearer ${BRIDGE_SECRET}`,
       },
       body: JSON.stringify({
         message,
         context,
-        source: "mission-control",
+        chatContext,
+        userId: "michael",
       }),
     });
 
+    if (!sendRes.ok) {
+      const error = await sendRes.json();
+      return NextResponse.json(
+        { error: error.error || "Failed to send message" },
+        { status: sendRes.status }
+      );
+    }
+
+    const sendData = await sendRes.json();
+    const messageId = sendData.messageId;
+
+    // Poll for response (with timeout)
+    const startTime = Date.now();
+    const timeout = 30000; // 30 seconds max wait
+    const pollInterval = 500; // Check every 500ms
+
+    while (Date.now() - startTime < timeout) {
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+
+      const checkRes = await fetch(
+        `${BRIDGE_URL}/api/chat/response/${messageId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${BRIDGE_SECRET}`,
+          },
+        }
+      );
+
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        if (checkData.found) {
+          return NextResponse.json({
+            response: checkData.response,
+            messageId,
+          });
+        }
+      }
+    }
+
+    // Timeout - return acknowledgment
+    return NextResponse.json({
+      response:
+        "I got your message! I'm a bit busy right now but I'll get back to you shortly. Check Telegram for my response 💜",
+      messageId,
+      timeout: true,
+    });
+  } catch (error) {
+    console.error("OpenClaw chat error:", error);
+    return NextResponse.json(
+      { error: "Failed to process chat message" },
+      { status: 500 }
+    );
+  }
+}
+
+// Get recent responses
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const since = searchParams.get("since");
+
+    const url = since
+      ? `${BRIDGE_URL}/api/chat/responses?since=${encodeURIComponent(since)}`
+      : `${BRIDGE_URL}/api/chat/responses`;
+
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${BRIDGE_SECRET}`,
+      },
+    });
+
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || `Bridge API error: ${res.status}`);
+      return NextResponse.json(
+        { error: "Failed to fetch responses" },
+        { status: res.status }
+      );
     }
 
     const data = await res.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Chat API error:", error);
+    console.error("Failed to fetch chat responses:", error);
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : "Failed to send message",
-        // Return a fallback response so the UI still works
-        response: "I received your message, but the connection to OpenClaw is having issues. Please try again or message me on Telegram directly.",
-      },
-      { status: 200 } // Return 200 so UI handles it gracefully
+      { error: "Failed to fetch responses" },
+      { status: 500 }
     );
   }
 }

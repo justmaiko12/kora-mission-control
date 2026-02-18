@@ -6,6 +6,7 @@ import EmailTabs from "@/components/EmailTabs";
 import EmailDetail from "@/components/EmailDetail";
 import { FocusedItem } from "@/lib/types";
 import { safeString } from "@/lib/safeRender";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 interface EmailViewProps {
   focusedItem?: FocusedItem | null;
@@ -276,14 +277,16 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
 
           {/* Account Tabs */}
           {accounts.length > 0 && (
-            <EmailTabs
-              accounts={accounts}
-              activeAccount={activeAccount}
-              onChange={(acc) => {
-                setActiveAccount(acc);
-                setSelectedEmail(null);
-              }}
-            />
+            <ErrorBoundary name="EmailTabs">
+              <EmailTabs
+                accounts={accounts}
+                activeAccount={activeAccount}
+                onChange={(acc) => {
+                  setActiveAccount(acc);
+                  setSelectedEmail(null);
+                }}
+              />
+            </ErrorBoundary>
           )}
 
           {/* Compact Email List */}
@@ -319,15 +322,17 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
 
         {/* Email Detail */}
         <div className="flex-1 flex flex-col min-w-0">
-          <EmailDetail
-            email={selectedEmail}
-            account={activeAccount}
-            onClose={() => setSelectedEmail(null)}
-            onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
-            onMarkAsRequest={(e) => handleMarkAsRequest(e, selectedEmail)}
-            onIgnore={() => handleIgnore(selectedEmail)}
-            isMarking={markingDeal === selectedEmail.id}
-          />
+          <ErrorBoundary name="EmailDetail">
+            <EmailDetail
+              email={selectedEmail}
+              account={activeAccount}
+              onClose={() => setSelectedEmail(null)}
+              onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
+              onMarkAsRequest={(e) => handleMarkAsRequest(e, selectedEmail)}
+              onIgnore={() => handleIgnore(selectedEmail)}
+              isMarking={markingDeal === selectedEmail.id}
+            />
+          </ErrorBoundary>
         </div>
       </div>
     );

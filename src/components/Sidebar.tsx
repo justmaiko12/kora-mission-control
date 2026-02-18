@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ViewType } from "@/app/page";
 import { CustomChannel, createCustomChannel } from "@/lib/channelStorage";
+import { getSettings, onSettingsChange, AppSettings } from "@/lib/settings";
+import Avatar from "./Avatar";
+import SettingsModal from "./SettingsModal";
 
 interface SidebarProps {
   activeView: ViewType;
@@ -58,6 +61,13 @@ export default function Sidebar({
   onClose,
 }: SidebarProps) {
   const [appsOpen, setAppsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+
+  useEffect(() => {
+    setSettings(getSettings());
+    return onSettingsChange(setSettings);
+  }, []);
 
   const handleNavigate = (view: ViewType) => {
     onNavigate(view);
@@ -140,11 +150,9 @@ export default function Sidebar({
         {/* Logo */}
         <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl">
-              🦞
-            </div>
+            <Avatar size="md" />
             <div>
-              <h1 className="font-bold text-lg">Kora</h1>
+              <h1 className="font-bold text-lg">{settings?.appName || "Kora"}</h1>
               <p className="text-xs text-zinc-500">Mission Control</p>
             </div>
           </div>
@@ -260,12 +268,18 @@ export default function Sidebar({
 
         {/* User/Settings */}
         <div className="p-4 border-t border-zinc-800">
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-200 transition-all">
+          <button 
+            onClick={() => setSettingsOpen(true)}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-200 transition-all"
+          >
             <span className="text-xl">⚙️</span>
             <span className="font-medium">Settings</span>
           </button>
         </div>
       </aside>
+
+      {/* Settings Modal */}
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 }

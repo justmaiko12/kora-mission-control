@@ -1,5 +1,7 @@
 "use client";
 
+import Avatar from "@/components/Avatar";
+
 interface Integration {
   id: string;
   name: string;
@@ -175,9 +177,7 @@ export default function Integrations() {
         {/* OpenClaw Status */}
         <div className="bg-gradient-to-r from-indigo-900/30 to-purple-900/30 border border-indigo-500/20 rounded-xl p-4 md:p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl md:text-3xl">
-              🦞
-            </div>
+            <Avatar size="xl" />
             <div className="flex-1 min-w-0">
               <h3 className="text-lg md:text-xl font-bold">OpenClaw Gateway</h3>
               <p className="text-zinc-400 text-sm mt-1">Running on KORA's Mac mini</p>

@@ -11,6 +11,7 @@ import InlineChat from "@/components/InlineChat";
 import EmailView from "@/components/EmailView";
 import DealsView from "@/components/DealsView";
 import Dashboard from "@/components/Dashboard";
+import Avatar from "@/components/Avatar";
 import { FocusedItem } from "@/lib/types";
 import { CustomChannel, listCustomChannels, onCustomChannelsUpdated } from "@/lib/channelStorage";
 
@@ -179,7 +180,7 @@ function HomeContent() {
             </svg>
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-xl">🦞</span>
+            <Avatar size="sm" />
             <span className="font-semibold">{viewTitles[activeView]}</span>
           </div>
         </header>

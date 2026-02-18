@@ -2,8 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import ContextBadge from "@/components/ContextBadge";
+import Avatar from "@/components/Avatar";
 import { FocusedItem } from "@/lib/types";
 import { ChannelSuggestion, createCustomChannel } from "@/lib/channelStorage";
+import { getSettings, onSettingsChange, AppSettings } from "@/lib/settings";
 
 interface InlineChatProps {
   focusedItem: FocusedItem | null;
@@ -69,7 +71,14 @@ export default function InlineChat({ focusedItem, onClearFocus }: InlineChatProp
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load settings
+  useEffect(() => {
+    setSettings(getSettings());
+    return onSettingsChange(setSettings);
+  }, []);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -125,11 +134,9 @@ export default function InlineChat({ focusedItem, onClearFocus }: InlineChatProp
       {/* Header */}
       <div className="px-4 py-2 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm">
-            🦞
-          </div>
+          <Avatar size="sm" />
           <div>
-            <h3 className="font-medium text-sm">Kora</h3>
+            <h3 className="font-medium text-sm">{settings?.appName || "Kora"}</h3>
             <p className="text-[10px] text-green-500">● Online</p>
           </div>
         </div>

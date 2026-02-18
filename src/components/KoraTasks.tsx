@@ -163,18 +163,18 @@ export default function KoraTasks() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-800">
-        <div className="flex items-center justify-between mb-4">
+      <div className="p-3 md:p-4 border-b border-zinc-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-xl font-bold">📋 Kora's Tasks</h1>
-            <p className="text-sm text-zinc-500">Things Michael has assigned to me</p>
+            <h1 className="text-lg md:text-xl font-bold">📋 Kora's Tasks</h1>
+            <p className="text-xs md:text-sm text-zinc-500">Things Michael has assigned to me</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1 md:gap-2">
             {(["all", "active", "completed"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors capitalize ${
+                className={`px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm rounded-lg transition-colors capitalize ${
                   filter === f
                     ? "bg-indigo-600 text-white"
                     : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
@@ -187,18 +187,18 @@ export default function KoraTasks() {
         </div>
 
         {/* Add Task */}
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <input
             type="text"
             value={newTaskTitle}
             onChange={(e) => setNewTaskTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addTask()}
             placeholder="Add a new task for Kora..."
-            className="flex-1 px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors"
+            className="flex-1 px-3 md:px-4 py-2 md:py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
           />
           <button
             onClick={addTask}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-medium transition-colors"
+            className="px-4 md:px-5 py-2 md:py-2.5 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-medium text-sm transition-colors"
           >
             Add Task
           </button>

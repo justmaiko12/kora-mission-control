@@ -75,23 +75,26 @@ export default function EmailDetail({
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-800 flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <button
-              onClick={onClose}
-              className="p-1 hover:bg-zinc-800 rounded transition-colors text-zinc-400 hover:text-white"
-            >
-              ← 
-            </button>
-            <h2 className="text-lg font-semibold truncate">{email.subject || "(no subject)"}</h2>
+      <div className="p-3 md:p-4 border-b border-zinc-800">
+        <div className="flex items-start gap-3">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white flex-shrink-0"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base md:text-lg font-semibold line-clamp-2">{email.subject || "(no subject)"}</h2>
+            <p className="text-sm text-zinc-400 truncate mt-0.5">{extractName(email.from)}</p>
+            <p className="text-xs text-zinc-500 mt-1">
+              {email.messageCount} message{email.messageCount !== 1 ? "s" : ""} in thread
+            </p>
           </div>
-          <p className="text-sm text-zinc-400">{extractName(email.from)}</p>
-          <p className="text-xs text-zinc-500 mt-1">
-            {email.messageCount} message{email.messageCount !== 1 ? "s" : ""} in thread
-          </p>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        {/* Action buttons - wrap on mobile */}
+        <div className="flex flex-wrap gap-2 mt-3">
           <button
             onClick={onMarkAsDeal}
             disabled={isMarking}

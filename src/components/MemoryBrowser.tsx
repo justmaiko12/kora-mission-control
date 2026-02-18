@@ -56,13 +56,59 @@ export default function MemoryBrowser() {
     </button>
   );
 
+  // Mobile: File Detail View (full screen overlay)
+  const MobileFileDetail = () => {
+    if (!selectedFile) return null;
+    return (
+      <div className="md:hidden absolute inset-0 z-10 bg-zinc-950 flex flex-col">
+        <div className="p-4 border-b border-zinc-800 flex items-center gap-3">
+          <button
+            onClick={() => setSelectedFile(null)}
+            className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-semibold truncate">{selectedFile.name}</h2>
+            <p className="text-xs text-zinc-500">Last modified: {selectedFile.lastModified}</p>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex gap-2 mb-4">
+            <button className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors">
+              Edit
+            </button>
+            <button className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+              Ask Kora
+            </button>
+          </div>
+          <div className="prose prose-invert max-w-none">
+            <p className="text-zinc-400">{selectedFile.preview}</p>
+            <div className="mt-4 p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+              <p className="text-sm text-zinc-500">
+                Full file content will be loaded from OpenClaw workspace.
+                <br />
+                Path: <code className="text-indigo-400 text-xs">~/.openclaw/workspace/{selectedFile.path}</code>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="h-full flex">
-      {/* File Browser */}
-      <div className="w-80 border-r border-zinc-800 flex flex-col">
+    <div className="h-full flex relative">
+      {/* Mobile File Detail Overlay */}
+      <MobileFileDetail />
+
+      {/* File Browser - full width on mobile, fixed width on desktop */}
+      <div className="w-full md:w-80 md:border-r border-zinc-800 flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-zinc-800">
-          <h1 className="text-xl font-bold mb-3">🧠 Kora's Memory</h1>
+        <div className="p-3 md:p-4 border-b border-zinc-800">
+          <h1 className="text-lg md:text-xl font-bold mb-3">🧠 Kora's Memory</h1>
           <input
             type="text"
             value={searchQuery}
@@ -112,8 +158,8 @@ export default function MemoryBrowser() {
         </div>
       </div>
 
-      {/* File Preview */}
-      <div className="flex-1 flex flex-col">
+      {/* File Preview - desktop only */}
+      <div className="hidden md:flex flex-1 flex-col">
         {selectedFile ? (
           <>
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">

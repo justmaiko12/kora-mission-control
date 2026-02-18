@@ -133,15 +133,15 @@ export default function DealsView() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-800">
+      <div className="p-3 md:p-4 border-b border-zinc-800">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold">💼 Business</h1>
+          <h1 className="text-lg md:text-xl font-bold">💼 Business</h1>
           <button
             onClick={fetchPipeline}
             disabled={loading}
-            className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+            className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
           >
-            {loading ? "⏳" : "🔄"} Refresh
+            {loading ? "⏳" : "🔄"} <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
         
@@ -149,17 +149,17 @@ export default function DealsView() {
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab("deals")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-lg transition-colors ${
               activeTab === "deals"
                 ? "bg-indigo-600 text-white"
                 : "bg-zinc-800 text-zinc-400 hover:text-white"
             }`}
           >
-            💰 Brand Deals {!loading && <span className="ml-1 opacity-70">({totalDeals})</span>}
+            💰 <span className="hidden sm:inline">Brand </span>Deals {!loading && <span className="ml-1 opacity-70">({totalDeals})</span>}
           </button>
           <button
             onClick={() => setActiveTab("requests")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-lg transition-colors ${
               activeTab === "requests"
                 ? "bg-indigo-600 text-white"
                 : "bg-zinc-800 text-zinc-400 hover:text-white"
@@ -180,14 +180,14 @@ export default function DealsView() {
       )}
 
       {/* Pipeline Board */}
-      <div className="flex-1 overflow-x-auto p-4">
-        <div className="flex gap-4 min-w-max h-full">
+      <div className="flex-1 overflow-x-auto p-2 md:p-4">
+        <div className="flex gap-2 md:gap-4 min-w-max h-full">
           {/* Deals Pipeline */}
           {activeTab === "deals" && pipelineData?.deals &&
             (Object.keys(DEAL_STAGES) as Array<keyof typeof DEAL_STAGES>).map((stage) => (
               <div
                 key={stage}
-                className="w-72 flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800"
+                className="w-56 md:w-72 flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800"
               >
                 <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
                   <span className="font-medium text-sm">
@@ -229,7 +229,7 @@ export default function DealsView() {
             (Object.keys(REQUEST_STAGES) as Array<keyof typeof REQUEST_STAGES>).map((stage) => (
               <div
                 key={stage}
-                className="w-72 flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800"
+                className="w-56 md:w-72 flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800"
               >
                 <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
                   <span className="font-medium text-sm">
@@ -270,33 +270,41 @@ export default function DealsView() {
 
       {/* Selected Deal Panel */}
       {selectedDeal && (
-        <div className="border-t border-zinc-800 p-4 bg-zinc-900/50">
-          <div className="flex items-start justify-between gap-4">
+        <div className="border-t border-zinc-800 p-3 md:p-4 bg-zinc-900/50">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 md:gap-4">
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium truncate">{selectedDeal.subject}</h3>
-              <p className="text-sm text-zinc-400 mt-1">
+              <div className="flex items-start justify-between">
+                <h3 className="font-medium line-clamp-1 md:truncate text-sm md:text-base">{selectedDeal.subject}</h3>
+                <button
+                  onClick={() => setSelectedDeal(null)}
+                  className="md:hidden p-1 text-zinc-500 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs md:text-sm text-zinc-400 mt-1 truncate">
                 {extractSender(selectedDeal.from)} • {selectedDeal.account}
               </p>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex flex-wrap gap-2 flex-shrink-0">
               <button
                 onClick={() => generateDraft(selectedDeal, "send rates")}
                 disabled={draftLoading}
-                className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
+                className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
               >
-                💰 Send Rates
+                💰 Rates
               </button>
               <button
                 onClick={() => generateDraft(selectedDeal, "follow up")}
                 disabled={draftLoading}
-                className="px-3 py-1.5 text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg transition-colors disabled:opacity-50"
+                className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg transition-colors disabled:opacity-50"
               >
-                ✏️ Draft Reply
+                ✏️ Reply
               </button>
               <button
                 onClick={() => generateDraft(selectedDeal, "decline")}
                 disabled={draftLoading}
-                className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+                className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 ❌ Pass
               </button>

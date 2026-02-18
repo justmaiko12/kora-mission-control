@@ -141,12 +141,12 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
   const visibleEmails = emails.filter((e) => !ignoredIds.has(e.id));
   const unreadCount = visibleEmails.filter((e) => !e.read).length;
 
-  // If an email is selected, show split view
+  // If an email is selected, show split view (desktop) or detail only (mobile)
   if (selectedEmail) {
     return (
       <div className="h-full flex">
-        {/* Email List (narrower) */}
-        <div className="w-80 flex-shrink-0 border-r border-zinc-800 flex flex-col">
+        {/* Email List (narrower) - hidden on mobile */}
+        <div className="hidden md:flex w-80 flex-shrink-0 border-r border-zinc-800 flex-col">
           {/* Header */}
           <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
             <div>

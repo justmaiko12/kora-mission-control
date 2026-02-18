@@ -226,118 +226,71 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
   // Default: full email list view
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">📧 Email</h1>
-          <p className="text-sm text-zinc-500">
-            {loading ? "Loading..." : `${unreadCount} unread`}
-          </p>
-        </div>
+      {/* Account Tabs + Refresh */}
+      <div className="flex items-center border-b border-zinc-800">
+        {accounts.length > 0 && (
+          <div className="flex-1">
+            <EmailTabs
+              accounts={accounts}
+              activeAccount={activeAccount}
+              onChange={setActiveAccount}
+            />
+          </div>
+        )}
         <button
           onClick={refresh}
           disabled={loading}
-          className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+          className="px-3 py-2 text-xs text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
         >
-          {loading ? "⏳" : "🔄"} Refresh
+          {loading ? "⏳" : "🔄"}
         </button>
       </div>
 
-      {/* Account Tabs */}
-      {accounts.length > 0 && (
-        <EmailTabs
-          accounts={accounts}
-          activeAccount={activeAccount}
-          onChange={setActiveAccount}
-        />
-      )}
-
       {/* Error State */}
       {error && (
-        <div className="p-4">
-          <div className="rounded-xl border border-red-800/50 bg-red-900/20 p-4 text-red-400 text-sm">
-            {error}
-          </div>
+        <div className="px-3 py-2 bg-red-900/20 text-red-400 text-xs">
+          {error}
         </div>
       )}
 
       {/* Loading State */}
       {loading && emails.length === 0 && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-zinc-500 animate-pulse">Loading emails...</div>
+          <div className="text-zinc-500 text-sm animate-pulse">Loading...</div>
         </div>
       )}
 
       {/* Empty State */}
       {!loading && emails.length === 0 && !error && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-zinc-500">No actionable emails</div>
+          <div className="text-zinc-500 text-sm">No emails</div>
         </div>
       )}
 
-      {/* Emails List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* Compact Emails List */}
+      <div className="flex-1 overflow-y-auto">
         {visibleEmails.map((email) => (
           <div
             key={email.id}
             onClick={() => handleSelectEmail(email)}
-            className={`p-4 rounded-xl border transition-all cursor-pointer group ${
-              email.read
-                ? "bg-zinc-900/30 border-zinc-800/50 opacity-70"
-                : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
-            } ${focusedItem?.id === email.id ? "ring-2 ring-indigo-500/70" : ""} hover:shadow-md`}
+            className={`px-3 py-2 border-b border-zinc-800/50 cursor-pointer transition-colors ${
+              email.read ? "opacity-60" : "hover:bg-zinc-800/50"
+            } ${focusedItem?.id === email.id ? "bg-indigo-600/20" : ""}`}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p
-                  className={`truncate ${
-                    email.read ? "text-zinc-400" : "text-zinc-200 font-medium"
-                  }`}
-                >
-                  {email.subject || "(no subject)"}
-                </p>
-                <p className="text-xs text-zinc-500 mt-1 truncate">{email.from}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {!email.read && (
-                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                )}
-                <span className="text-xs text-zinc-600">{formatDate(email.date)}</span>
-              </div>
+            <div className="flex items-center gap-2">
+              {!email.read && (
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
+              )}
+              <p className={`flex-1 text-sm truncate ${email.read ? "text-zinc-400" : "font-medium"}`}>
+                {email.subject || "(no subject)"}
+              </p>
+              <span className="text-[10px] text-zinc-600 flex-shrink-0">
+                {formatDate(email.date)}
+              </span>
             </div>
-            
-            {email.snippet && (
-              <p className="text-xs text-zinc-500 mt-2 line-clamp-2">{email.snippet}</p>
-            )}
-            
-            {/* Quick Actions */}
-            <div className="flex items-center justify-between mt-3 pt-2 border-t border-zinc-800/50">
-              <div className="flex items-center gap-1">
-                {email.messageCount > 1 && (
-                  <span className="text-xs text-zinc-600 mr-2">
-                    {email.messageCount} messages
-                  </span>
-                )}
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={(e) => handleMarkAsDeal(e, email)}
-                  disabled={markingDeal === email.id}
-                  className="px-2 py-1 text-xs bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded transition-colors disabled:opacity-50"
-                  title="Add to Brand Deals pipeline"
-                >
-                  💰 Deal
-                </button>
-                <button
-                  onClick={(e) => handleMarkAsRequest(e, email)}
-                  disabled={markingDeal === email.id}
-                  className="px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded transition-colors disabled:opacity-50"
-                  title="Add to Requests pipeline"
-                >
-                  📋 Request
-                </button>
-              </div>
-            </div>
+            <p className="text-xs text-zinc-500 truncate mt-0.5 pl-3.5">
+              {email.from.split("<")[0].trim()}
+            </p>
           </div>
         ))}
       </div>

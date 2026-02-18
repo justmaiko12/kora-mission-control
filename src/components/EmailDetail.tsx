@@ -38,6 +38,8 @@ export default function EmailDetail({
   const [error, setError] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
+  const [rewriteError, setRewriteError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchThread() {
@@ -136,6 +138,45 @@ export default function EmailDetail({
       alert(err instanceof Error ? err.message : "Failed to send reply");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleRewrite = async () => {
+    if (!replyText.trim() || rewriting) return;
+
+    setRewriting(true);
+    setRewriteError(null);
+    try {
+      const lastMessage = messages[messages.length - 1];
+      const res = await fetch("/api/emails/rewrite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          draft: replyText,
+          context: {
+            subject: safeString(email.subject),
+            from: safeString(lastMessage?.from || email.from),
+            originalBody: safeString(lastMessage?.body || ""),
+          },
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to rewrite");
+      }
+
+      if (!data.rewritten || typeof data.rewritten !== "string") {
+        throw new Error("No rewritten text returned");
+      }
+
+      setReplyText(data.rewritten);
+    } catch (err) {
+      console.error("Rewrite error:", err);
+      setRewriteError(err instanceof Error ? err.message : "Failed to rewrite");
+    } finally {
+      setRewriting(false);
     }
   };
 
@@ -256,22 +297,34 @@ export default function EmailDetail({
 
       {/* Quick Reply Footer */}
       <div className="p-3 md:p-4 border-t border-zinc-800 bg-zinc-900/50">
-        <div className="flex gap-2">
-          <input
-            type="text"
+        <div className="flex flex-col gap-2">
+          <textarea
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleReply()}
+            onKeyDown={(e) => (e.key === "Enter" && (e.metaKey || e.ctrlKey)) && handleReply()}
             placeholder="Type a quick reply..."
-            className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+            rows={3}
+            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-colors resize-none"
           />
-          <button
-            onClick={handleReply}
-            disabled={sending || !replyText.trim()}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-sm transition-colors"
-          >
-            {sending ? "Sending..." : "Reply"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleRewrite}
+              disabled={rewriting || !replyText.trim()}
+              className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 rounded-lg text-sm transition-colors"
+            >
+              {rewriting ? "Rewriting..." : "Rewrite with AI"}
+            </button>
+            <button
+              onClick={handleReply}
+              disabled={sending || !replyText.trim()}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-sm transition-colors"
+            >
+              {sending ? "Sending..." : "Reply"}
+            </button>
+          </div>
+          {rewriteError && (
+            <p className="text-xs text-red-400">{rewriteError}</p>
+          )}
         </div>
         <p className="text-[10px] text-zinc-600 mt-1 text-center">
           Sends from {account}

@@ -22,6 +22,7 @@ interface EmailMessage {
   subject: string;
   body: string;
   bodyHtml?: string;
+  isMe?: boolean; // True if sent by current account
 }
 
 export default function EmailDetail({
@@ -252,13 +253,24 @@ export default function EmailDetail({
           {messages.map((msg, idx) => (
             <div
               key={msg.id || idx}
-              className="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden"
+              className={`rounded-xl border overflow-hidden ${
+                msg.isMe 
+                  ? "border-indigo-600/50 bg-indigo-950/30 ml-4" 
+                  : "border-zinc-800 bg-zinc-900/50 mr-4"
+              }`}
             >
               {/* Message Header */}
-              <div className="p-3 border-b border-zinc-800 bg-zinc-900/80">
+              <div className={`p-3 border-b ${
+                msg.isMe 
+                  ? "border-indigo-600/30 bg-indigo-950/50" 
+                  : "border-zinc-800 bg-zinc-900/80"
+              }`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{extractName(msg.from)}</p>
+                    <p className="font-medium text-sm truncate flex items-center gap-2">
+                      {msg.isMe && <span className="text-xs bg-indigo-600 px-1.5 py-0.5 rounded text-white">You</span>}
+                      {extractName(msg.from)}
+                    </p>
                     <p className="text-xs text-zinc-500 truncate">to {safeString(msg.to)}</p>
                   </div>
                   <span className="text-xs text-zinc-500 flex-shrink-0">

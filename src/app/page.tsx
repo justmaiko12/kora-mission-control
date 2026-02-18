@@ -242,8 +242,8 @@ function HomeContent() {
           {renderView()}
         </main>
 
-        {/* Mobile Activity Feed - bottom half when open */}
-        {mobileChatOpen && (
+        {/* Mobile Activity Feed - bottom half when open (hide on Activity tab) */}
+        {mobileChatOpen && activeView !== "kora-activity" && (
           <div className="md:hidden h-[50%] border-t border-zinc-800 flex flex-col">
             <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800">
               <span className="font-semibold text-sm">Activity</span>
@@ -269,8 +269,8 @@ function HomeContent() {
           </div>
         )}
 
-        {/* Desktop: Persistent Activity Feed */}
-        <div className={`hidden md:block border-t border-zinc-800 transition-all ${chatCollapsed ? "h-12" : "h-[35%] min-h-[200px] max-h-[300px]"}`}>
+        {/* Desktop: Persistent Activity Feed (hide on Activity tab) */}
+        <div className={`hidden ${activeView === "kora-activity" ? "" : "md:block"} border-t border-zinc-800 transition-all ${chatCollapsed ? "h-12" : "h-[35%] min-h-[200px] max-h-[300px]"}`}>
           {chatCollapsed ? (
             <button
               onClick={() => setChatCollapsed(false)}
@@ -310,8 +310,8 @@ function HomeContent() {
         </div>
       </div>
 
-      {/* Mobile Activity FAB - hidden when panel is open */}
-      {!mobileChatOpen && (
+      {/* Mobile Activity FAB - hidden when panel is open or on Activity tab */}
+      {!mobileChatOpen && activeView !== "kora-activity" && (
         <button
           className="md:hidden fixed bottom-4 right-4 w-14 h-14 bg-indigo-600 rounded-full shadow-lg flex items-center justify-center text-2xl z-30"
           onClick={() => setMobileChatOpen(true)}

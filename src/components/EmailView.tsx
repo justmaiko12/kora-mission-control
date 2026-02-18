@@ -27,6 +27,82 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const [selectedEmail, setSelectedEmail] = useState<EmailThread | null>(null);
   const [markingDeal, setMarkingDeal] = useState<string | null>(null);
   const [ignoredIds, setIgnoredIds] = useState<Set<string>>(new Set());
+  
+  // Checkbox selection state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
+  // Toggle individual email selection
+  const toggleSelect = (emailId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(emailId)) {
+        next.delete(emailId);
+      } else {
+        next.add(emailId);
+      }
+      return next;
+    });
+  };
+
+  // Select/deselect all visible emails
+  const toggleSelectAll = () => {
+    const visibleIds = visibleEmails.map(e => e.id);
+    const allSelected = visibleIds.every(id => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(visibleIds));
+    }
+  };
+
+  // Bulk delete selected emails
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkProcessing(true);
+    
+    try {
+      for (const id of selectedIds) {
+        await fetch("/api/emails/archive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, account: activeAccount, action: "trash" }),
+        });
+      }
+      // Hide from UI
+      setIgnoredIds(prev => new Set([...prev, ...selectedIds]));
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+    } catch (err) {
+      console.error("Bulk delete error:", err);
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  // Bulk archive selected emails
+  const handleBulkArchive = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkProcessing(true);
+    
+    try {
+      for (const id of selectedIds) {
+        await fetch("/api/emails/archive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, account: activeAccount, action: "archive" }),
+        });
+      }
+      setIgnoredIds(prev => new Set([...prev, ...selectedIds]));
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+    } catch (err) {
+      console.error("Bulk archive error:", err);
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
 
   const handleSelectEmail = (email: EmailThread) => {
     setSelectedEmail(email);
@@ -236,7 +312,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   // Default: full email list view
   return (
     <div className="h-full flex flex-col">
-      {/* Account Tabs + Refresh */}
+      {/* Account Tabs + Actions */}
       <div className="flex items-center border-b border-zinc-800">
         {accounts.length > 0 && (
           <div className="flex-1">
@@ -247,14 +323,73 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
             />
           </div>
         )}
-        <button
-          onClick={refresh}
-          disabled={loading}
-          className="px-3 py-2 text-xs text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
-        >
-          {loading ? "⏳" : "🔄"}
-        </button>
+        <div className="flex items-center gap-1 px-2">
+          <button
+            onClick={() => {
+              setSelectionMode(!selectionMode);
+              if (selectionMode) setSelectedIds(new Set());
+            }}
+            className={`px-2 py-1 text-xs rounded transition-colors ${
+              selectionMode 
+                ? "bg-indigo-600 text-white" 
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+            }`}
+            title="Toggle selection mode"
+          >
+            ☑️
+          </button>
+          <button
+            onClick={() => refresh()}
+            disabled={loading}
+            className="px-2 py-1 text-xs text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+          >
+            {loading ? "⏳" : "🔄"}
+          </button>
+        </div>
       </div>
+
+      {/* Bulk Action Bar */}
+      {selectionMode && (
+        <div className="px-3 py-2 bg-zinc-900 border-b border-zinc-800 flex items-center gap-2">
+          <button
+            onClick={toggleSelectAll}
+            className="px-2 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 rounded transition-colors"
+          >
+            {visibleEmails.every(e => selectedIds.has(e.id)) ? "Deselect All" : "Select All"}
+          </button>
+          <span className="text-xs text-zinc-500">
+            {selectedIds.size} selected
+          </span>
+          <div className="flex-1" />
+          {selectedIds.size > 0 && (
+            <>
+              <button
+                onClick={handleBulkArchive}
+                disabled={bulkProcessing}
+                className="px-3 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 rounded transition-colors disabled:opacity-50"
+              >
+                {bulkProcessing ? "..." : "Archive"}
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkProcessing}
+                className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50"
+              >
+                {bulkProcessing ? "..." : "Delete"}
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => {
+              setSelectionMode(false);
+              setSelectedIds(new Set());
+            }}
+            className="px-2 py-1 text-xs text-zinc-400 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Error State */}
       {error && (
@@ -289,12 +424,15 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
       <div className="flex-1 overflow-y-auto">
         {visibleEmails.map((email) => {
           const isPreview = previewEmailIds.includes(email.id);
+          const isSelected = selectedIds.has(email.id);
           return (
             <div
               key={email.id}
-              onClick={() => handleSelectEmail(email)}
+              onClick={() => selectionMode ? toggleSelect(email.id) : handleSelectEmail(email)}
               className={`px-3 py-2 border-b border-zinc-800/50 cursor-pointer transition-all ${
-                isPreview 
+                isSelected
+                  ? "bg-indigo-600/20 border-l-2 border-l-indigo-500"
+                  : isPreview 
                   ? "bg-amber-900/30 border-l-2 border-l-amber-500 animate-pulse" 
                   : email.read 
                   ? "opacity-60" 
@@ -302,7 +440,15 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
               } ${focusedItem?.id === email.id ? "bg-indigo-600/20" : ""}`}
             >
               <div className="flex items-center gap-2">
-                {isPreview ? (
+                {selectionMode ? (
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(email.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"
+                  />
+                ) : isPreview ? (
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
                 ) : !email.read ? (
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />

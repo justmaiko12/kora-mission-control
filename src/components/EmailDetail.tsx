@@ -232,7 +232,12 @@ export default function EmailDetail({
                       prose-a:text-indigo-400 prose-a:no-underline hover:prose-a:underline
                       prose-img:max-w-full prose-img:rounded-lg
                       prose-blockquote:border-zinc-700 prose-blockquote:text-zinc-400
-                      [&_*]:text-sm"
+                      [&_*]:text-sm
+                      [&_*]:!text-zinc-200
+                      [&_a]:!text-indigo-400
+                      [&_h1]:!text-white [&_h2]:!text-white [&_h3]:!text-white
+                      [&_td]:!bg-transparent [&_th]:!bg-transparent [&_table]:!bg-transparent
+                      [&_div]:!bg-transparent"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.bodyHtml) }}
                   />
                 ) : (

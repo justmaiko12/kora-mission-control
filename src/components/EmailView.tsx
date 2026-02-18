@@ -252,97 +252,26 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const visibleEmails = emails.filter((e) => !ignoredIds.has(e.id));
   const unreadCount = visibleEmails.filter((e) => !e.read).length;
 
-  // If an email is selected, show split view (desktop) or detail only (mobile)
+  // If an email is selected, show debug view (TEMPORARY)
   if (selectedEmail) {
+    const debugId = safeString(selectedEmail.id);
+    const debugSubject = safeString(selectedEmail.subject);
+    const debugFrom = safeString(selectedEmail.from);
+    
     return (
-      <div className="h-full flex">
-        {/* Email List (narrower) - hidden on mobile */}
-        <div className="hidden md:flex w-80 flex-shrink-0 border-r border-zinc-800 flex-col">
-          {/* Header */}
-          <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-bold">📧 Email</h1>
-              <p className="text-xs text-zinc-500">
-                {loading ? "Loading..." : `${String(unreadCount)} unread`}
-              </p>
-            </div>
-            <button
-              onClick={() => refresh()}
-              disabled={loading}
-              className="p-2 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {loading ? "⏳" : "🔄"}
-            </button>
-          </div>
-
-          {/* Account Tabs */}
-          {accounts.length > 0 && (
-            <ErrorBoundary name="EmailTabs">
-              <EmailTabs
-                accounts={accounts}
-                activeAccount={activeAccount}
-                onChange={(acc) => {
-                  setActiveAccount(acc);
-                  setSelectedEmail(null);
-                }}
-              />
-            </ErrorBoundary>
-          )}
-
-          {/* Compact Email List */}
-          <div className="flex-1 overflow-y-auto">
-            {visibleEmails.map((email) => {
-              const emailId = safeString(email.id);
-              const emailSubject = safeString(email.subject) || "(no subject)";
-              const emailFrom = safeString(email.from);
-              const emailDate = formatDate(safeString(email.date));
-              const isRead = Boolean(email.read);
-              const isSelected = safeString(selectedEmail?.id) === emailId;
-              
-              return (
-                <div
-                  key={emailId}
-                  onClick={() => handleSelectEmail(email)}
-                  className={`p-3 border-b border-zinc-800/50 cursor-pointer transition-colors ${
-                    isSelected
-                      ? "bg-indigo-600/20 border-l-2 border-l-indigo-500"
-                      : "hover:bg-zinc-800/50"
-                  } ${isRead ? "opacity-60" : ""}`}
-                >
-                  <div className="flex items-start gap-2">
-                    {!isRead && (
-                      <span className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm truncate ${isRead ? "text-zinc-400" : "font-medium"}`}>
-                        {emailSubject}
-                      </p>
-                      <p className="text-xs text-zinc-500 truncate mt-0.5">{emailFrom}</p>
-                    </div>
-                    <span className="text-[10px] text-zinc-600 flex-shrink-0">
-                      {emailDate}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      <div className="h-full p-8 bg-zinc-900">
+        <h2 className="text-xl font-bold mb-4">Debug: Email Selected</h2>
+        <div className="space-y-2 text-sm bg-zinc-800 p-4 rounded-lg">
+          <p><strong>ID:</strong> {debugId}</p>
+          <p><strong>Subject:</strong> {debugSubject}</p>
+          <p><strong>From:</strong> {debugFrom}</p>
         </div>
-
-        {/* Email Detail */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <ErrorBoundary name="EmailDetail">
-            <EmailDetail
-              email={selectedEmail}
-              account={activeAccount}
-              onClose={() => setSelectedEmail(null)}
-              onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
-              onMarkAsRequest={(e) => handleMarkAsRequest(e, selectedEmail)}
-              onIgnore={() => handleIgnore(selectedEmail)}
-              isMarking={markingDeal === selectedEmail.id}
-            />
-          </ErrorBoundary>
-        </div>
+        <button 
+          onClick={() => setSelectedEmail(null)} 
+          className="mt-6 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+        >
+          Back to Inbox
+        </button>
       </div>
     );
   }

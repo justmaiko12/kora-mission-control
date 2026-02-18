@@ -33,14 +33,6 @@ const channels: ChannelCard[] = [
     items: ["Anthony's edit needs review", "Content due for TikTok", "Kreatrix bug #142"],
   },
   {
-    id: "business",
-    icon: "💼",
-    title: "Business",
-    count: 2,
-    color: "from-purple-500 to-pink-500",
-    items: ["WinterWhale deal update", "New sponsorship opportunity"],
-  },
-  {
     id: "chat",
     icon: "💬",
     title: "Chat",

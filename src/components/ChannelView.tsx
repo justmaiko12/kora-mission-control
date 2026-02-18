@@ -1,55 +1,211 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import EmailTabs from "@/components/EmailTabs";
+import { FocusedItem } from "@/lib/types";
+import { CustomChannel } from "@/lib/channelStorage";
 
 interface ChannelViewProps {
-  channel: string;
+  channel: "email" | "tasks" | "chat" | "custom";
   title: string;
   isChat?: boolean;
+  focusedItem?: FocusedItem | null;
+  onFocusItem?: (item: FocusedItem) => void;
+  customChannel?: CustomChannel | null;
 }
 
-interface Message {
+interface ChannelItem {
   id: string;
-  content: string;
+  title: string;
+  preview?: string;
   timestamp: string;
-  type: "incoming" | "outgoing" | "system";
+  type?: "incoming" | "outgoing" | "system";
   read?: boolean;
+  source: "email" | "tasks" | "chat";
+  metadata?: Record<string, unknown>;
 }
 
-const mockMessages: Record<string, Message[]> = {
-  email: [
-    { id: "1", content: "Brand deal inquiry from Nike - They're interested in a TikTok campaign", timestamp: "10:30 AM", type: "incoming", read: false },
-    { id: "2", content: "Contract update from Sony - Final terms ready for review", timestamp: "9:15 AM", type: "incoming", read: false },
-    { id: "3", content: "Weekly analytics report - Views up 23% this week", timestamp: "8:00 AM", type: "system", read: false },
-    { id: "4", content: "WinterWhale team update - Asia campaign launched successfully", timestamp: "Yesterday", type: "incoming", read: true },
-  ],
-  tasks: [
-    { id: "1", content: "🔴 Anthony's edit needs review - Due in 2 hours", timestamp: "Just now", type: "system", read: false },
-    { id: "2", content: "🟡 Content due for @shluv TikTok - Dance tutorial", timestamp: "1 hour ago", type: "system", read: false },
-    { id: "3", content: "🟡 Kreatrix bug #142 - UI glitch on mobile reported", timestamp: "2 hours ago", type: "system", read: false },
-    { id: "4", content: "✅ Morning briefing sent to Telegram", timestamp: "8:00 AM", type: "system", read: true },
-    { id: "5", content: "🟢 Editor task ping automation completed", timestamp: "Yesterday", type: "system", read: true },
-  ],
-  business: [
-    { id: "1", content: "💰 WinterWhale deal - Joan confirms $50K sponsorship from Chinese brand", timestamp: "2 hours ago", type: "incoming", read: false },
-    { id: "2", content: "📋 New sponsorship opportunity - Gaming headset company reaching out", timestamp: "Yesterday", type: "incoming", read: false },
-    { id: "3", content: "Contract signed with RedBull for March campaign", timestamp: "2 days ago", type: "system", read: true },
-  ],
-  chat: [
-    { id: "1", content: "Hey Michael! The Kora Mission Control is now live. What would you like to work on?", timestamp: "Just now", type: "incoming" },
-    { id: "2", content: "I've set up all the channel views. You can now see Email, Tasks, and Business separately!", timestamp: "Just now", type: "incoming" },
-  ],
+interface EmailAccount {
+  id: string;
+  email: string;
+  name: string;
+  provider: "gmail" | "outlook" | "other";
+  unreadCount: number;
+}
+
+const emailAccounts: EmailAccount[] = [
+  { id: "acct-1", email: "michael@shluv.com", name: "Shluv", provider: "gmail", unreadCount: 3 },
+  { id: "acct-2", email: "personal@gmail.com", name: "Personal", provider: "gmail", unreadCount: 2 },
+];
+
+const emailItems: ChannelItem[] = [
+  {
+    id: "email-1",
+    title: "Brand deal inquiry from Nike",
+    preview: "brand@nike.com • They're interested in a TikTok campaign",
+    timestamp: "10:30 AM",
+    read: false,
+    source: "email",
+    metadata: { accountId: "acct-1", sender: "brand@nike.com" },
+  },
+  {
+    id: "email-2",
+    title: "Contract update from Sony",
+    preview: "legal@sony.com • Final terms ready for review",
+    timestamp: "9:15 AM",
+    read: false,
+    source: "email",
+    metadata: { accountId: "acct-1", sender: "legal@sony.com" },
+  },
+  {
+    id: "email-3",
+    title: "Weekly analytics report",
+    preview: "analytics@tiktok.com • Views up 23% this week",
+    timestamp: "8:00 AM",
+    read: false,
+    source: "email",
+    metadata: { accountId: "acct-2", sender: "analytics@tiktok.com" },
+  },
+  {
+    id: "email-4",
+    title: "WinterWhale team update",
+    preview: "ops@winterwhale.com • Asia campaign launched successfully",
+    timestamp: "Yesterday",
+    read: true,
+    source: "email",
+    metadata: { accountId: "acct-2", sender: "ops@winterwhale.com" },
+  },
+];
+
+const taskItems: ChannelItem[] = [
+  {
+    id: "task-1",
+    title: "🔴 Anthony's edit needs review - Due in 2 hours",
+    timestamp: "Just now",
+    read: false,
+    source: "tasks",
+    metadata: { priority: "high" },
+  },
+  {
+    id: "task-2",
+    title: "🟡 Content due for @shluv TikTok - Dance tutorial",
+    timestamp: "1 hour ago",
+    read: false,
+    source: "tasks",
+    metadata: { priority: "medium" },
+  },
+  {
+    id: "task-3",
+    title: "🟡 Kreatrix bug #142 - UI glitch on mobile reported",
+    timestamp: "2 hours ago",
+    read: false,
+    source: "tasks",
+    metadata: { priority: "medium" },
+  },
+  {
+    id: "task-4",
+    title: "✅ Morning briefing sent to Telegram",
+    timestamp: "8:00 AM",
+    read: true,
+    source: "tasks",
+    metadata: { priority: "low" },
+  },
+  {
+    id: "task-5",
+    title: "🟢 Editor task ping automation completed",
+    timestamp: "Yesterday",
+    read: true,
+    source: "tasks",
+    metadata: { priority: "low" },
+  },
+];
+
+const chatItems: ChannelItem[] = [
+  {
+    id: "chat-1",
+    title: "Hey Michael! The Kora Mission Control is now live. What would you like to work on?",
+    timestamp: "Just now",
+    type: "incoming",
+    source: "chat",
+  },
+  {
+    id: "chat-2",
+    title: "I've set up all the channel views. You can now see Email and Tasks separately!",
+    timestamp: "Just now",
+    type: "incoming",
+    source: "chat",
+  },
+];
+
+const matchesFilter = (item: ChannelItem, filter: CustomChannel["filter"]) => {
+  const text = `${item.title} ${item.preview ?? ""}`.toLowerCase();
+  const value = filter.value.toLowerCase();
+  if (!filter.sources.includes(item.source)) {
+    return false;
+  }
+
+  switch (filter.type) {
+    case "keyword":
+      return text.includes(value);
+    case "sender":
+      return `${item.metadata?.sender ?? ""}`.toLowerCase().includes(value);
+    case "label":
+      return Array.isArray(item.metadata?.labels)
+        ? (item.metadata?.labels as string[]).some((label) => label.toLowerCase().includes(value))
+        : false;
+    case "custom":
+      return text.includes(value);
+    default:
+      return false;
+  }
 };
 
-export default function ChannelView({ channel, title, isChat = false }: ChannelViewProps) {
+export default function ChannelView({
+  channel,
+  title,
+  isChat = false,
+  focusedItem,
+  onFocusItem,
+  customChannel,
+}: ChannelViewProps) {
   const [input, setInput] = useState("");
-  const messages = mockMessages[channel] || [];
+  const [activeAccount, setActiveAccount] = useState(emailAccounts[0]?.id ?? "");
+
+  const messages = useMemo(() => {
+    if (channel === "email") {
+      return emailItems.filter((item) => item.metadata?.accountId === activeAccount);
+    }
+    if (channel === "tasks") {
+      return taskItems;
+    }
+    if (channel === "custom") {
+      if (!customChannel) return [];
+      const combined = [...emailItems, ...taskItems];
+      return combined.filter((item) => matchesFilter(item, customChannel.filter));
+    }
+    if (channel === "chat") {
+      return chatItems;
+    }
+    return [];
+  }, [activeAccount, channel, customChannel]);
 
   const handleSend = () => {
     if (!input.trim()) return;
     // TODO: Integrate with OpenClaw
     console.log("Sending:", input);
     setInput("");
+  };
+
+  const handleFocusItem = (item: ChannelItem) => {
+    if (!onFocusItem) return;
+    const itemType = item.source === "email" ? "email" : item.source === "tasks" ? "task" : "notification";
+    onFocusItem({
+      type: itemType,
+      id: item.id,
+      title: item.title,
+      preview: item.preview ?? "",
+      metadata: { ...item.metadata, source: item.source, timestamp: item.timestamp },
+    });
   };
 
   return (
@@ -59,7 +215,7 @@ export default function ChannelView({ channel, title, isChat = false }: ChannelV
         <div>
           <h1 className="text-xl font-bold">{title}</h1>
           <p className="text-sm text-zinc-500">
-            {messages.filter(m => !m.read).length} unread items
+            {messages.filter((m) => !m.read).length} unread items
           </p>
         </div>
         <div className="flex gap-2">
@@ -72,25 +228,50 @@ export default function ChannelView({ channel, title, isChat = false }: ChannelV
         </div>
       </div>
 
+      {channel === "email" && (
+        <EmailTabs accounts={emailAccounts} activeAccount={activeAccount} onChange={setActiveAccount} />
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {channel === "custom" && !customChannel && (
+          <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 p-6 text-center text-sm text-zinc-500">
+            No custom channel selected yet. Create one in chat to see filtered items here.
+          </div>
+        )}
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`p-4 rounded-xl border transition-all ${
+            role={onFocusItem ? "button" : undefined}
+            tabIndex={onFocusItem ? 0 : -1}
+            onClick={() => onFocusItem && handleFocusItem(message)}
+            onKeyDown={(event) => {
+              if (!onFocusItem) return;
+              if (event.key === "Enter") {
+                handleFocusItem(message);
+              }
+            }}
+            className={`p-4 rounded-xl border transition-all focus:outline-none ${
               message.read
                 ? "bg-zinc-900/30 border-zinc-800/50 opacity-60"
                 : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
-            } ${message.type === "outgoing" ? "ml-12" : ""}`}
+            } ${message.type === "outgoing" ? "ml-12" : ""} ${
+              focusedItem?.id === message.id ? "ring-2 ring-indigo-500/70" : ""
+            } ${onFocusItem ? "cursor-pointer hover:shadow-md" : ""}`}
           >
             <div className="flex items-start justify-between gap-4">
               <p className={`flex-1 ${message.read ? "text-zinc-400" : "text-zinc-200"}`}>
-                {message.content}
+                {message.title}
               </p>
               {!message.read && (
                 <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-2" />
               )}
             </div>
+            {message.preview && (
+              <p className="text-xs text-zinc-500 mt-2">
+                {message.preview}
+              </p>
+            )}
             <p className="text-xs text-zinc-600 mt-2">{message.timestamp}</p>
           </div>
         ))}

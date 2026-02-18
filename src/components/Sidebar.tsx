@@ -1,25 +1,33 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import { ViewType } from "@/app/page";
+import { CustomChannel, createCustomChannel } from "@/lib/channelStorage";
 
 interface SidebarProps {
   activeView: ViewType;
   onNavigate: (view: ViewType) => void;
+  customChannels: CustomChannel[];
+  activeCustomChannelId: string | null;
+  onSelectCustomChannel: (channelId: string) => void;
 }
 
 interface NavItem {
-  id: ViewType;
+  id?: ViewType;
   icon: string;
   label: string;
   badge?: number;
+  href?: string;
+  external?: boolean;
 }
 
 const channelItems: NavItem[] = [
   { id: "dashboard", icon: "🏠", label: "Dashboard" },
   { id: "email", icon: "📧", label: "Email", badge: 3 },
   { id: "tasks", icon: "✅", label: "Tasks", badge: 5 },
-  { id: "business", icon: "💼", label: "Business", badge: 2 },
   { id: "chat", icon: "💬", label: "Chat" },
+  { id: "payables", icon: "💸", label: "Payables", href: "/payables" },
 ];
 
 const koraItems: NavItem[] = [
@@ -28,25 +36,77 @@ const koraItems: NavItem[] = [
   { id: "integrations", icon: "🔌", label: "Integrations" },
 ];
 
-export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
-  const NavButton = ({ item }: { item: NavItem }) => (
-    <button
-      onClick={() => onNavigate(item.id)}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
-        activeView === item.id
-          ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
-          : "hover:bg-white/5 text-zinc-400 hover:text-zinc-200"
-      }`}
-    >
-      <span className="text-xl">{item.icon}</span>
-      <span className="flex-1 font-medium">{item.label}</span>
-      {item.badge && (
-        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-600 text-white">
-          {item.badge}
-        </span>
-      )}
-    </button>
-  );
+const appLinks = [
+  { name: "Kreatrix AI", url: "https://kreatrix.vercel.app", emoji: "🎨" },
+  { name: "Flow-State Calendar", url: "https://flow-state-calendar.vercel.app", emoji: "📅" },
+  { name: "Internal Invoicer", url: "https://internal-promo-invoicer.vercel.app", emoji: "💰" },
+  { name: "SnapTasks", url: "https://snaptasks.vercel.app", emoji: "📸" },
+  { name: "Dance Trainer", url: "https://dance-trainer.vercel.app", emoji: "💃" },
+  { name: "Saigon BonBon", url: "https://saigon-bonbon.vercel.app", emoji: "🍜" },
+];
+
+export default function Sidebar({
+  activeView,
+  onNavigate,
+  customChannels,
+  activeCustomChannelId,
+  onSelectCustomChannel,
+}: SidebarProps) {
+  const [appsOpen, setAppsOpen] = useState(true);
+
+  const NavButton = ({ item }: { item: NavItem }) => {
+    const isActive = item.id && activeView === item.id;
+    const classes = `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
+      isActive
+        ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
+        : "hover:bg-white/5 text-zinc-400 hover:text-zinc-200"
+    }`;
+
+    const content = (
+      <>
+        <span className="text-xl">{item.icon}</span>
+        <span className="flex-1 font-medium">{item.label}</span>
+        {item.badge && (
+          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-600 text-white">
+            {item.badge}
+          </span>
+        )}
+      </>
+    );
+
+    if (item.href) {
+      if (item.external) {
+        return (
+          <a href={item.href} target="_blank" rel="noreferrer" className={classes}>
+            {content}
+          </a>
+        );
+      }
+
+      return (
+        <Link href={item.href} className={classes}>
+          {content}
+        </Link>
+      );
+    }
+
+    return (
+      <button onClick={() => item.id && onNavigate(item.id)} className={classes}>
+        {content}
+      </button>
+    );
+  };
+
+  const handleCreateChannel = async () => {
+    const name = window.prompt("Name your channel");
+    if (!name) return;
+    const newChannel = await createCustomChannel({
+      name,
+      emoji: "✨",
+      filter: { type: "keyword", value: name, sources: ["email", "tasks"] },
+    });
+    onSelectCustomChannel(newChannel.id);
+  };
 
   return (
     <aside className="w-64 bg-zinc-900/50 border-r border-zinc-800 flex flex-col">
@@ -85,6 +145,41 @@ export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
           </div>
         </div>
 
+        {/* Custom Channels Section */}
+        <div>
+          <div className="flex items-center justify-between px-3 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            <span>Custom Channels</span>
+            <button
+              onClick={handleCreateChannel}
+              className="text-base text-zinc-500 hover:text-zinc-200 transition-colors"
+            >
+              +
+            </button>
+          </div>
+          <div className="space-y-1">
+            {customChannels.length === 0 && (
+              <div className="px-3 py-2 text-xs text-zinc-600">Create a channel in chat to get started.</div>
+            )}
+            {customChannels.map((channel) => {
+              const isActive = activeView === "custom" && activeCustomChannelId === channel.id;
+              return (
+                <button
+                  key={channel.id}
+                  onClick={() => onSelectCustomChannel(channel.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
+                    isActive
+                      ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
+                      : "hover:bg-white/5 text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <span className="text-lg">{channel.emoji}</span>
+                  <span className="flex-1 text-sm font-medium">{channel.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Kora Section */}
         <div>
           <h2 className="px-3 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
@@ -95,6 +190,34 @@ export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
               <NavButton key={item.id} item={item} />
             ))}
           </div>
+        </div>
+
+        {/* Apps Section */}
+        <div>
+          <button
+            onClick={() => setAppsOpen((prev) => !prev)}
+            className="w-full flex items-center justify-between px-3 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider"
+          >
+            <span>Apps</span>
+            <span className={`text-base transition-transform ${appsOpen ? "rotate-180" : ""}`}>▾</span>
+          </button>
+          {appsOpen && (
+            <div className="space-y-1">
+              {appLinks.map((app) => (
+                <a
+                  key={app.name}
+                  href={app.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all hover:bg-white/5 text-zinc-400 hover:text-zinc-200"
+                >
+                  <span className="text-lg">{app.emoji}</span>
+                  <span className="flex-1 text-sm font-medium">{app.name}</span>
+                  <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </nav>
 

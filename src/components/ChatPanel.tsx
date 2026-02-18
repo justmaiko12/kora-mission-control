@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import ContextBadge from "@/components/ContextBadge";
+import { FocusedItem } from "@/lib/types";
+import { ChannelSuggestion, createCustomChannel } from "@/lib/channelStorage";
 
 interface ChatPanelProps {
   onClose: () => void;
+  focusedItem: FocusedItem | null;
+  onClearFocus: () => void;
 }
 
 interface Message {
@@ -11,9 +16,50 @@ interface Message {
   content: string;
   sender: "user" | "kora";
   timestamp: Date;
+  context?: FocusedItem | null;
 }
 
-export default function ChatPanel({ onClose }: ChatPanelProps) {
+const emojiMap: Record<string, string> = {
+  dance: "💃",
+  invoice: "🧾",
+  invoices: "🧾",
+  brand: "✨",
+  sponsorship: "🤝",
+  analytics: "📈",
+  contract: "📄",
+};
+
+const parseChannelCommand = (input: string): ChannelSuggestion | null => {
+  const lower = input.toLowerCase();
+  const createMatch = /(create|make|add)\s+(a\s+)?(channel|view)/.test(lower);
+  const wantMatch = /(i want|i need).*(view|channel)/.test(lower);
+  if (!createMatch && !wantMatch) return null;
+
+  let topic = "";
+  const forMatch = input.match(/(?:for|about|called|named)\s+(.+)/i);
+  if (forMatch?.[1]) {
+    topic = forMatch[1].replace(/[.?!]+$/, "").trim();
+  }
+  if (!topic) {
+    topic = input.replace(/create|make|add|channel|view|for|about|called|named/gi, "").trim();
+  }
+  if (!topic) return null;
+
+  const keyword = topic.split(" ").slice(0, 3).join(" ");
+  const usesEmailOnly = /email|emails/.test(lower);
+  const emojiKey = Object.keys(emojiMap).find((key) => keyword.toLowerCase().includes(key));
+  return {
+    name: topic.replace(/(^\w)/, (match) => match.toUpperCase()),
+    emoji: emojiKey ? emojiMap[emojiKey] : "✨",
+    filter: {
+      type: "keyword",
+      value: keyword,
+      sources: usesEmailOnly ? ["email"] : ["email", "tasks"],
+    },
+  };
+};
+
+export default function ChatPanel({ onClose, focusedItem, onClearFocus }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -33,17 +79,34 @@ export default function ChatPanel({ onClose }: ChatPanelProps) {
       content: input,
       sender: "user",
       timestamp: new Date(),
+      context: focusedItem,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
 
+    const channelSuggestion = parseChannelCommand(userMessage.content);
+    if (channelSuggestion) {
+      await createCustomChannel(channelSuggestion);
+      const koraMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `I'll create the "${channelSuggestion.name}" channel for you! ${channelSuggestion.emoji}`,
+        sender: "kora",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, koraMessage]);
+      setIsLoading(false);
+      return;
+    }
+
     // Simulate response (TODO: integrate with OpenClaw)
     setTimeout(() => {
       const koraMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "I received your message! Integration with OpenClaw coming soon. 🦞",
+        content: focusedItem
+          ? `Got it. I'll focus on "${focusedItem.title}" while I help.`
+          : "I received your message! Integration with OpenClaw coming soon. 🦞",
         sender: "kora",
         timestamp: new Date(),
       };
@@ -75,6 +138,7 @@ export default function ChatPanel({ onClose }: ChatPanelProps) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {focusedItem && <ContextBadge item={focusedItem} onClear={onClearFocus} />}
         {messages.map((message) => (
           <div
             key={message.id}
@@ -87,6 +151,11 @@ export default function ChatPanel({ onClose }: ChatPanelProps) {
                   : "bg-zinc-800 text-zinc-200 rounded-bl-md"
               }`}
             >
+              {message.context && (
+                <p className="text-[11px] uppercase tracking-wide opacity-70 mb-1">
+                  Regarding {message.context.title}
+                </p>
+              )}
               <p className="text-sm">{message.content}</p>
               <p className="text-xs opacity-60 mt-1">
                 {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

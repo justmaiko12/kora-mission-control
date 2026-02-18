@@ -445,7 +445,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           const emailSubject = safeString(email.subject) || "(no subject)";
           const emailDate = formatDate(safeString(email.date));
           const isRead = Boolean(email.read);
-          const isFocused = safeString(focusedItem?.id) === emailId;
+          const isFocused = false; // DISABLED: safeString(focusedItem?.id) === emailId;
           
           return (
             <div

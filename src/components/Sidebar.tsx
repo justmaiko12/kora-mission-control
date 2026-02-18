@@ -37,7 +37,6 @@ const appLinks = [
   { name: "Kreatrix AI", url: "https://kreatrix.vercel.app", emoji: "🎨" },
   { name: "Flow-State Calendar", url: "https://flow-state-calendar.vercel.app", emoji: "📅" },
   { name: "Internal Invoicer", url: "https://internal-promo-invoicer.vercel.app", emoji: "💰" },
-  { name: "SnapTasks", url: "https://snaptasks.vercel.app", emoji: "📸" },
   { name: "Dance Trainer", url: "https://dance-trainer.vercel.app", emoji: "💃" },
   { name: "Saigon BonBon", url: "https://saigon-bonbon.vercel.app", emoji: "🍜" },
 ];

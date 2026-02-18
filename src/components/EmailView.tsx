@@ -16,6 +16,7 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
     useEmails();
   const [selectedEmail, setSelectedEmail] = useState<EmailThread | null>(null);
   const [markingDeal, setMarkingDeal] = useState<string | null>(null);
+  const [ignoredIds, setIgnoredIds] = useState<Set<string>>(new Set());
 
   const handleSelectEmail = (email: EmailThread) => {
     setSelectedEmail(email);
@@ -95,6 +96,28 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
     }
   };
 
+  const handleIgnore = async (email: EmailThread) => {
+    setMarkingDeal(email.id);
+    try {
+      // Archive the email via API
+      await fetch("/api/emails/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: email.id,
+          account: activeAccount,
+        }),
+      });
+      // Hide from UI immediately
+      setIgnoredIds((prev) => new Set([...prev, email.id]));
+      setSelectedEmail(null);
+    } catch (err) {
+      console.error("Failed to ignore email:", err);
+    } finally {
+      setMarkingDeal(null);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     const now = new Date();
     const date = new Date(dateStr.replace(" ", "T"));
@@ -114,7 +137,9 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const unreadCount = emails.filter((e) => !e.read).length;
+  // Filter out ignored emails
+  const visibleEmails = emails.filter((e) => !ignoredIds.has(e.id));
+  const unreadCount = visibleEmails.filter((e) => !e.read).length;
 
   // If an email is selected, show split view
   if (selectedEmail) {
@@ -153,7 +178,7 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
 
           {/* Compact Email List */}
           <div className="flex-1 overflow-y-auto">
-            {emails.map((email) => (
+            {visibleEmails.map((email) => (
               <div
                 key={email.id}
                 onClick={() => handleSelectEmail(email)}
@@ -190,6 +215,7 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
             onClose={() => setSelectedEmail(null)}
             onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
             onMarkAsRequest={(e) => handleMarkAsRequest(e, selectedEmail)}
+            onIgnore={() => handleIgnore(selectedEmail)}
             isMarking={markingDeal === selectedEmail.id}
           />
         </div>
@@ -251,7 +277,7 @@ export default function EmailView({ focusedItem, onFocusItem }: EmailViewProps) 
 
       {/* Emails List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {emails.map((email) => (
+        {visibleEmails.map((email) => (
           <div
             key={email.id}
             onClick={() => handleSelectEmail(email)}

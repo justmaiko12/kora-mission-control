@@ -9,6 +9,7 @@ interface EmailDetailProps {
   onClose: () => void;
   onMarkAsDeal: (e: React.MouseEvent) => void;
   onMarkAsRequest: (e: React.MouseEvent) => void;
+  onIgnore: () => void;
   isMarking: boolean;
 }
 
@@ -28,6 +29,7 @@ export default function EmailDetail({
   onClose,
   onMarkAsDeal,
   onMarkAsRequest,
+  onIgnore,
   isMarking,
 }: EmailDetailProps) {
   const [messages, setMessages] = useState<EmailMessage[]>([]);
@@ -103,6 +105,13 @@ export default function EmailDetail({
             className="px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors disabled:opacity-50"
           >
             📋 Request
+          </button>
+          <button
+            onClick={onIgnore}
+            disabled={isMarking}
+            className="px-3 py-1.5 text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded-lg transition-colors disabled:opacity-50"
+          >
+            🗑️ Ignore
           </button>
         </div>
       </div>

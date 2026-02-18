@@ -14,9 +14,10 @@ interface ActivityItem {
 interface ActivityFeedProps {
   context?: string; // "email" | "deals" | "general"
   onCommand?: (command: string) => void;
+  emailAccount?: string; // Current email account when in email context
 }
 
-export default function ActivityFeed({ context = "general", onCommand }: ActivityFeedProps) {
+export default function ActivityFeed({ context = "general", onCommand, emailAccount }: ActivityFeedProps) {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [command, setCommand] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,7 +54,11 @@ export default function ActivityFeed({ context = "general", onCommand }: Activit
       const res = await fetch("/api/command", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command: command.trim(), context }),
+        body: JSON.stringify({ 
+          command: command.trim(), 
+          context,
+          emailAccount: context === "email" ? emailAccount : undefined,
+        }),
       });
       
       const data = await res.json();
@@ -161,7 +166,7 @@ export default function ActivityFeed({ context = "general", onCommand }: Activit
             onChange={(e) => setCommand(e.target.value)}
             placeholder={
               context === "email" 
-                ? "Quick command: archive all from newsletters..." 
+                ? `Command for ${emailAccount || 'email'}...` 
                 : "Quick command..."
             }
             className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 placeholder-zinc-500"
@@ -176,7 +181,10 @@ export default function ActivityFeed({ context = "general", onCommand }: Activit
           </button>
         </div>
         <p className="text-xs text-zinc-600 mt-2 px-1">
-          Examples: "archive all from @newsletters.com" • "mark Nike deal as active"
+          {context === "email" 
+            ? `Examples: "archive all from @amazon.com" • "delete all from newsletters" • "spam from @acquire.com"`
+            : `Examples: "archive all from @domain.com" • "mark Nike deal as active"`
+          }
         </p>
       </form>
     </div>

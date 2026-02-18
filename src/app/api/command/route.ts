@@ -5,7 +5,7 @@ const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 
 export async function POST(req: Request) {
   try {
-    const { command, context } = await req.json();
+    const { command, context, emailAccount } = await req.json();
 
     if (!command) {
       return NextResponse.json({ error: "Command required" }, { status: 400 });
@@ -22,6 +22,7 @@ export async function POST(req: Request) {
         message: command,
         chatContext: context || "general",
         userId: "michael",
+        account: emailAccount, // Pass the current email account
       }),
     });
 

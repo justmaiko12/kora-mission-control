@@ -248,6 +248,7 @@ function HomeContent() {
                 <ActivityFeed
                   context={viewToActivityContext[activeView]}
                   onCommand={() => handleRefreshEmails()}
+                  emailAccount={activeView === "email" ? activeEmailAccount : undefined}
                 />
               </ErrorBoundary>
             </div>
@@ -285,6 +286,7 @@ function HomeContent() {
                   <ActivityFeed
                     context={viewToActivityContext[activeView]}
                     onCommand={() => handleRefreshEmails()}
+                    emailAccount={activeView === "email" ? activeEmailAccount : undefined}
                   />
                 </ErrorBoundary>
               </div>

@@ -7,7 +7,7 @@ import ChannelView from "@/components/ChannelView";
 import MemoryBrowser from "@/components/MemoryBrowser";
 import KoraTasks from "@/components/KoraTasks";
 import Integrations from "@/components/Integrations";
-import InlineChat, { ChatContext } from "@/components/InlineChat";
+import ActivityFeed from "@/components/ActivityFeed";
 import EmailView from "@/components/EmailView";
 import DealsView from "@/components/DealsView";
 import Dashboard from "@/components/Dashboard";
@@ -54,8 +54,8 @@ const viewTitles: Record<ViewType, string> = {
   business: "Deals",
 };
 
-// Map views to their chat context (email and deals share context, dashboard/tasks/memory share context)
-const viewToChatContext: Record<ViewType, ChatContext> = {
+// Map views to their activity context
+const viewToActivityContext: Record<ViewType, string> = {
   dashboard: "general",
   email: "email",
   tasks: "tasks",
@@ -65,7 +65,7 @@ const viewToChatContext: Record<ViewType, ChatContext> = {
   "kora-tasks": "general",
   integrations: "integrations",
   payables: "payables",
-  business: "email", // Deals uses same chat as email (deals come from emails)
+  business: "deals",
 };
 
 function HomeContent() {
@@ -75,7 +75,6 @@ function HomeContent() {
   const [activeCustomChannelId, setActiveCustomChannelId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
-  const [chatFullscreen, setChatFullscreen] = useState(false);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [previewEmailIds, setPreviewEmailIds] = useState<string[]>([]);
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0);
@@ -230,74 +229,79 @@ function HomeContent() {
           {renderView()}
         </main>
 
-        {/* Mobile Chat - bottom half when open */}
-        {mobileChatOpen && !chatFullscreen && (
-          <div className="md:hidden h-[50%] border-t border-zinc-800">
-            <ErrorBoundary name="MobileChat">
-            <InlineChat
-              focusedItem={focusedItem}
-              onClearFocus={() => setFocusedItem(null)}
-              chatContext={viewToChatContext[activeView]}
-              isCollapsed={false}
-              onToggleCollapse={() => setMobileChatOpen(false)}
-              isFullscreen={false}
-              onToggleFullscreen={() => setChatFullscreen(true)}
-              onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
-              onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
-              activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
-            />
-            </ErrorBoundary>
+        {/* Mobile Activity Feed - bottom half when open */}
+        {mobileChatOpen && (
+          <div className="md:hidden h-[50%] border-t border-zinc-800 flex flex-col">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800">
+              <span className="font-semibold text-sm">Activity</span>
+              <button
+                onClick={() => setMobileChatOpen(false)}
+                className="p-1.5 hover:bg-zinc-800 rounded-lg"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ErrorBoundary name="MobileActivity">
+                <ActivityFeed
+                  context={viewToActivityContext[activeView]}
+                  onCommand={() => handleRefreshEmails()}
+                />
+              </ErrorBoundary>
+            </div>
           </div>
         )}
 
-        {/* Desktop: Persistent Chat - always visible */}
-        {!chatFullscreen && (
-          <div className={`hidden md:block border-t border-zinc-800 transition-all ${chatCollapsed ? "h-auto" : "h-[40%] min-h-[250px] max-h-[350px]"}`}>
-            <ErrorBoundary name="DesktopChat">
-              <InlineChat
-                focusedItem={focusedItem}
-                onClearFocus={() => setFocusedItem(null)}
-                chatContext={viewToChatContext[activeView]}
-                isCollapsed={chatCollapsed}
-                onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
-                isFullscreen={false}
-                onToggleFullscreen={() => setChatFullscreen(true)}
-                onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
-                onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
-                activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
-              />
-            </ErrorBoundary>
-          </div>
-        )}
-
-        {/* Fullscreen Chat Overlay */}
-        {chatFullscreen && (
-          <div className="fixed inset-0 z-50">
-            <ErrorBoundary name="FullscreenChat">
-              <InlineChat
-                focusedItem={focusedItem}
-                onClearFocus={() => setFocusedItem(null)}
-                chatContext={viewToChatContext[activeView]}
-                isCollapsed={false}
-                onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
-                isFullscreen={true}
-                onToggleFullscreen={() => setChatFullscreen(false)}
-                onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
-                onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
-                activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
-              />
-            </ErrorBoundary>
+        {/* Desktop: Persistent Activity Feed - always visible */}
+        {/* Desktop: Persistent Activity Feed */}
+        <div className={`hidden md:block border-t border-zinc-800 transition-all ${chatCollapsed ? "h-12" : "h-[35%] min-h-[200px] max-h-[300px]"}`}>
+            {chatCollapsed ? (
+              <button
+                onClick={() => setChatCollapsed(false)}
+                className="w-full h-full flex items-center justify-center gap-2 text-zinc-400 hover:text-white hover:bg-zinc-900/50 transition-colors"
+              >
+                <span>📋</span>
+                <span className="text-sm">Activity & Commands</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+            ) : (
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-end px-4 py-1 border-b border-zinc-800/50">
+                  <button
+                    onClick={() => setChatCollapsed(true)}
+                    className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white"
+                    title="Collapse"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <ErrorBoundary name="DesktopActivity">
+                    <ActivityFeed
+                      context={viewToActivityContext[activeView]}
+                      onCommand={() => handleRefreshEmails()}
+                    />
+                  </ErrorBoundary>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Mobile Chat FAB - hidden when chat is open */}
-      {!mobileChatOpen && !chatFullscreen && (
+      {/* Mobile Activity FAB - hidden when panel is open */}
+      {!mobileChatOpen && (
         <button
           className="md:hidden fixed bottom-4 right-4 w-14 h-14 bg-indigo-600 rounded-full shadow-lg flex items-center justify-center text-2xl z-30"
           onClick={() => setMobileChatOpen(true)}
         >
-          💬
+          📋
         </button>
       )}
     </div>

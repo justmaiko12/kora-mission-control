@@ -263,7 +263,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
             <div>
               <h1 className="text-lg font-bold">📧 Email</h1>
               <p className="text-xs text-zinc-500">
-                {loading ? "Loading..." : `${unreadCount} unread`}
+                {loading ? "Loading..." : `${String(unreadCount)} unread`}
               </p>
             </div>
             <button
@@ -291,32 +291,41 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
 
           {/* Compact Email List */}
           <div className="flex-1 overflow-y-auto">
-            {visibleEmails.map((email) => (
-              <div
-                key={email.id}
-                onClick={() => handleSelectEmail(email)}
-                className={`p-3 border-b border-zinc-800/50 cursor-pointer transition-colors ${
-                  selectedEmail?.id === email.id
-                    ? "bg-indigo-600/20 border-l-2 border-l-indigo-500"
-                    : "hover:bg-zinc-800/50"
-                } ${email.read ? "opacity-60" : ""}`}
-              >
-                <div className="flex items-start gap-2">
-                  {!email.read && (
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm truncate ${email.read ? "text-zinc-400" : "font-medium"}`}>
-                      {safeString(email.subject) || "(no subject)"}
-                    </p>
-                    <p className="text-xs text-zinc-500 truncate mt-0.5">{safeString(email.from)}</p>
+            {visibleEmails.map((email) => {
+              const emailId = safeString(email.id);
+              const emailSubject = safeString(email.subject) || "(no subject)";
+              const emailFrom = safeString(email.from);
+              const emailDate = formatDate(safeString(email.date));
+              const isRead = Boolean(email.read);
+              const isSelected = safeString(selectedEmail?.id) === emailId;
+              
+              return (
+                <div
+                  key={emailId}
+                  onClick={() => handleSelectEmail(email)}
+                  className={`p-3 border-b border-zinc-800/50 cursor-pointer transition-colors ${
+                    isSelected
+                      ? "bg-indigo-600/20 border-l-2 border-l-indigo-500"
+                      : "hover:bg-zinc-800/50"
+                  } ${isRead ? "opacity-60" : ""}`}
+                >
+                  <div className="flex items-start gap-2">
+                    {!isRead && (
+                      <span className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm truncate ${isRead ? "text-zinc-400" : "font-medium"}`}>
+                        {emailSubject}
+                      </p>
+                      <p className="text-xs text-zinc-500 truncate mt-0.5">{emailFrom}</p>
+                    </div>
+                    <span className="text-[10px] text-zinc-600 flex-shrink-0">
+                      {emailDate}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-zinc-600 flex-shrink-0">
-                    {formatDate(safeString(email.date))}
-                  </span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

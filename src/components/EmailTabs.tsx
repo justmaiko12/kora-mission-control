@@ -16,8 +16,7 @@ interface EmailTabsProps {
   onChange: (accountId: string) => void;
 }
 
-// Version bump forces localStorage reset for all users
-const STORAGE_KEY = "kora-email-tab-names-v2";
+const STORAGE_KEY = "kora-email-tab-names-v3";
 
 export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTabsProps) {
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
@@ -26,14 +25,35 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
   const [mounted, setMounted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load from localStorage after mount (avoids SSR issues)
+  // Load from API (with localStorage fallback)
   useEffect(() => {
     setMounted(true);
+    
+    // Try API first
+    fetch("/api/settings")
+      .then(res => res.json())
+      .then(data => {
+        if (data.emailTabNames && Object.keys(data.emailTabNames).length > 0) {
+          console.log("[EmailTabs] Loaded from API:", data.emailTabNames);
+          setCustomNames(data.emailTabNames);
+          // Sync to localStorage
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data.emailTabNames));
+        } else {
+          // Fallback to localStorage
+          loadFromLocalStorage();
+        }
+      })
+      .catch(() => {
+        console.log("[EmailTabs] API unavailable, using localStorage");
+        loadFromLocalStorage();
+      });
+  }, []);
+
+  const loadFromLocalStorage = () => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Validate that parsed is a plain object with string values
         if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
           const validated: Record<string, string> = {};
           for (const [key, value] of Object.entries(parsed)) {
@@ -41,19 +61,14 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
               validated[key] = value;
             }
           }
-          console.log("[EmailTabs] Loaded custom names:", validated);
+          console.log("[EmailTabs] Loaded from localStorage:", validated);
           setCustomNames(validated);
-        } else {
-          // Invalid format, clear it
-          console.warn("[EmailTabs] Invalid format, clearing localStorage");
-          localStorage.removeItem(STORAGE_KEY);
         }
       }
     } catch (err) {
-      console.error("[EmailTabs] Failed to load custom names, clearing:", err);
-      localStorage.removeItem(STORAGE_KEY);
+      console.error("[EmailTabs] Failed to load from localStorage:", err);
     }
-  }, []);
+  };
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -67,16 +82,29 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
     setEditValue(currentName);
   };
 
-  const handleSave = (accountId: string) => {
+  const handleSave = async (accountId: string) => {
     const trimmed = editValue.trim();
     if (trimmed) {
       const updated = { ...customNames, [accountId]: trimmed };
       setCustomNames(updated);
+      
+      // Save to localStorage immediately
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        console.log("[EmailTabs] Saved custom names:", updated);
       } catch (err) {
-        console.error("[EmailTabs] Failed to save:", err);
+        console.error("[EmailTabs] localStorage save failed:", err);
+      }
+      
+      // Save to API for persistence across devices
+      try {
+        await fetch("/api/settings/email-tabs", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tabNames: { [accountId]: trimmed } }),
+        });
+        console.log("[EmailTabs] Saved to API:", { [accountId]: trimmed });
+      } catch (err) {
+        console.error("[EmailTabs] API save failed (localStorage backup exists):", err);
       }
     }
     setEditingId(null);
@@ -91,7 +119,6 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
   };
 
   const getDisplayName = (account: EmailAccount): string => {
-    // Check custom names first - ensure it's a string
     if (mounted && customNames[account.email]) {
       const name = customNames[account.email];
       return typeof name === "string" ? name : String(name);
@@ -100,7 +127,6 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
       const name = customNames[account.id];
       return typeof name === "string" ? name : String(name);
     }
-    // Default: username part of email
     return account.email?.split("@")[0] || "Email";
   };
 

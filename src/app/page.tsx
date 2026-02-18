@@ -75,6 +75,7 @@ function HomeContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [chatFullscreen, setChatFullscreen] = useState(false);
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [previewEmailIds, setPreviewEmailIds] = useState<string[]>([]);
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0);
   const [activeEmailAccount, setActiveEmailAccount] = useState<string>("");
@@ -221,12 +222,30 @@ function HomeContent() {
           </div>
         </header>
 
-        {/* Top: Current View */}
-        <main className="flex-1 overflow-auto min-h-0">
+        {/* Top: Current View - shrink when mobile chat is open */}
+        <main className={`overflow-auto min-h-0 ${mobileChatOpen ? "flex-1 h-[50%]" : "flex-1"}`}>
           {renderView()}
         </main>
 
-        {/* Bottom: Persistent Chat - hidden on mobile for more space */}
+        {/* Mobile Chat - bottom half when open */}
+        {mobileChatOpen && !chatFullscreen && (
+          <div className="md:hidden h-[50%] border-t border-zinc-800">
+            <InlineChat
+              focusedItem={focusedItem}
+              onClearFocus={() => setFocusedItem(null)}
+              chatContext={viewToChatContext[activeView]}
+              isCollapsed={false}
+              onToggleCollapse={() => setMobileChatOpen(false)}
+              isFullscreen={false}
+              onToggleFullscreen={() => setChatFullscreen(true)}
+              onPreviewEmails={activeView === "email" ? handlePreviewEmails : undefined}
+              onRefreshEmails={activeView === "email" ? handleRefreshEmails : undefined}
+              activeEmailAccount={activeView === "email" ? activeEmailAccount : undefined}
+            />
+          </div>
+        )}
+
+        {/* Desktop: Persistent Chat - always visible */}
         {!chatFullscreen && (
           <div className={`hidden md:block border-t border-zinc-800 transition-all ${chatCollapsed ? "h-auto" : "h-[40%] min-h-[250px] max-h-[350px]"}`}>
             <InlineChat
@@ -263,16 +282,15 @@ function HomeContent() {
         )}
       </div>
 
-      {/* Mobile Chat FAB */}
-      <button
-        className="md:hidden fixed bottom-4 right-4 w-14 h-14 bg-indigo-600 rounded-full shadow-lg flex items-center justify-center text-2xl z-30"
-        onClick={() => {
-          // Could open a chat modal here
-          setActiveView("chat");
-        }}
-      >
-        💬
-      </button>
+      {/* Mobile Chat FAB - hidden when chat is open */}
+      {!mobileChatOpen && !chatFullscreen && (
+        <button
+          className="md:hidden fixed bottom-4 right-4 w-14 h-14 bg-indigo-600 rounded-full shadow-lg flex items-center justify-center text-2xl z-30"
+          onClick={() => setMobileChatOpen(true)}
+        >
+          💬
+        </button>
+      )}
     </div>
   );
 }

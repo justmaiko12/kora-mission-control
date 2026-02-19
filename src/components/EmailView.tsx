@@ -52,6 +52,9 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     domain: string;
     emails: EmailThread[];
   } | null>(null);
+  
+  // Manually flagged as needs-response (local override)
+  const [flaggedNeedsResponse, setFlaggedNeedsResponse] = useState<Set<string>>(new Set());
 
   // Toggle individual email selection
   const toggleSelect = (emailId: string) => {
@@ -338,6 +341,9 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
 
   // Flag email as needing response (for training the filter)
   const handleFlagNeedsResponse = async (email: EmailThread) => {
+    // Immediately add to local flagged set (optimistic)
+    setFlaggedNeedsResponse(prev => new Set([...prev, email.id]));
+    
     try {
       await fetch("/api/emails/feedback", {
         method: "POST",
@@ -349,10 +355,14 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           email: { from: email.from, subject: email.subject, labels: email.labels },
         }),
       });
-      // Visual feedback
-      alert("✅ Flagged! Filter will learn from this.");
     } catch (err) {
       console.error("Failed to flag email:", err);
+      // Rollback on error
+      setFlaggedNeedsResponse(prev => {
+        const next = new Set(prev);
+        next.delete(email.id);
+        return next;
+      });
     }
   };
 
@@ -427,12 +437,15 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     return colors[hash % colors.length];
   };
 
-  const needsResponseCount = visibleEmails.filter(e => e.needsResponse).length;
+  // Check if email needs response (original flag OR manually flagged)
+  const emailNeedsResponse = (e: EmailThread) => e.needsResponse || flaggedNeedsResponse.has(e.id);
+  
+  const needsResponseCount = visibleEmails.filter(emailNeedsResponse).length;
   
   const filteredEmails = filter === "unread" 
     ? visibleEmails.filter(e => !e.read)
     : filter === "needs-response"
-    ? visibleEmails.filter(e => e.needsResponse)
+    ? visibleEmails.filter(emailNeedsResponse)
     : visibleEmails;
 
   // Default: full email list view
@@ -742,7 +755,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                     </svg>
                   </button>
                   {/* Flag as needs response (for training) */}
-                  {!email.needsResponse && (
+                  {!emailNeedsResponse(email) && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

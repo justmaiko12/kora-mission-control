@@ -688,6 +688,37 @@ export default function EmailView({
     }
   };
 
+  // Delete all emails from a specific domain (after unsubscribe)
+  const handleDeleteAllFromSender = (domain: string) => {
+    // Find all emails from this domain
+    const emailsFromDomain = emails.filter(e => {
+      const emailDomain = e.from.match(/@([^>\s]+)/)?.[1]?.toLowerCase();
+      return emailDomain === domain.toLowerCase();
+    });
+    
+    if (emailsFromDomain.length === 0) return;
+    
+    console.log(`[Email] Deleting ${emailsFromDomain.length} emails from @${domain}`);
+    
+    // OPTIMISTIC: Hide all immediately
+    const idsToArchive = emailsFromDomain.map(e => e.id);
+    setIgnoredIds(prev => new Set([...prev, ...idsToArchive]));
+    
+    // Fire all API calls in parallel
+    for (const email of emailsFromDomain) {
+      fetch("/api/emails/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: email.id,
+          account: activeAccount,
+          action: "archive",
+          email: { from: email.from, subject: email.subject, labels: email.labels },
+        }),
+      }).catch(err => console.error(`Failed to archive ${email.id}:`, err));
+    }
+  };
+
   // Show detail view when email is selected
   if (selectedEmail) {
     return (
@@ -707,6 +738,7 @@ export default function EmailView({
               }
             }}
             onReplySent={handleReplySent}
+            onDeleteAllFromSender={handleDeleteAllFromSender}
             isMarking={markingDeal === selectedEmail.id}
             linkedDeal={selectedEmailDeal}
           />

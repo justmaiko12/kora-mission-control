@@ -24,6 +24,7 @@ interface EmailDetailProps {
   onIgnore: () => void;
   onDone: () => void;
   onReplySent?: () => void; // Called after successful reply - removes from "Needs Response"
+  onDeleteAllFromSender?: (domain: string) => void; // Delete all emails from this sender
   isMarking: boolean;
   linkedDeal?: LinkedDeal | null; // Deal linked to this email
 }
@@ -57,6 +58,7 @@ export default function EmailDetail({
   onIgnore,
   onDone,
   onReplySent,
+  onDeleteAllFromSender,
   isMarking,
   linkedDeal,
 }: EmailDetailProps) {
@@ -81,6 +83,11 @@ export default function EmailDetail({
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceSuccess, setInvoiceSuccess] = useState<string | null>(null);
   const [localInvoiceId, setLocalInvoiceId] = useState<string | null>(linkedDeal?.invoiceId || null);
+  
+  // Unsubscribe
+  const [hasUnsubscribe, setHasUnsubscribe] = useState(false);
+  const [unsubscribing, setUnsubscribing] = useState(false);
+  const [unsubscribeSuccess, setUnsubscribeSuccess] = useState(false);
   
   // Update local invoice ID if linkedDeal changes
   useEffect(() => {
@@ -173,6 +180,8 @@ export default function EmailDetail({
     async function fetchThread() {
       setLoading(true);
       setError(null);
+      setHasUnsubscribe(false);
+      setUnsubscribeSuccess(false);
       try {
         const res = await fetch(
           `/api/emails/thread?id=${encodeURIComponent(email.id)}&account=${encodeURIComponent(account)}`
@@ -183,6 +192,10 @@ export default function EmailDetail({
         }
         const data = await res.json();
         setMessages(data.messages || []);
+        // Check if thread has unsubscribe option
+        if (data.hasUnsubscribe) {
+          setHasUnsubscribe(true);
+        }
       } catch (err) {
         console.error("Thread fetch error:", err);
         setError(err instanceof Error ? err.message : "Failed to load email");
@@ -261,6 +274,59 @@ export default function EmailDetail({
       setMessages(data.messages || []);
     } catch (err) {
       console.error("Failed to refresh thread:", err);
+    }
+  };
+
+  // Handle unsubscribe and cleanup
+  const handleUnsubscribe = async () => {
+    setUnsubscribing(true);
+    try {
+      const res = await fetch("/api/emails/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: email.id, account }),
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        setUnsubscribeSuccess(true);
+        // Extract domain for cleanup prompt
+        const domainMatch = email.from.match(/@([^>\s]+)/);
+        const domain = domainMatch ? domainMatch[1] : "this sender";
+        
+        // Offer to delete all emails from this sender
+        if (confirm(`✅ Unsubscribed from ${domain}!\n\nWould you also like to delete all other emails from @${domain}?`)) {
+          // Call parent to delete all from this domain
+          if (onDeleteAllFromSender) {
+            onDeleteAllFromSender(domain);
+          }
+          onIgnore(); // Also archive current email
+        }
+      } else if (data.unsubscribeUrl) {
+        // Fallback: open unsubscribe link
+        if (confirm(`Open unsubscribe page?\n\nWe'll open the unsubscribe link in a new tab.`)) {
+          window.open(data.unsubscribeUrl, "_blank");
+          setUnsubscribeSuccess(true);
+          
+          // Still offer cleanup after manual unsubscribe
+          const domainMatch = email.from.match(/@([^>\s]+)/);
+          const domain = domainMatch ? domainMatch[1] : "this sender";
+          if (confirm(`Would you also like to delete all other emails from @${domain}?`)) {
+            if (onDeleteAllFromSender) {
+              onDeleteAllFromSender(domain);
+            }
+            onIgnore();
+          }
+        }
+      } else {
+        alert(data.error || "Could not find unsubscribe option");
+      }
+    } catch (err) {
+      console.error("Unsubscribe error:", err);
+      alert("Failed to unsubscribe");
+    } finally {
+      setUnsubscribing(false);
     }
   };
 
@@ -471,6 +537,22 @@ export default function EmailDetail({
           >
             🗑️ Archive
           </button>
+          
+          {/* Unsubscribe button - shows when email has List-Unsubscribe header */}
+          {hasUnsubscribe && !unsubscribeSuccess && (
+            <button
+              onClick={handleUnsubscribe}
+              disabled={unsubscribing}
+              className="px-3 py-1.5 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {unsubscribing ? "..." : "🚫 Unsubscribe"}
+            </button>
+          )}
+          {unsubscribeSuccess && (
+            <span className="px-3 py-1.5 text-sm text-emerald-400">
+              ✅ Unsubscribed
+            </span>
+          )}
           
           {/* Invoice button - Generate or View based on whether invoice exists */}
           {linkedDeal && (effectiveInvoiceId || threadMentionsInvoice) && (

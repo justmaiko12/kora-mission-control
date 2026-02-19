@@ -229,7 +229,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     
     // Create new deal task but DON'T archive the email
     try {
-      await fetch("/api/deals", {
+      const res = await fetch("/api/deals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -248,6 +248,16 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
         }),
       });
       
+      const data = await res.json();
+      
+      if (!res.ok) {
+        console.error("Create deal failed:", data);
+        alert(`Failed to create deal: ${data.error || 'Unknown error'}`);
+        return;
+      }
+      
+      console.log("Deal created:", data);
+      
       // Track as important for learning
       fetch("/api/emails/feedback", {
         method: "POST",
@@ -261,10 +271,14 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
       }).catch(() => {});
       
       // Refresh linked emails to show the icon
-      fetchLinkedEmails();
+      await fetchLinkedEmails();
+      
+      // Show success
+      alert(`✅ Deal created: ${dealLinkEmail.subject}`);
       
     } catch (err) {
       console.error("Failed to create deal:", err);
+      alert("Failed to create deal");
     }
     
     setDealLinkEmail(null);
@@ -276,7 +290,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     
     // Link email to existing deal
     try {
-      await fetch("/api/deals", {
+      const res = await fetch("/api/deals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -291,6 +305,16 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
         }),
       });
       
+      const data = await res.json();
+      
+      if (!res.ok) {
+        console.error("Link failed:", data);
+        alert(`Failed to link: ${data.error || 'Unknown error'}`);
+        return;
+      }
+      
+      console.log("Link successful:", data);
+      
       // Track as important for learning
       fetch("/api/emails/feedback", {
         method: "POST",
@@ -304,10 +328,14 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
       }).catch(() => {});
       
       // Refresh linked emails to show the icon
-      fetchLinkedEmails();
+      await fetchLinkedEmails();
+      
+      // Show success feedback
+      alert(`✅ Linked to: ${data.deal?.subject || 'deal'}`);
       
     } catch (err) {
       console.error("Failed to link deal:", err);
+      alert("Failed to link email to deal");
     }
     
     setDealLinkEmail(null);

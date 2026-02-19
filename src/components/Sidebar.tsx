@@ -173,9 +173,9 @@ export default function Sidebar({
       {/* Sidebar */}
       <aside
         className={`
-          fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
+          fixed lg:relative inset-y-0 left-0 lg:inset-auto z-50 lg:z-10
           w-[240px] bg-[var(--surface-1)] border-r border-[var(--border)]
-          flex flex-col flex-shrink-0
+          flex flex-col flex-shrink-0 h-screen
           transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
           ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}

@@ -112,42 +112,36 @@ export default function Sidebar({
 
   const NavButton = ({ item }: { item: NavItem }) => {
     const isActive = item.id && activeView === item.id;
-    const classes = `group w-full flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-left transition-all duration-150 ${
-      isActive
-        ? "bg-white/[0.08] text-white"
-        : "text-[#9b9ba7] hover:bg-white/[0.04] hover:text-[#ededef]"
-    }`;
 
     const content = (
       <>
-        <span className="text-[15px] w-5 text-center flex-shrink-0">{item.icon}</span>
-        <span className="flex-1 text-[13px] font-medium">{item.label}</span>
+        <span className="text-lg leading-none w-5 text-center">{item.icon}</span>
+        <span className="flex-1 truncate">{item.label}</span>
         {item.badge !== undefined && item.badge > 0 && (
-          <span className="min-w-[18px] h-[18px] flex items-center justify-center px-1 text-[10px] font-semibold rounded-full bg-indigo-500/90 text-white">
-            {item.badge}
-          </span>
+          <span className="nav-badge">{item.badge}</span>
         )}
       </>
     );
 
+    const className = `nav-item w-full ${isActive ? "active" : ""}`;
+
     if (item.href) {
       if (item.external) {
         return (
-          <a href={item.href} target="_blank" rel="noreferrer" className={classes}>
+          <a href={item.href} target="_blank" rel="noreferrer" className={className}>
             {content}
           </a>
         );
       }
-
       return (
-        <Link href={item.href} className={classes} onClick={onClose}>
+        <Link href={item.href} className={className} onClick={onClose}>
           {content}
         </Link>
       );
     }
 
     return (
-      <button onClick={() => item.id && handleNavigate(item.id)} className={classes}>
+      <button onClick={() => item.id && handleNavigate(item.id)} className={className}>
         {content}
       </button>
     );
@@ -169,58 +163,57 @@ export default function Sidebar({
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden lg:pointer-events-none"
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
-      
+
       {/* Sidebar */}
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
-        w-[240px] flex flex-col flex-shrink-0
-        bg-[#111113] lg:bg-[#111113]/80
-        border-r border-white/[0.06]
-        transform transition-transform duration-200 ease-out
-        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        {/* Logo area */}
-        <div className="px-4 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+      <aside
+        className={`
+          fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
+          w-[260px] bg-[var(--surface-1)] border-r border-[var(--border)]
+          flex flex-col flex-shrink-0
+          transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+          ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        `}
+      >
+        {/* Logo / Brand */}
+        <div className="px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Avatar size="md" />
             <div>
-              <h1 className="font-semibold text-[14px] text-white leading-tight">{settings?.appName || "Kora"}</h1>
-              <p className="text-[11px] text-[#6c6c7a] leading-tight">Mission Control</p>
+              <h1 className="font-semibold text-[15px] text-[var(--text-primary)] leading-tight">
+                {settings?.appName || "Kora"}
+              </h1>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Mission Control</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="lg:hidden p-1.5 rounded-md text-[#6c6c7a] hover:text-white hover:bg-white/[0.06] transition-colors"
+            className="lg:hidden p-1.5 rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            ✕
           </button>
         </div>
 
         {/* Connection Status */}
-        <div className="px-4 pb-3">
-          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-emerald-500/[0.06] border border-emerald-500/[0.1]">
+        <div className="px-5 pb-3">
+          <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)]" />
-            <span className="text-[11px] text-emerald-300/80 font-medium">Connected</span>
+            <span className="text-[12px] text-[var(--text-muted)]">Connected</span>
           </div>
         </div>
 
-        <div className="h-px bg-white/[0.06] mx-3" />
+        <div className="h-px bg-[var(--border)] mx-4" />
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto sidebar-scroll px-3 py-3 space-y-5">
-          {/* Channels Section */}
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-5">
+          {/* Channels */}
           <div>
-            <h2 className="px-2.5 mb-1.5 text-[11px] font-semibold text-[#4a4a57] uppercase tracking-[0.05em]">
-              Channels
-            </h2>
+            <h2 className="section-label px-2.5 mb-1.5">Channels</h2>
             <div className="space-y-0.5">
               {channelItems.map((item) => (
                 <NavButton key={item.id || item.href} item={item} />
@@ -228,11 +221,9 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* Kora Section */}
+          {/* Kora */}
           <div>
-            <h2 className="px-2.5 mb-1.5 text-[11px] font-semibold text-[#4a4a57] uppercase tracking-[0.05em]">
-              Kora
-            </h2>
+            <h2 className="section-label px-2.5 mb-1.5">Kora</h2>
             <div className="space-y-0.5">
               {automationItems.map((item) => (
                 <NavButton key={item.id} item={item} />
@@ -240,11 +231,11 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* Apps Section */}
+          {/* Apps */}
           <div>
             <button
               onClick={() => setAppsOpen((prev) => !prev)}
-              className="w-full flex items-center justify-between px-2.5 mb-1.5 text-[11px] font-semibold text-[#4a4a57] uppercase tracking-[0.05em] hover:text-[#6c6c7a] transition-colors"
+              className="w-full flex items-center justify-between px-2.5 mb-1.5 section-label hover:text-[var(--text-tertiary)] transition-colors"
             >
               <span>Apps</span>
               <svg
@@ -264,13 +255,11 @@ export default function Sidebar({
                     href={app.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="group w-full flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-left transition-all duration-150 text-[#9b9ba7] hover:bg-white/[0.04] hover:text-[#ededef]"
+                    className="nav-item group"
                   >
-                    <span className="text-[15px] w-5 text-center flex-shrink-0">{app.emoji}</span>
-                    <span className="flex-1 text-[13px] font-medium">{app.name}</span>
-                    <svg className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
+                    <span className="text-lg leading-none w-5 text-center">{app.emoji}</span>
+                    <span className="flex-1 text-[13px] truncate">{app.name}</span>
+                    <span className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
                   </a>
                 ))}
               </div>
@@ -278,19 +267,18 @@ export default function Sidebar({
           </div>
         </nav>
 
-        {/* User/Settings */}
-        <div className="p-3 border-t border-white/[0.06]">
-          <button 
+        {/* Settings */}
+        <div className="px-3 py-3 border-t border-[var(--border)]">
+          <button
             onClick={() => setSettingsOpen(true)}
-            className="w-full flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[#9b9ba7] hover:bg-white/[0.04] hover:text-[#ededef] transition-all duration-150"
+            className="nav-item w-full"
           >
-            <span className="text-[15px] w-5 text-center">⚙️</span>
-            <span className="text-[13px] font-medium">Settings</span>
+            <span className="text-lg leading-none w-5 text-center">⚙️</span>
+            <span className="flex-1">Settings</span>
           </button>
         </div>
       </aside>
 
-      {/* Settings Modal */}
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );

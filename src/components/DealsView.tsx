@@ -5,6 +5,7 @@ import { safeString } from "@/lib/safeRender";
 
 interface Deal {
   id: string;
+  emailId?: string;
   account: string;
   subject: string;
   from: string;
@@ -144,6 +145,36 @@ export default function DealsView() {
       console.error("Draft failed:", err);
     } finally {
       setDraftLoading(false);
+    }
+  };
+
+  const deleteDeal = async (deal: Deal) => {
+    if (!confirm(`Delete deal "${deal.subject}"?`)) return;
+    
+    try {
+      const res = await fetch("/api/deals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          id: deal.id,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to delete deal");
+      
+      // Clear selection and refresh
+      setSelectedDeal(null);
+      fetchDeals();
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  };
+
+  const openLinkedEmail = (deal: Deal) => {
+    // Navigate to email view with the linked email
+    // For now, open Gmail directly
+    if (deal.emailId && deal.account) {
+      window.open(`https://mail.google.com/mail/u/?authuser=${deal.account}#inbox/${deal.emailId}`, "_blank");
     }
   };
 
@@ -374,68 +405,35 @@ export default function DealsView() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 flex-shrink-0">
-              {selectedDeal.source === "invoicer" && (
-                <a
-                  href={getInvoicerLink(selectedDeal.id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center gap-1"
+              {/* Open in Invoicer */}
+              <a
+                href={getInvoicerLink(selectedDeal.id)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center gap-1"
+              >
+                📋 Open in Invoicer
+              </a>
+              
+              {/* Go to Email (if linked) */}
+              {selectedDeal.emailId && (
+                <button
+                  onClick={() => openLinkedEmail(selectedDeal)}
+                  className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
                 >
-                  📋 Invoicer
-                </a>
+                  ✉️ Go to Email
+                </button>
               )}
+              
+              {/* Delete */}
               <button
-                onClick={() => generateDraft(selectedDeal, "send rates")}
-                disabled={draftLoading}
-                className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
+                onClick={() => deleteDeal(selectedDeal)}
+                className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-red-600/80 hover:bg-red-600 rounded-lg transition-colors"
               >
-                💰 Rates
-              </button>
-              <button
-                onClick={() => generateDraft(selectedDeal, "follow up")}
-                disabled={draftLoading}
-                className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg transition-colors disabled:opacity-50"
-              >
-                ✏️ Reply
-              </button>
-              <button
-                onClick={() => generateDraft(selectedDeal, "decline")}
-                disabled={draftLoading}
-                className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
-              >
-                ❌ Pass
+                🗑️ Delete
               </button>
             </div>
           </div>
-
-          {/* Draft Preview */}
-          {(draftLoading || draft) && (
-            <div className="mt-4 p-3 bg-zinc-800/50 rounded-lg">
-              {draftLoading ? (
-                <p className="text-zinc-400 text-sm animate-pulse">
-                  Generating draft...
-                </p>
-              ) : (
-                <>
-                  <p className="text-xs text-zinc-500 mb-2">📝 Draft Preview</p>
-                  <pre className="text-sm whitespace-pre-wrap font-sans">
-                    {draft}
-                  </pre>
-                  <div className="flex gap-2 mt-3">
-                    <button className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
-                      ✅ Copy & Open Gmail
-                    </button>
-                    <button
-                      onClick={() => setDraft("")}
-                      className="px-3 py-1.5 text-sm bg-zinc-700 hover:bg-zinc-600 rounded-lg transition-colors"
-                    >
-                      Discard
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>

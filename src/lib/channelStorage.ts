@@ -23,30 +23,20 @@ export interface ChannelSuggestion {
 const STORAGE_KEY = "kora-custom-channels";
 export const CUSTOM_CHANNELS_EVENT = "custom-channels-updated";
 
-const defaultChannels: CustomChannel[] = [
-  {
-    id: "dance-content",
-    name: "Dance Content",
-    emoji: "💃",
-    filter: { type: "keyword", value: "dance", sources: ["email", "tasks"] },
-    createdAt: "2026-02-17",
-  },
-];
+// No default channels - user creates their own
+const defaultChannels: CustomChannel[] = [];
 
 const isBrowser = () => typeof window !== "undefined";
 
 const loadFromStorage = (): CustomChannel[] => {
-  if (!isBrowser()) return defaultChannels;
+  if (!isBrowser()) return [];
   const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultChannels));
-    return defaultChannels;
-  }
+  if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as CustomChannel[];
-    return Array.isArray(parsed) && parsed.length ? parsed : defaultChannels;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return defaultChannels;
+    return [];
   }
 };
 

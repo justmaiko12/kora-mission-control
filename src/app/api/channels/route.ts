@@ -1,20 +1,11 @@
 import { NextResponse } from "next/server";
 import { CustomChannel } from "@/lib/channelStorage";
 
-const defaultChannels: CustomChannel[] = [
-  {
-    id: "dance-content",
-    name: "Dance Content",
-    emoji: "💃",
-    filter: { type: "keyword", value: "dance", sources: ["email", "tasks"] },
-    createdAt: "2026-02-17",
-  },
-];
-
+// No default channels - starts empty, user creates their own
 const getStore = () => {
   const globalStore = globalThis as typeof globalThis & { __customChannels?: CustomChannel[] };
   if (!globalStore.__customChannels) {
-    globalStore.__customChannels = [...defaultChannels];
+    globalStore.__customChannels = [];
   }
   return globalStore.__customChannels;
 };

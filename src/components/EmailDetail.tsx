@@ -790,6 +790,7 @@ export default function EmailDetail({
             account: linkedDeal.account || account,
           }}
           emailSubject={email.subject}
+          emailFrom={email.from}
           onClose={() => setShowInvoiceModal(false)}
           onSuccess={(invoiceId) => {
             setShowInvoiceModal(false);

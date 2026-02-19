@@ -36,6 +36,7 @@ interface InvoicePreview {
 interface InvoiceGeneratorProps {
   deal: Deal;
   emailSubject: string;
+  emailFrom: string; // The main sender from the email thread
   onClose: () => void;
   onSuccess: (invoiceId: string) => void;
 }
@@ -76,6 +77,7 @@ function extractEmail(from: string): string {
 export default function InvoiceGenerator({
   deal,
   emailSubject,
+  emailFrom,
   onClose,
   onSuccess,
 }: InvoiceGeneratorProps) {
@@ -96,9 +98,10 @@ export default function InvoiceGenerator({
 
   // Initialize from deal data
   useEffect(() => {
-    // Extract client info from deal
-    const name = deal.clientName || extractClientName(deal.from);
-    const email = extractEmail(deal.from);
+    // Extract client info - prefer emailFrom for accurate sender email
+    const fromField = emailFrom || deal.from;
+    const name = deal.clientName || extractClientName(fromField);
+    const email = extractEmail(fromField);
     
     setClientName(name);
     setClientEmail(email);
@@ -113,7 +116,7 @@ export default function InvoiceGenerator({
       quantity: 1,
       unitPrice: amount,
     }]);
-  }, [deal, emailSubject]);
+  }, [deal, emailSubject, emailFrom]);
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);

@@ -141,7 +141,16 @@ export default function Sidebar({
     }
 
     return (
-      <button onClick={() => item.id && handleNavigate(item.id)} className={className}>
+      <button 
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('[Sidebar] Nav clicked:', item.id);
+          if (item.id) handleNavigate(item.id);
+        }} 
+        className={className}
+      >
         {content}
       </button>
     );
@@ -163,14 +172,16 @@ export default function Sidebar({
     <>
       {/* Sidebar - no overlay, just slides in/out */}
       <aside
+        onClick={(e) => e.stopPropagation()}
         className={`
           fixed lg:relative inset-y-0 left-0 lg:inset-auto z-[200] lg:z-10
           w-[240px] bg-[var(--surface-1)] border-r border-[var(--border)]
           flex flex-col flex-shrink-0 h-screen
           transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
-          shadow-2xl lg:shadow-none pointer-events-auto
+          shadow-2xl lg:shadow-none
           ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
+        style={{ pointerEvents: 'auto' }}
       >
         {/* Logo / Brand */}
         <div className="px-4 py-4 flex items-center justify-between">

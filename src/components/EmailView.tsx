@@ -531,51 +531,21 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   return (
     <div className="h-full flex flex-col bg-zinc-950">
       {/* Header - Mobile Optimized */}
-      <div className="p-2 md:p-4 space-y-2">
-        {/* Row 1: Account Tabs (full width on mobile) */}
-        <div className="flex items-center justify-between gap-2">
-          {accounts.length > 0 && (
-            <div className="flex-1 min-w-0">
-              <ErrorBoundary name="EmailTabs-Main">
-                <EmailTabs
-                  accounts={accounts}
-                  activeAccount={activeAccount}
-                  onChange={setActiveAccount}
-                />
-              </ErrorBoundary>
-            </div>
-          )}
-          {/* Action icons - always visible */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              onClick={() => {
-                setSelectionMode(!selectionMode);
-                if (selectionMode) setSelectedIds(new Set());
-              }}
-              className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                selectionMode 
-                  ? "bg-indigo-600 text-white" 
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-              }`}
-              title="Select mode"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-            </button>
-            <button
-              onClick={() => refresh()}
-              disabled={loading}
-              className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50 min-w-[44px] min-h-[44px] flex items-center justify-center"
-            >
-              <svg className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
+      <div className="p-2 md:p-4 space-y-1.5 md:space-y-2">
+        {/* Row 1: Account Tabs - FULL WIDTH on mobile */}
+        {accounts.length > 0 && (
+          <div className="w-full">
+            <ErrorBoundary name="EmailTabs-Main">
+              <EmailTabs
+                accounts={accounts}
+                activeAccount={activeAccount}
+                onChange={setActiveAccount}
+              />
+            </ErrorBoundary>
           </div>
-        </div>
+        )}
 
-        {/* Row 2: Filter Pills (full width, scrollable) */}
+        {/* Row 2: Filter Pills + Action Icons */}
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide relative z-10 -mx-2 px-2">
           <button
             onClick={() => setFilter("needs-response")}
@@ -628,6 +598,36 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
             }`}
           >
             All
+          </button>
+          
+          {/* Spacer pushes icons to right */}
+          <div className="flex-1" />
+          
+          {/* Action icons */}
+          <button
+            onClick={() => {
+              setSelectionMode(!selectionMode);
+              if (selectionMode) setSelectedIds(new Set());
+            }}
+            className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
+              selectionMode 
+                ? "bg-indigo-600 text-white" 
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+            }`}
+            title="Select mode"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          </button>
+          <button
+            onClick={() => refresh()}
+            disabled={loading}
+            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+          >
+            <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
           </button>
         </div>
       </div>

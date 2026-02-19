@@ -115,7 +115,7 @@ export default function Sidebar({
 
     const content = (
       <>
-        <span className="text-lg leading-none w-5 text-center">{item.icon}</span>
+        <span className="w-6 h-6 flex items-center justify-center text-base flex-shrink-0">{item.icon}</span>
         <span className="flex-1 truncate">{item.label}</span>
         {item.badge !== undefined && item.badge > 0 && (
           <span className="nav-badge">{item.badge}</span>
@@ -257,7 +257,7 @@ export default function Sidebar({
                     rel="noreferrer"
                     className="nav-item group"
                   >
-                    <span className="text-lg leading-none w-5 text-center">{app.emoji}</span>
+                    <span className="w-6 h-6 flex items-center justify-center text-base flex-shrink-0">{app.emoji}</span>
                     <span className="flex-1 text-[13px] truncate">{app.name}</span>
                     <span className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
                   </a>
@@ -273,7 +273,7 @@ export default function Sidebar({
             onClick={() => setSettingsOpen(true)}
             className="nav-item w-full"
           >
-            <span className="text-lg leading-none w-5 text-center">⚙️</span>
+            <span className="w-6 h-6 flex items-center justify-center text-base flex-shrink-0">⚙️</span>
             <span className="flex-1">Settings</span>
           </button>
         </div>

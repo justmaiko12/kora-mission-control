@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
       const { accounts } = await bridgeFetch("/api/email/accounts");
       
       // For dashboard, fetch emails from all accounts
-      const allEmails: Array<{ account: string; id: string; subject: string; from: string; read: boolean; date: string; labels: string[] }> = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allEmails: any[] = [];
       
       for (const acc of accounts || []) {
         try {
@@ -38,8 +39,9 @@ export async function GET(request: NextRequest) {
             `/api/email/messages?account=${encodeURIComponent(acc.email)}&max=30`
           );
           if (data.emails) {
-            // Add account identifier to each email
-            const emailsWithAccount = data.emails.map((e: { id: string; subject: string; from: string; read: boolean; date: string; labels: string[] }) => ({
+            // Add account identifier to each email - preserve ALL fields
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const emailsWithAccount = data.emails.map((e: any) => ({
               ...e,
               account: acc.email,
             }));

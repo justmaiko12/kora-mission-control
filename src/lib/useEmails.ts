@@ -36,7 +36,7 @@ interface EmailsState {
 // Global cache - persists across tab switches
 const emailCache: Record<string, EmailThread[]> = {};
 const cacheTimestamps: Record<string, number> = {};
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 60 * 1000; // 1 minute (match backend)
 
 // Patterns for emails that DON'T need a response
 const NO_REPLY_PATTERNS = [
@@ -141,7 +141,7 @@ export function useEmails() {
   }, []);
 
   // Fetch emails for a single account
-  const fetchEmailsForAccount = useCallback(async (account: string): Promise<EmailThread[]> => {
+  const fetchEmailsForAccount = useCallback(async (account: string, forceRefresh?: boolean): Promise<EmailThread[]> => {
     // Prevent duplicate fetches
     if (fetchingRef.current.has(account)) {
       return getCachedEmails(account) || [];
@@ -149,8 +149,9 @@ export function useEmails() {
 
     fetchingRef.current.add(account);
     try {
+      const refreshParam = forceRefresh ? "&refresh=true" : "";
       const res = await fetch(
-        `/api/emails?account=${encodeURIComponent(account)}&query=newer_than:14d&max=50`
+        `/api/emails?account=${encodeURIComponent(account)}&query=newer_than:14d&max=50${refreshParam}`
       );
       if (!res.ok) throw new Error("Failed to fetch emails");
       const data = await res.json();
@@ -336,7 +337,7 @@ export function useEmails() {
 
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      const emailList = await fetchEmailsForAccount(activeAccount);
+      const emailList = await fetchEmailsForAccount(activeAccount, true); // Force backend refresh
       setEmails(emailList);
       setState((s) => ({
         ...s,

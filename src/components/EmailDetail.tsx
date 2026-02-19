@@ -64,6 +64,7 @@ export default function EmailDetail({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [replyExpanded, setReplyExpanded] = useState(false);
   const [sending, setSending] = useState(false);
   const [rewriting, setRewriting] = useState(false);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
@@ -790,140 +791,157 @@ export default function EmailDetail({
           </div>
           
           {/* Message Body with Drag & Drop */}
-          <div
-            className={`relative rounded-lg border transition-colors ${
-              isDragging 
-                ? "border-indigo-500 bg-indigo-500/10" 
-                : "border-zinc-700"
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setIsDragging(false);
-              const files = Array.from(e.dataTransfer.files);
-              const newAttachments = files.map(file => ({
-                file,
-                preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
-              }));
-              setAttachments(prev => [...prev, ...newAttachments]);
-            }}
-          >
-            <textarea
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={(e) => (e.key === "Enter" && (e.metaKey || e.ctrlKey)) && handleReply()}
-              placeholder="Type your reply... (drag & drop files to attach)"
-              rows={5}
-              className="w-full px-3 py-2 bg-zinc-800 rounded-lg text-sm focus:outline-none transition-colors resize-y min-h-[100px] border-0"
-            />
-            {isDragging && (
-              <div className="absolute inset-0 flex items-center justify-center bg-indigo-500/20 rounded-lg pointer-events-none">
-                <span className="text-indigo-400 font-medium">Drop files to attach</span>
-              </div>
-            )}
-          </div>
-          
-          {/* Attachments Preview */}
-          {attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {attachments.map((att, idx) => (
-                <div key={idx} className="relative group">
-                  {att.preview ? (
-                    <img 
-                      src={att.preview} 
-                      alt={att.file.name}
-                      className="w-16 h-16 object-cover rounded-lg border border-zinc-700"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 flex items-center justify-center bg-zinc-800 rounded-lg border border-zinc-700">
-                      <span className="text-2xl">📎</span>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 hover:bg-red-700 rounded-full text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    ×
-                  </button>
-                  <span className="text-[10px] text-zinc-500 truncate block w-16 text-center mt-0.5">
-                    {att.file.name.length > 10 ? att.file.name.slice(0, 8) + "..." : att.file.name}
-                  </span>
+          {!replyExpanded ? (
+            // Collapsed state - small clickable bar
+            <button
+              onClick={() => setReplyExpanded(true)}
+              className="w-full px-3 py-2.5 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 rounded-lg text-sm text-zinc-400 text-left transition-colors"
+            >
+              Click to write a reply...
+            </button>
+          ) : (
+            // Expanded state - full textarea
+            <div
+              className={`relative rounded-lg border transition-colors ${
+                isDragging 
+                  ? "border-indigo-500 bg-indigo-500/10" 
+                  : "border-zinc-700"
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const files = Array.from(e.dataTransfer.files);
+                const newAttachments = files.map(file => ({
+                  file,
+                  preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+                }));
+                setAttachments(prev => [...prev, ...newAttachments]);
+              }}
+            >
+              <textarea
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                onKeyDown={(e) => (e.key === "Enter" && (e.metaKey || e.ctrlKey)) && handleReply()}
+                placeholder="Type your reply... (drag & drop files to attach)"
+                rows={5}
+                autoFocus
+                className="w-full px-3 py-2 bg-zinc-800 rounded-lg text-sm focus:outline-none transition-colors resize-y min-h-[100px] border-0"
+              />
+              {isDragging && (
+                <div className="absolute inset-0 flex items-center justify-center bg-indigo-500/20 rounded-lg pointer-events-none">
+                  <span className="text-indigo-400 font-medium">Drop files to attach</span>
                 </div>
-              ))}
-              <label className="w-16 h-16 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 border-dashed cursor-pointer transition-colors">
-                <input
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    const newAttachments = files.map(file => ({
-                      file,
-                      preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
-                    }));
-                    setAttachments(prev => [...prev, ...newAttachments]);
-                    e.target.value = "";
-                  }}
-                />
-                <span className="text-zinc-500 text-xl">+</span>
-              </label>
+              )}
             </div>
           )}
           
-          {/* Attach button when no attachments */}
-          {attachments.length === 0 && (
-            <label className="inline-flex items-center gap-1 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors">
-              <input
-                type="file"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  const newAttachments = files.map(file => ({
-                    file,
-                    preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
-                  }));
-                  setAttachments(prev => [...prev, ...newAttachments]);
-                  e.target.value = "";
-                }}
-              />
-              📎 Attach files
-            </label>
-          )}
-          
-          {/* Actions */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={handleRewrite}
-              disabled={rewriting || !replyText.trim()}
-              className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 rounded-lg text-sm transition-colors"
-            >
-              {rewriting ? "✨ Rewriting..." : "✨ Rewrite with AI"}
-            </button>
-            <button
-              onClick={handleReply}
-              disabled={sending || !replyText.trim() || replyTo.length === 0}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-sm transition-colors flex items-center gap-1"
-            >
-              {sending ? "Sending..." : attachments.length > 0 ? `Send (${attachments.length} 📎)` : "Send"}
-              <span className="text-xs opacity-70">⌘↵</span>
-            </button>
-            <span className="text-xs text-zinc-500 ml-auto">
-              from {account}
-            </span>
-          </div>
-          
-          {rewriteError && (
-            <p className="text-xs text-red-400">{rewriteError}</p>
-          )}
-          {sendSuccess && (
-            <p className="text-xs text-emerald-400 flex items-center gap-1">
-              ✓ Reply sent! Refreshing thread...
-            </p>
+          {/* Only show attachments and actions when expanded */}
+          {replyExpanded && (
+            <>
+              {/* Attachments Preview */}
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {attachments.map((att, idx) => (
+                    <div key={idx} className="relative group">
+                      {att.preview ? (
+                        <img 
+                          src={att.preview} 
+                          alt={att.file.name}
+                          className="w-16 h-16 object-cover rounded-lg border border-zinc-700"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 flex items-center justify-center bg-zinc-800 rounded-lg border border-zinc-700">
+                          <span className="text-2xl">📎</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 hover:bg-red-700 rounded-full text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                      <span className="text-[10px] text-zinc-500 truncate block w-16 text-center mt-0.5">
+                        {att.file.name.length > 10 ? att.file.name.slice(0, 8) + "..." : att.file.name}
+                      </span>
+                    </div>
+                  ))}
+                  <label className="w-16 h-16 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 border-dashed cursor-pointer transition-colors">
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        const newAttachments = files.map(file => ({
+                          file,
+                          preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+                        }));
+                        setAttachments(prev => [...prev, ...newAttachments]);
+                        e.target.value = "";
+                      }}
+                    />
+                    <span className="text-zinc-500 text-xl">+</span>
+                  </label>
+                </div>
+              )}
+              
+              {/* Attach button when no attachments */}
+              {attachments.length === 0 && (
+                <label className="inline-flex items-center gap-1 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors">
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      const newAttachments = files.map(file => ({
+                        file,
+                        preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+                      }));
+                      setAttachments(prev => [...prev, ...newAttachments]);
+                      e.target.value = "";
+                    }}
+                  />
+                  📎 Attach files
+                </label>
+              )}
+              
+              {/* Actions */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleRewrite}
+                  disabled={rewriting || !replyText.trim()}
+                  className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 rounded-lg text-sm transition-colors"
+                >
+                  {rewriting ? "✨ Rewriting..." : "✨ Rewrite with AI"}
+                </button>
+                <button
+                  onClick={handleReply}
+                  disabled={sending || !replyText.trim() || replyTo.length === 0}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-sm transition-colors flex items-center gap-1"
+                >
+                  {sending ? "Sending..." : attachments.length > 0 ? `Send (${attachments.length} 📎)` : "Send"}
+                  <span className="text-xs opacity-70">⌘↵</span>
+                </button>
+                <span className="text-xs text-zinc-500 ml-auto">
+                  from {account}
+                </span>
+              </div>
+              
+              {rewriteError && (
+                <p className="text-xs text-red-400">{rewriteError}</p>
+              )}
+              {sendSuccess && (
+                <p className="text-xs text-emerald-400 flex items-center gap-1">
+                  ✓ Reply sent! Refreshing thread...
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>

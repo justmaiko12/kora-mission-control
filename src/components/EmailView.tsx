@@ -469,11 +469,50 @@ export default function EmailView({
     );
   };
 
+  // Helper: Select next email in list after action (Done/Archive)
+  const selectNextEmail = (currentEmail: EmailThread, newIgnoredIds: Set<string>) => {
+    // Get current filtered list (excluding newly ignored)
+    const currentList = emails
+      .filter(e => !newIgnoredIds.has(e.id))
+      .filter(e => {
+        if (filter === "unread") return !e.read;
+        if (filter === "needs-response") return emailNeedsResponse(e);
+        if (filter === "awaiting") return emailAwaitingResponse(e);
+        return true;
+      });
+    
+    // Find current email's position in the original list (before filtering)
+    const originalIndex = emails.findIndex(e => e.id === currentEmail.id);
+    
+    // Find the next email that's still visible
+    for (let i = originalIndex + 1; i < emails.length; i++) {
+      const nextEmail = emails[i];
+      if (!newIgnoredIds.has(nextEmail.id) && currentList.some(e => e.id === nextEmail.id)) {
+        setSelectedEmail(nextEmail);
+        return;
+      }
+    }
+    
+    // If no next email, try previous
+    for (let i = originalIndex - 1; i >= 0; i--) {
+      const prevEmail = emails[i];
+      if (!newIgnoredIds.has(prevEmail.id) && currentList.some(e => e.id === prevEmail.id)) {
+        setSelectedEmail(prevEmail);
+        return;
+      }
+    }
+    
+    // No more emails in list - close detail view
+    setSelectedEmail(null);
+  };
+
   const handleIgnore = async (email: EmailThread) => {
     // OPTIMISTIC: Hide from UI immediately
     const newIgnored = new Set([...ignoredIds, email.id]);
     setIgnoredIds(newIgnored);
-    setSelectedEmail(null);
+    
+    // Select next email instead of closing
+    selectNextEmail(email, newIgnored);
     
     // Check for similar emails to offer batch archive
     const similar = findSimilarEmails(email, newIgnored);
@@ -534,8 +573,11 @@ export default function EmailView({
   // Mark as Done (read, no action needed - different from archive/ignore)
   const handleDone = (email: EmailThread) => {
     // OPTIMISTIC: Hide from UI immediately
-    setIgnoredIds((prev) => new Set([...prev, email.id]));
-    setSelectedEmail(null);
+    const newIgnored = new Set([...ignoredIds, email.id]);
+    setIgnoredIds(newIgnored);
+    
+    // Select next email instead of closing
+    selectNextEmail(email, newIgnored);
     
     // Fire API in background - uses "done" action for learning
     fetch("/api/emails/archive", {

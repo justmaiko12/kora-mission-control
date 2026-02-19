@@ -69,9 +69,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       icon: "📧",
       title: "Email",
       gradient: "from-sky-500/20 to-cyan-500/10",
-      iconBg: "bg-sky-500/15",
-      iconRing: "ring-sky-500/20",
       accentColor: "text-sky-400",
+      borderHover: "hover:border-sky-500/30",
       stat: stats.unreadEmails,
       statLabel: "unread",
     },
@@ -80,9 +79,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       icon: "💼",
       title: "Deals",
       gradient: "from-emerald-500/20 to-green-500/10",
-      iconBg: "bg-emerald-500/15",
-      iconRing: "ring-emerald-500/20",
       accentColor: "text-emerald-400",
+      borderHover: "hover:border-emerald-500/30",
       stat: stats.activeDeals,
       statLabel: "active",
     },
@@ -91,9 +89,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       icon: "📋",
       title: "Tasks",
       gradient: "from-amber-500/20 to-orange-500/10",
-      iconBg: "bg-amber-500/15",
-      iconRing: "ring-amber-500/20",
       accentColor: "text-amber-400",
+      borderHover: "hover:border-amber-500/30",
       stat: stats.pendingTasks,
       statLabel: "pending",
     },
@@ -102,39 +99,18 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       icon: "⚡",
       title: "Automations",
       gradient: "from-violet-500/20 to-purple-500/10",
-      iconBg: "bg-violet-500/15",
-      iconRing: "ring-violet-500/20",
       accentColor: "text-violet-400",
+      borderHover: "hover:border-violet-500/30",
       stat: stats.koraStatus === "active" ? "●" : "○",
       statLabel: stats.koraStatus === "active" ? "running" : "idle",
     },
   ];
 
   const quickActions = [
-    {
-      icon: "📬",
-      title: "Check Email",
-      subtitle: "Review inbox",
-      view: "email" as ViewType,
-    },
-    {
-      icon: "💰",
-      title: "Deal Pipeline",
-      subtitle: "Manage deals",
-      view: "business" as ViewType,
-    },
-    {
-      icon: "📊",
-      title: "Kora Activity",
-      subtitle: "Usage & agents",
-      view: "kora-activity" as ViewType,
-    },
-    {
-      icon: "🧠",
-      title: "Memory",
-      subtitle: "Browse files",
-      view: "memory" as ViewType,
-    },
+    { view: "email" as ViewType, icon: "📬", title: "Check Email", subtitle: "Review inbox" },
+    { view: "business" as ViewType, icon: "💰", title: "Deal Pipeline", subtitle: "Manage deals" },
+    { view: "kora-activity" as ViewType, icon: "📊", title: "Kora Activity", subtitle: "Usage & agents" },
+    { view: "memory" as ViewType, icon: "🧠", title: "Memory", subtitle: "Browse files" },
   ];
 
   return (
@@ -142,20 +118,20 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-white">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
             {getGreeting()}, Michael
           </h1>
-          <p className="text-[14px] text-[#71717a] mt-1.5">
+          <p className="text-[var(--text-tertiary)] text-sm mt-1.5">
             {loading ? (
-              <span className="inline-block w-32 h-4 rounded bg-white/[0.04] shimmer" />
+              <span className="inline-block w-32 h-4 rounded bg-[var(--surface-2)] shimmer" />
             ) : (
               "Here's your overview"
             )}
           </p>
         </div>
         <div className="text-left sm:text-right">
-          <p className="text-[12px] text-[#52525b] font-medium uppercase tracking-wider">Today</p>
-          <p className="text-[15px] font-semibold text-[#a1a1aa] mt-0.5">
+          <p className="text-[11px] text-[var(--text-muted)] uppercase tracking-wider font-medium">Today</p>
+          <p className="text-[15px] font-semibold text-[var(--text-secondary)] mt-0.5">
             {new Date().toLocaleDateString("en-US", {
               weekday: "long",
               month: "short",
@@ -165,51 +141,46 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 stagger-children">
+      {/* Quick Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger-children">
         {channels.map((channel) => (
           <button
             key={channel.id}
             onClick={() => onNavigate(channel.id)}
-            className="group relative text-left rounded-xl border border-white/[0.06] bg-[#111113] p-4 md:p-5 overflow-hidden transition-all duration-200 hover:border-white/[0.1] hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5"
+            className={`stat-card group p-4 md:p-5 text-left ${channel.borderHover}`}
           >
-            {/* Subtle gradient background */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${channel.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-            
-            <div className="relative z-10">
-              <div className={`w-10 h-10 rounded-lg ${channel.iconBg} ring-1 ${channel.iconRing} flex items-center justify-center text-xl mb-3 transition-transform duration-200 group-hover:scale-105`}>
-                {channel.icon}
-              </div>
-              <h3 className={`text-[14px] font-semibold text-[#a1a1aa] mb-1 transition-colors duration-150 group-hover:${channel.accentColor}`}>
-                {channel.title}
-              </h3>
-              <p className="text-[13px] text-[#52525b]">
-                <span className={`font-bold ${typeof channel.stat === "number" && channel.stat > 0 ? "text-white" : "text-[#71717a]"}`}>
-                  {loading ? "—" : channel.stat}
-                </span>{" "}
-                {channel.statLabel}
-              </p>
+            <div className={`w-10 h-10 rounded-[var(--radius-sm)] bg-gradient-to-br ${channel.gradient} flex items-center justify-center text-xl mb-3 transition-transform group-hover:scale-105`}>
+              {channel.icon}
             </div>
+            <h3 className={`text-[15px] font-semibold text-[var(--text-secondary)] mb-0.5 transition-colors group-hover:${channel.accentColor}`}>
+              {channel.title}
+            </h3>
+            <p className="text-[13px] text-[var(--text-muted)]">
+              <span className={`font-semibold ${typeof channel.stat === "number" && channel.stat > 0 ? "text-[var(--text-primary)]" : ""}`}>
+                {loading ? "—" : channel.stat}
+              </span>{" "}
+              {channel.statLabel}
+            </p>
           </button>
         ))}
       </div>
 
       {/* Quick Actions */}
-      <div className="rounded-xl border border-white/[0.06] bg-[#111113] overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/[0.04]">
-          <h2 className="text-[15px] font-semibold text-white">Quick Actions</h2>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-white/[0.03]">
+      <div className="surface-card p-5 md:p-6">
+        <h2 className="text-[15px] font-semibold text-[var(--text-primary)] mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
           {quickActions.map((action) => (
             <button
               key={action.view}
               onClick={() => onNavigate(action.view)}
-              className="group flex items-center gap-3 p-4 bg-[#111113] hover:bg-white/[0.03] transition-colors duration-150 text-left"
+              className="flex items-center gap-3 p-3 rounded-[var(--radius-sm)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] border border-transparent hover:border-[var(--border-hover)] transition-all text-left group"
             >
-              <span className="text-xl transition-transform duration-200 group-hover:scale-110">{action.icon}</span>
-              <div>
-                <p className="text-[13px] font-medium text-[#e4e4e7] group-hover:text-white transition-colors">{action.title}</p>
-                <p className="text-[11px] text-[#52525b]">{action.subtitle}</p>
+              <span className="text-xl transition-transform group-hover:scale-110">{action.icon}</span>
+              <div className="min-w-0">
+                <p className="font-medium text-[13px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors truncate">
+                  {action.title}
+                </p>
+                <p className="text-[11px] text-[var(--text-muted)] truncate">{action.subtitle}</p>
               </div>
             </button>
           ))}
@@ -217,10 +188,17 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       </div>
 
       {/* Status Footer */}
-      <div className="flex items-center justify-center gap-2 pt-2">
-        <div className={`w-1.5 h-1.5 rounded-full ${stats.koraStatus === "active" ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)]" : "bg-[#52525b]"}`} />
-        <span className="text-[11px] text-[#52525b] font-medium tracking-wide">
-          Mission Control • Kora is {stats.koraStatus}
+      <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--text-muted)] pt-1">
+        <span>Mission Control</span>
+        <span className="text-[var(--border-hover)]">·</span>
+        <span className="flex items-center gap-1.5">
+          Kora is{" "}
+          <span className={`inline-flex items-center gap-1 ${stats.koraStatus === "active" ? "text-emerald-400" : ""}`}>
+            {stats.koraStatus === "active" && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-dot" />
+            )}
+            {stats.koraStatus}
+          </span>
         </span>
       </div>
     </div>

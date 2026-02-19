@@ -6,7 +6,7 @@ const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { account, to, subject, body: emailBody, threadId } = body;
+    const { account, to, cc, bcc, subject, body: emailBody, threadId } = body;
 
     if (!account || !to || !emailBody) {
       return NextResponse.json(
@@ -24,6 +24,8 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         account,
         to,
+        cc,
+        bcc,
         subject,
         body: emailBody,
         threadId,

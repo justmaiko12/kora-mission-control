@@ -20,11 +20,20 @@ interface EmailMessage {
   id: string;
   from: string;
   to: string;
+  cc?: string;
   date: string;
   subject: string;
   body: string;
   bodyHtml?: string;
   isMe?: boolean; // True if sent by current account
+}
+
+// Parse email addresses from header string
+function parseEmailAddresses(header: string | undefined): string[] {
+  if (!header) return [];
+  // Match email addresses - either bare or in angle brackets
+  const matches = header.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+  return matches || [];
 }
 
 export default function EmailDetail({
@@ -46,6 +55,13 @@ export default function EmailDetail({
   const [rewriting, setRewriting] = useState(false);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
   
+  // Reply recipients
+  const [replyTo, setReplyTo] = useState<string[]>([]);
+  const [replyCc, setReplyCc] = useState<string[]>([]);
+  const [replyBcc, setReplyBcc] = useState<string[]>([]);
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [isReplyAll, setIsReplyAll] = useState(true); // Default to Reply All for groups
+  
   // AI Assistant state
   const [aiQuestion, setAiQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState("");
@@ -61,6 +77,52 @@ export default function EmailDetail({
       messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
     }
   }, [messages, loading]);
+  
+  // Populate reply recipients when messages load
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    const lastMsg = messages[messages.length - 1];
+    const myEmail = account.toLowerCase();
+    
+    // Get sender of last message (who we're replying to)
+    const senderEmail = extractEmail(lastMsg.from).toLowerCase();
+    
+    // Get all To recipients
+    const toRecipients = parseEmailAddresses(lastMsg.to).map(e => e.toLowerCase());
+    
+    // Get all CC recipients
+    const ccRecipients = parseEmailAddresses(lastMsg.cc).map(e => e.toLowerCase());
+    
+    // Build reply recipients
+    if (lastMsg.isMe) {
+      // If I sent the last message, reply to original recipients
+      setReplyTo(toRecipients.filter(e => e !== myEmail));
+      setReplyCc(ccRecipients.filter(e => e !== myEmail));
+    } else {
+      // Reply to sender
+      const toList = [senderEmail];
+      
+      // For Reply All, also add other recipients
+      toRecipients.forEach(e => {
+        if (e !== myEmail && e !== senderEmail && !toList.includes(e)) {
+          toList.push(e);
+        }
+      });
+      
+      setReplyTo(toList);
+      setReplyCc(ccRecipients.filter(e => e !== myEmail && e !== senderEmail));
+    }
+    
+    // Auto-show CC if there are CC recipients
+    if (ccRecipients.length > 0) {
+      setShowCcBcc(true);
+    }
+    
+    // Determine if this is a group conversation
+    const totalRecipients = toRecipients.length + ccRecipients.length;
+    setIsReplyAll(totalRecipients > 1);
+  }, [messages, account]);
 
   useEffect(() => {
     async function fetchThread() {
@@ -158,20 +220,19 @@ export default function EmailDetail({
   };
 
   const handleReply = async () => {
-    if (!replyText.trim() || sending) return;
+    if (!replyText.trim() || sending || replyTo.length === 0) return;
     
     setSending(true);
     setSendSuccess(false);
     try {
-      const lastMessage = messages[messages.length - 1];
-      const replyTo = lastMessage ? extractEmail(lastMessage.from) : extractEmail(email.from);
-      
       const res = await fetch("/api/emails/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           account,
-          to: replyTo,
+          to: replyTo.join(", "),
+          cc: replyCc.length > 0 ? replyCc.join(", ") : undefined,
+          bcc: replyBcc.length > 0 ? replyBcc.join(", ") : undefined,
           subject: safeString(email.subject).startsWith("Re:") ? safeString(email.subject) : `Re: ${safeString(email.subject)}`,
           body: replyText,
           threadId: email.id,
@@ -488,33 +549,139 @@ export default function EmailDetail({
         )}
       </div>
 
-      {/* Quick Reply Footer */}
+      {/* Reply Composer */}
       <div className="p-3 md:p-4 border-t border-zinc-800 bg-zinc-900/50">
         <div className="flex flex-col gap-2">
+          {/* Recipients Section */}
+          <div className="space-y-2 text-sm">
+            {/* Reply / Reply All toggle for groups */}
+            {(parseEmailAddresses(messages[messages.length - 1]?.to).length + 
+              parseEmailAddresses(messages[messages.length - 1]?.cc).length) > 1 && (
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  onClick={() => {
+                    if (isReplyAll) {
+                      // Switch to Reply (just sender)
+                      const lastMsg = messages[messages.length - 1];
+                      const senderEmail = extractEmail(lastMsg.from).toLowerCase();
+                      setReplyTo([senderEmail]);
+                      setReplyCc([]);
+                      setIsReplyAll(false);
+                    } else {
+                      // Switch to Reply All (re-populate)
+                      const lastMsg = messages[messages.length - 1];
+                      const myEmail = account.toLowerCase();
+                      const senderEmail = extractEmail(lastMsg.from).toLowerCase();
+                      const toRecipients = parseEmailAddresses(lastMsg.to).map(e => e.toLowerCase());
+                      const ccRecipients = parseEmailAddresses(lastMsg.cc).map(e => e.toLowerCase());
+                      const toList = [senderEmail];
+                      toRecipients.forEach(e => {
+                        if (e !== myEmail && e !== senderEmail && !toList.includes(e)) {
+                          toList.push(e);
+                        }
+                      });
+                      setReplyTo(toList);
+                      setReplyCc(ccRecipients.filter(e => e !== myEmail && e !== senderEmail));
+                      setIsReplyAll(true);
+                    }
+                  }}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    isReplyAll 
+                      ? "bg-indigo-600 text-white" 
+                      : "bg-zinc-700 text-zinc-300 hover:bg-zinc-600"
+                  }`}
+                >
+                  {isReplyAll ? "↩️ Reply All" : "↩️ Reply"}
+                </button>
+                <span className="text-xs text-zinc-500">
+                  {isReplyAll ? `to ${replyTo.length + replyCc.length} recipients` : "to sender only"}
+                </span>
+              </div>
+            )}
+            
+            {/* To Field */}
+            <div className="flex items-start gap-2">
+              <label className="w-10 text-zinc-500 pt-1.5 flex-shrink-0">To:</label>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={replyTo.join(", ")}
+                  onChange={(e) => setReplyTo(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                  className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                  placeholder="recipient@email.com"
+                />
+              </div>
+              {!showCcBcc && (
+                <button
+                  onClick={() => setShowCcBcc(true)}
+                  className="px-2 py-1 text-xs text-zinc-500 hover:text-white transition-colors"
+                >
+                  Cc/Bcc
+                </button>
+              )}
+            </div>
+            
+            {/* CC Field */}
+            {showCcBcc && (
+              <div className="flex items-start gap-2">
+                <label className="w-10 text-zinc-500 pt-1.5 flex-shrink-0">Cc:</label>
+                <input
+                  type="text"
+                  value={replyCc.join(", ")}
+                  onChange={(e) => setReplyCc(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                  className="flex-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                  placeholder="cc@email.com"
+                />
+              </div>
+            )}
+            
+            {/* BCC Field */}
+            {showCcBcc && (
+              <div className="flex items-start gap-2">
+                <label className="w-10 text-zinc-500 pt-1.5 flex-shrink-0">Bcc:</label>
+                <input
+                  type="text"
+                  value={replyBcc.join(", ")}
+                  onChange={(e) => setReplyBcc(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                  className="flex-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                  placeholder="bcc@email.com"
+                />
+              </div>
+            )}
+          </div>
+          
+          {/* Message Body */}
           <textarea
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             onKeyDown={(e) => (e.key === "Enter" && (e.metaKey || e.ctrlKey)) && handleReply()}
-            placeholder="Type a quick reply..."
-            rows={6}
-            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-colors resize-y min-h-[120px]"
+            placeholder="Type your reply..."
+            rows={5}
+            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-colors resize-y min-h-[100px]"
           />
-          <div className="flex flex-wrap gap-2">
+          
+          {/* Actions */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleRewrite}
               disabled={rewriting || !replyText.trim()}
               className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 rounded-lg text-sm transition-colors"
             >
-              {rewriting ? "Rewriting..." : "Rewrite with AI"}
+              {rewriting ? "✨ Rewriting..." : "✨ Rewrite with AI"}
             </button>
             <button
               onClick={handleReply}
-              disabled={sending || !replyText.trim()}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-sm transition-colors"
+              disabled={sending || !replyText.trim() || replyTo.length === 0}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-sm transition-colors flex items-center gap-1"
             >
-              {sending ? "Sending..." : "Reply"}
+              {sending ? "Sending..." : "Send"}
+              <span className="text-xs opacity-70">⌘↵</span>
             </button>
+            <span className="text-xs text-zinc-500 ml-auto">
+              from {account}
+            </span>
           </div>
+          
           {rewriteError && (
             <p className="text-xs text-red-400">{rewriteError}</p>
           )}
@@ -524,9 +691,6 @@ export default function EmailDetail({
             </p>
           )}
         </div>
-        <p className="text-[10px] text-zinc-600 mt-1 text-center">
-          Sends from {account}
-        </p>
       </div>
     </div>
   );

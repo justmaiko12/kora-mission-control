@@ -59,6 +59,7 @@ export default function EmailDetail({
   const [replyBcc, setReplyBcc] = useState<string[]>([]);
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [isReplyAll, setIsReplyAll] = useState(true); // Default to Reply All for groups
+  const [recipientsExpanded, setRecipientsExpanded] = useState(false); // Collapsed by default
   
   // AI Assistant state
   const [aiQuestion, setAiQuestion] = useState("");
@@ -543,100 +544,135 @@ export default function EmailDetail({
       {/* Reply Composer */}
       <div className="p-3 md:p-4 border-t border-zinc-800 bg-zinc-900/50">
         <div className="flex flex-col gap-2">
-          {/* Recipients Section */}
-          <div className="space-y-2 text-sm">
-            {/* Reply / Reply All toggle for groups */}
-            {(parseEmailAddresses(messages[messages.length - 1]?.to).length + 
-              parseEmailAddresses(messages[messages.length - 1]?.cc).length) > 1 && (
-              <div className="flex items-center gap-2 mb-2">
-                <button
-                  onClick={() => {
-                    if (isReplyAll) {
-                      // Switch to Reply (just sender)
-                      const lastMsg = messages[messages.length - 1];
-                      const senderEmail = extractEmail(lastMsg.from).toLowerCase();
-                      setReplyTo([senderEmail]);
-                      setReplyCc([]);
-                      setIsReplyAll(false);
-                    } else {
-                      // Switch to Reply All (re-populate)
-                      const lastMsg = messages[messages.length - 1];
-                      const myEmail = account.toLowerCase();
-                      const senderEmail = extractEmail(lastMsg.from).toLowerCase();
-                      const toRecipients = parseEmailAddresses(lastMsg.to).map(e => e.toLowerCase());
-                      const ccRecipients = parseEmailAddresses(lastMsg.cc).map(e => e.toLowerCase());
-                      const toList = [senderEmail];
-                      toRecipients.forEach(e => {
-                        if (e !== myEmail && e !== senderEmail && !toList.includes(e)) {
-                          toList.push(e);
-                        }
-                      });
-                      setReplyTo(toList);
-                      setReplyCc(ccRecipients.filter(e => e !== myEmail && e !== senderEmail));
-                      setIsReplyAll(true);
-                    }
-                  }}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${
-                    isReplyAll 
-                      ? "bg-indigo-600 text-white" 
-                      : "bg-zinc-700 text-zinc-300 hover:bg-zinc-600"
-                  }`}
-                >
+          {/* Recipients Section - Collapsed by default */}
+          <div className="text-sm">
+            {/* Collapsed View - Click to expand */}
+            {!recipientsExpanded ? (
+              <button
+                onClick={() => setRecipientsExpanded(true)}
+                className="flex items-center gap-2 text-left w-full group"
+              >
+                <span className={`px-2 py-1 text-xs rounded ${
+                  isReplyAll 
+                    ? "bg-indigo-600 text-white" 
+                    : "bg-zinc-700 text-zinc-300"
+                }`}>
                   {isReplyAll ? "↩️ Reply All" : "↩️ Reply"}
-                </button>
-                <span className="text-xs text-zinc-500">
-                  {isReplyAll ? `to ${replyTo.length + replyCc.length} recipients` : "to sender only"}
                 </span>
-              </div>
-            )}
-            
-            {/* To Field */}
-            <div className="flex items-start gap-2">
-              <label className="w-10 text-zinc-500 pt-1.5 flex-shrink-0">To:</label>
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={replyTo.join(", ")}
-                  onChange={(e) => setReplyTo(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
-                  className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                  placeholder="recipient@email.com"
-                />
-              </div>
-              {!showCcBcc && (
-                <button
-                  onClick={() => setShowCcBcc(true)}
-                  className="px-2 py-1 text-xs text-zinc-500 hover:text-white transition-colors"
+                <span className="text-zinc-400">
+                  to {replyTo.length + replyCc.length} recipient{(replyTo.length + replyCc.length) !== 1 ? 's' : ''}
+                </span>
+                <svg 
+                  className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
                 >
-                  Cc/Bcc
-                </button>
-              )}
-            </div>
-            
-            {/* CC Field */}
-            {showCcBcc && (
-              <div className="flex items-start gap-2">
-                <label className="w-10 text-zinc-500 pt-1.5 flex-shrink-0">Cc:</label>
-                <input
-                  type="text"
-                  value={replyCc.join(", ")}
-                  onChange={(e) => setReplyCc(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
-                  className="flex-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                  placeholder="cc@email.com"
-                />
-              </div>
-            )}
-            
-            {/* BCC Field */}
-            {showCcBcc && (
-              <div className="flex items-start gap-2">
-                <label className="w-10 text-zinc-500 pt-1.5 flex-shrink-0">Bcc:</label>
-                <input
-                  type="text"
-                  value={replyBcc.join(", ")}
-                  onChange={(e) => setReplyBcc(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
-                  className="flex-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                  placeholder="bcc@email.com"
-                />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            ) : (
+              /* Expanded View - Full recipient editing */
+              <div className="space-y-2">
+                {/* Header with collapse button */}
+                <div className="flex items-center gap-2 mb-2">
+                  {/* Reply / Reply All toggle */}
+                  {(parseEmailAddresses(messages[messages.length - 1]?.to).length + 
+                    parseEmailAddresses(messages[messages.length - 1]?.cc).length) > 1 && (
+                    <button
+                      onClick={() => {
+                        if (isReplyAll) {
+                          const lastMsg = messages[messages.length - 1];
+                          const senderEmail = extractEmail(lastMsg.from).toLowerCase();
+                          setReplyTo([senderEmail]);
+                          setReplyCc([]);
+                          setIsReplyAll(false);
+                        } else {
+                          const lastMsg = messages[messages.length - 1];
+                          const myEmail = account.toLowerCase();
+                          const senderEmail = extractEmail(lastMsg.from).toLowerCase();
+                          const toRecipients = parseEmailAddresses(lastMsg.to).map(e => e.toLowerCase());
+                          const ccRecipients = parseEmailAddresses(lastMsg.cc).map(e => e.toLowerCase());
+                          const toList = [senderEmail];
+                          toRecipients.forEach(e => {
+                            if (e !== myEmail && e !== senderEmail && !toList.includes(e)) {
+                              toList.push(e);
+                            }
+                          });
+                          setReplyTo(toList);
+                          setReplyCc(ccRecipients.filter(e => e !== myEmail && e !== senderEmail));
+                          setIsReplyAll(true);
+                        }
+                      }}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        isReplyAll 
+                          ? "bg-indigo-600 text-white" 
+                          : "bg-zinc-700 text-zinc-300 hover:bg-zinc-600"
+                      }`}
+                    >
+                      {isReplyAll ? "↩️ Reply All" : "↩️ Reply"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setRecipientsExpanded(false)}
+                    className="ml-auto text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1"
+                  >
+                    Collapse
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                </div>
+                
+                {/* To Field */}
+                <div className="flex items-start gap-2">
+                  <label className="w-10 text-zinc-500 pt-1.5 flex-shrink-0">To:</label>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={replyTo.join(", ")}
+                      onChange={(e) => setReplyTo(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                      className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                      placeholder="recipient@email.com"
+                    />
+                  </div>
+                  {!showCcBcc && (
+                    <button
+                      onClick={() => setShowCcBcc(true)}
+                      className="px-2 py-1 text-xs text-zinc-500 hover:text-white transition-colors"
+                    >
+                      Cc/Bcc
+                    </button>
+                  )}
+                </div>
+                
+                {/* CC Field */}
+                {showCcBcc && (
+                  <div className="flex items-start gap-2">
+                    <label className="w-10 text-zinc-500 pt-1.5 flex-shrink-0">Cc:</label>
+                    <input
+                      type="text"
+                      value={replyCc.join(", ")}
+                      onChange={(e) => setReplyCc(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                      className="flex-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                      placeholder="cc@email.com"
+                    />
+                  </div>
+                )}
+                
+                {/* BCC Field */}
+                {showCcBcc && (
+                  <div className="flex items-start gap-2">
+                    <label className="w-10 text-zinc-500 pt-1.5 flex-shrink-0">Bcc:</label>
+                    <input
+                      type="text"
+                      value={replyBcc.join(", ")}
+                      onChange={(e) => setReplyBcc(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                      className="flex-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                      placeholder="bcc@email.com"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

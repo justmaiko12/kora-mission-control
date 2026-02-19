@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { module, itemTitle, feedback, notes } = body;
 
-    const res = await fetch(`${BRIDGE_API}/briefing/feedback`, {
+    const res = await fetch(`${BRIDGE_API}/api/briefing/feedback`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${BRIDGE_TOKEN}`,

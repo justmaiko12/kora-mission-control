@@ -5,7 +5,7 @@ const BRIDGE_TOKEN = process.env.BRIDGE_API_TOKEN || '';
 
 export async function GET() {
   try {
-    const res = await fetch(`${BRIDGE_API}/briefing`, {
+    const res = await fetch(`${BRIDGE_API}/api/briefing`, {
       headers: {
         'Authorization': `Bearer ${BRIDGE_TOKEN}`,
         'Content-Type': 'application/json',

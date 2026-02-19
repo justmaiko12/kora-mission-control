@@ -229,10 +229,6 @@ export default function DealsView() {
           ))}
         </div>
         
-        {/* Deal count */}
-        <div className="text-sm text-zinc-400">
-          💰 {!loading && <span>{totalDeals} deals in pipeline</span>}
-        </div>
       </div>
 
       {/* Error State */}

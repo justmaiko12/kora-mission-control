@@ -137,8 +137,17 @@ export default function Sidebar({
           </a>
         );
       }
+      // Use onPointerUp for Arc browser compatibility
       return (
-        <Link href={item.href} className={className} onClick={onClose}>
+        <Link 
+          href={item.href} 
+          className={className} 
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          style={{ pointerEvents: 'auto' }}
+        >
           {content}
         </Link>
       );
@@ -178,9 +187,9 @@ export default function Sidebar({
       {/* Sidebar - no overlay, just slides in/out */}
       <aside
         className={`
-          fixed lg:relative inset-y-0 left-0 lg:inset-auto z-[200] lg:z-10
+          fixed lg:relative inset-y-0 left-0 lg:inset-auto z-[200] lg:z-50
           w-[240px] bg-[var(--surface-1)] border-r border-[var(--border)]
-          flex flex-col flex-shrink-0 h-screen
+          flex flex-col flex-shrink-0 h-screen isolate
           transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
           shadow-2xl lg:shadow-none
           ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
@@ -217,7 +226,7 @@ export default function Sidebar({
         <div className="h-px bg-[var(--border)] mx-4" />
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-5">
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-5" style={{ pointerEvents: 'auto' }}>
           {/* Channels */}
           <div>
             <h2 className="section-label px-2.5 mb-1.5">Channels</h2>

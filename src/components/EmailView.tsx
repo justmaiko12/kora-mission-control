@@ -88,7 +88,9 @@ export default function EmailView({
   const [similarPrompt, setSimilarPrompt] = useState<{
     domain: string;
     emails: EmailThread[];
+    originalEmail: EmailThread; // The email that was just archived
   } | null>(null);
+  const [unsubscribing, setUnsubscribing] = useState(false);
   
   // Email IDs that are linked to deals (from API)
   const [linkedEmailIds, setLinkedEmailIds] = useState<Set<string>>(new Set());
@@ -518,7 +520,7 @@ export default function EmailView({
     const similar = findSimilarEmails(email, newIgnored);
     if (similar.length > 0) {
       const domain = extractDomain(email.from);
-      setSimilarPrompt({ domain: domain || "this sender", emails: similar });
+      setSimilarPrompt({ domain: domain || "this sender", emails: similar, originalEmail: email });
     }
     
     // Fire API in background (don't await)
@@ -598,6 +600,43 @@ export default function EmailView({
         return next;
       });
     });
+  };
+
+  // Unsubscribe from mailing list
+  const handleUnsubscribe = async (email: EmailThread) => {
+    setUnsubscribing(true);
+    try {
+      const res = await fetch("/api/emails/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: email.id,
+          account: activeAccount,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        // Also archive the similar emails
+        handleArchiveSimilar();
+        // Show success message (could use toast)
+        alert(`✅ Unsubscribed from ${similarPrompt?.domain || "this sender"}`);
+      } else if (data.unsubscribeUrl) {
+        // Fallback: open unsubscribe link manually
+        if (confirm(`Open unsubscribe page for ${similarPrompt?.domain}?`)) {
+          window.open(data.unsubscribeUrl, "_blank");
+          handleArchiveSimilar();
+        }
+      } else {
+        alert(data.error || "Could not find unsubscribe option for this email");
+      }
+    } catch (err) {
+      console.error("Unsubscribe error:", err);
+      alert("Failed to unsubscribe. Try opening the email and using the unsubscribe link.");
+    } finally {
+      setUnsubscribing(false);
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -950,6 +989,13 @@ export default function EmailView({
                 className="px-3 py-1.5 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
               >
                 Archive All
+              </button>
+              <button
+                onClick={() => handleUnsubscribe(similarPrompt.originalEmail)}
+                disabled={unsubscribing}
+                className="px-3 py-1.5 text-sm font-medium bg-red-600/80 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg transition-colors"
+              >
+                {unsubscribing ? "..." : "Unsubscribe"}
               </button>
               <button
                 onClick={dismissSimilarPrompt}

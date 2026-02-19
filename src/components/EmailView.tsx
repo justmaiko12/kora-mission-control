@@ -88,9 +88,6 @@ export default function EmailView({
     emails: EmailThread[];
   } | null>(null);
   
-  // Manually flagged as needs-response (local override)
-  const [flaggedNeedsResponse, setFlaggedNeedsResponse] = useState<Set<string>>(new Set());
-  
   // Email IDs that are linked to deals (from API)
   const [linkedEmailIds, setLinkedEmailIds] = useState<Set<string>>(new Set());
   
@@ -523,33 +520,6 @@ export default function EmailView({
     });
   };
 
-  // Flag email as needing response (for training the filter)
-  const handleFlagNeedsResponse = async (email: EmailThread) => {
-    // Immediately add to local flagged set (optimistic)
-    setFlaggedNeedsResponse(prev => new Set([...prev, email.id]));
-    
-    try {
-      await fetch("/api/emails/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: email.id,
-          account: activeAccount,
-          feedback: "needs-response",
-          email: { from: email.from, subject: email.subject, labels: email.labels },
-        }),
-      });
-    } catch (err) {
-      console.error("Failed to flag email:", err);
-      // Rollback on error
-      setFlaggedNeedsResponse(prev => {
-        const next = new Set(prev);
-        next.delete(email.id);
-        return next;
-      });
-    }
-  };
-
   const formatDate = (dateStr: string) => {
     const now = new Date();
     const date = new Date(dateStr.replace(" ", "T"));
@@ -694,7 +664,7 @@ export default function EmailView({
   };
 
   // Check if email needs response (original flag OR manually flagged)
-  const emailNeedsResponse = (e: EmailThread) => e.needsResponse || flaggedNeedsResponse.has(e.id);
+  const emailNeedsResponse = (e: EmailThread) => e.needsResponse;
   const emailAwaitingResponse = (e: EmailThread) => e.awaitingResponse === true;
   
   const needsResponseCount = visibleEmails.filter(emailNeedsResponse).length;
@@ -1039,21 +1009,6 @@ export default function EmailView({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </button>
-                  {/* Flag as needs response (for training) */}
-                  {!emailNeedsResponse(email) && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleFlagNeedsResponse(email);
-                      }}
-                      className="p-2 hover:bg-orange-600/30 rounded-lg transition-colors text-zinc-400 hover:text-orange-400"
-                      title="Flag: Should need response (train filter)"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                    </button>
-                  )}
                 </div>
               )}
             </div>

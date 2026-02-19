@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
-const BRIDGE_TOKEN = process.env.KORA_BRIDGE_TOKEN || "";
+const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || process.env.KORA_BRIDGE_TOKEN || "";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${BRIDGE_TOKEN}`,
+        Authorization: `Bearer ${BRIDGE_SECRET}`,
       },
       body: JSON.stringify({ id, account, feedback, email }),
     });

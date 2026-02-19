@@ -52,29 +52,13 @@ interface InvoiceGeneratorProps {
   onSuccess: (invoiceId: string) => void;
 }
 
-// Sender presets for each account
-const SENDER_PRESETS: Record<string, Company> = {
-  "justmaiko@shluv.com": {
-    name: "Shluv Enterprise LLC",
-    address: "1127 Oak Grove Ave, Ste C\nBurlingame, CA 94010",
-    email: "justmaiko@shluv.com",
-    phone: "",
-    paymentInstructions: "Wire Transfer:\nBank: JPMorgan Chase\nRouting: XXXXXX\nAccount: XXXXXX\n\nOr pay via PayPal: paypal@shluv.com",
-  },
-  "business@shluv.com": {
-    name: "Shluv Enterprise LLC",
-    address: "1127 Oak Grove Ave, Ste C\nBurlingame, CA 94010",
-    email: "business@shluv.com",
-    phone: "",
-    paymentInstructions: "Wire Transfer:\nBank: JPMorgan Chase\nRouting: XXXXXX\nAccount: XXXXXX\n\nOr pay via PayPal: paypal@shluv.com",
-  },
-  "business@meettherodz.com": {
-    name: "Meet The Rodz",
-    address: "San Diego, CA",
-    email: "business@meettherodz.com",
-    phone: "",
-    paymentInstructions: "Pay via PayPal: business@meettherodz.com",
-  },
+// Fallback sender presets (used while loading real data)
+const FALLBACK_SENDER: Company = {
+  name: "Loading...",
+  address: "",
+  email: "",
+  phone: "",
+  paymentInstructions: "",
 };
 
 function generateInvoiceNumber(): string {
@@ -335,8 +319,38 @@ export default function InvoiceGenerator({
   const [taxRate, setTaxRate] = useState(0);
   const [currency, setCurrency] = useState("USD");
 
-  // Get sender based on account
-  const sender = SENDER_PRESETS[deal.account] || SENDER_PRESETS["business@shluv.com"];
+  // Sender company data (fetched from Invoicer)
+  const [sender, setSender] = useState<Company | null>(null);
+  const [loadingSender, setLoadingSender] = useState(true);
+
+  // Fetch real company data from Invoicer
+  useEffect(() => {
+    async function fetchCompany() {
+      try {
+        const res = await fetch(`/api/companies?account=${encodeURIComponent(deal.account)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSender(data.company);
+        } else {
+          console.error("Failed to fetch company");
+          // Use minimal fallback
+          setSender({
+            name: deal.account.includes("meettherodz") ? "Meet The Rodz" : "Shluv Enterprise LLC",
+            email: deal.account,
+          });
+        }
+      } catch (err) {
+        console.error("Company fetch error:", err);
+        setSender({
+          name: deal.account.includes("meettherodz") ? "Meet The Rodz" : "Shluv Enterprise LLC",
+          email: deal.account,
+        });
+      } finally {
+        setLoadingSender(false);
+      }
+    }
+    fetchCompany();
+  }, [deal.account]);
 
   // Initialize from deal data
   useEffect(() => {
@@ -505,14 +519,19 @@ export default function InvoiceGenerator({
       const pdfBase64 = await base64Promise;
 
       // Send email with PDF attachment
+      const senderName = sender?.name || "Our Team";
+      const paymentInfo = sender?.paymentInstructions 
+        ? `Payment Details:\n${sender.paymentInstructions}\n\n` 
+        : "";
+      
       const res = await fetch("/api/emails/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           account: deal.account,
           to: clientEmail,
-          subject: `Invoice ${invoiceNumber} - ${sender.name}`,
-          body: `Hi ${clientName},\n\nPlease find attached invoice ${invoiceNumber} for the amount of ${formatMoney(total)}.\n\nDue date: ${formatDate(dueDate)}\n\n${sender.paymentInstructions ? "Payment Details:\n" + sender.paymentInstructions + "\n\n" : ""}Thank you for your business!\n\nBest regards,\n${sender.name}`,
+          subject: `Invoice ${invoiceNumber} - ${senderName}`,
+          body: `Hi ${clientName},\n\nPlease find attached invoice ${invoiceNumber} for the amount of ${formatMoney(total)}.\n\nDue date: ${formatDate(dueDate)}\n\n${paymentInfo}Thank you for your business!\n\nBest regards,\n${senderName}`,
           attachments: [
             {
               filename: `${invoiceNumber}.pdf`,
@@ -785,10 +804,12 @@ export default function InvoiceGenerator({
                 Cancel
               </button>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500">Will sync to Invoicer Pro</span>
+                <span className="text-xs text-zinc-500">
+                  {loadingSender ? "Loading company data..." : "Will sync to Invoicer Pro"}
+                </span>
                 <button
                   onClick={handleCreate}
-                  disabled={creating || total === 0}
+                  disabled={creating || total === 0 || loadingSender}
                   className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2"
                 >
                   {creating ? (

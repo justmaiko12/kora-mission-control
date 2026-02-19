@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
-// Invoicer Supabase connection
-const INVOICER_SUPABASE_URL = process.env.INVOICER_SUPABASE_URL || "";
-const INVOICER_SUPABASE_KEY = process.env.INVOICER_SUPABASE_SERVICE_KEY || "";
-
-const supabase = createClient(INVOICER_SUPABASE_URL, INVOICER_SUPABASE_KEY);
+// Invoicer Edge Function URL
+const INVOICER_API_URL = "https://dpnsdxfiirqjztcfsvuj.supabase.co/functions/v1/kora-api";
+const INVOICER_SERVICE_KEY = process.env.INVOICER_SUPABASE_SERVICE_KEY || "";
 
 // Company ID mapping
 const COMPANY_MAP: Record<string, string> = {
@@ -26,18 +23,13 @@ export async function POST(req: NextRequest) {
       clientEmail,
       items,
       notes,
-      taxRate,
-      currency,
-      subtotal,
-      tax,
-      total,
       account,
     } = body;
 
     // Validate required fields
-    if (!clientName || !clientEmail || !items?.length || !total) {
+    if (!clientName || !items?.length) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields (clientName, items)" },
         { status: 400 }
       );
     }
@@ -45,113 +37,52 @@ export async function POST(req: NextRequest) {
     // Get owner company ID
     const ownerCompanyId = COMPANY_MAP[account] || COMPANY_MAP["business@shluv.com"];
 
-    // Fetch the owner company details for the invoice sender
-    const { data: senderCompany, error: companyError } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("id", ownerCompanyId)
-      .single();
+    // Format items for Invoicer API
+    const formattedItems = items.map((item: { description: string; quantity: number; unitPrice: number }) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    }));
 
-    if (companyError) {
-      console.error("Failed to fetch sender company:", companyError);
-    }
+    // Call Invoicer's kora-api Edge Function
+    const res = await fetch(`${INVOICER_API_URL}?action=create_invoice&companyId=${ownerCompanyId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": INVOICER_SERVICE_KEY,
+        "Authorization": `Bearer ${INVOICER_SERVICE_KEY}`,
+      },
+      body: JSON.stringify({
+        clientName,
+        clientEmail,
+        items: formattedItems,
+        notes: notes || "Thank you for your business!",
+        dueDate,
+        linkedPromoIds: dealId ? [dealId] : [],
+      }),
+    });
 
-    // Create client record if it doesn't exist
-    let clientId: string | null = null;
-    
-    // Check if client exists
-    const { data: existingClient } = await supabase
-      .from("companies")
-      .select("id")
-      .eq("email", clientEmail)
-      .single();
-
-    if (existingClient) {
-      clientId = existingClient.id;
-    } else {
-      // Create new client
-      const { data: newClient, error: clientCreateError } = await supabase
-        .from("companies")
-        .insert({
-          name: clientName,
-          email: clientEmail,
-          address: "",
-          city: "",
-          state: "",
-          zip: "",
-          country: "USA",
-        })
-        .select("id")
-        .single();
-
-      if (clientCreateError) {
-        console.error("Failed to create client:", clientCreateError);
-      } else {
-        clientId = newClient.id;
-      }
-    }
-
-    // Create the invoice in Supabase
-    const invoiceData = {
-      invoice_number: invoiceNumber,
-      date: date,
-      due_date: dueDate,
-      sender_id: ownerCompanyId,
-      client_id: clientId,
-      client_name: clientName,
-      client_email: clientEmail,
-      items: JSON.stringify(items),
-      notes: notes,
-      tax_rate: taxRate,
-      currency: currency,
-      subtotal: subtotal,
-      tax: tax,
-      total: total,
-      status: "draft", // Start as draft
-      linked_promo_ids: dealId ? [dealId] : [],
-      created_at: new Date().toISOString(),
-    };
-
-    const { data: invoice, error: invoiceError } = await supabase
-      .from("invoices")
-      .insert(invoiceData)
-      .select("id")
-      .single();
-
-    if (invoiceError) {
-      console.error("Failed to create invoice:", invoiceError);
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error("Invoicer API error:", res.status, errorData);
       return NextResponse.json(
-        { error: "Failed to create invoice in database" },
-        { status: 500 }
+        { error: errorData.error || `Invoicer API error: ${res.status}` },
+        { status: res.status }
       );
     }
 
-    // Update the promo task / deal to link the invoice
-    if (dealId) {
-      const { error: updateError } = await supabase
-        .from("promo_tasks")
-        .update({
-          invoice_id: invoice.id,
-          payment_status: "invoiced",
-          deal_stage: "collecting_payment",
-        })
-        .eq("id", dealId);
-
-      if (updateError) {
-        console.error("Failed to update deal with invoice:", updateError);
-      }
-    }
-
+    const data = await res.json();
+    
     return NextResponse.json({
       success: true,
-      invoiceId: invoice.id,
-      invoiceNumber,
-      message: `Invoice ${invoiceNumber} created successfully`,
+      invoiceId: data.invoiceId,
+      invoiceNumber: data.invoiceNumber,
+      message: `Invoice ${data.invoiceNumber} created successfully`,
     });
   } catch (error) {
     console.error("Invoice creation error:", error);
     return NextResponse.json(
-      { error: "Failed to create invoice" },
+      { error: error instanceof Error ? error.message : "Failed to create invoice" },
       { status: 500 }
     );
   }

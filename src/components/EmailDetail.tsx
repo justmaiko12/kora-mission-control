@@ -58,7 +58,7 @@ export default function EmailDetail({
   // Scroll to bottom when messages load
   useEffect(() => {
     if (messages.length > 0 && !loading) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
     }
   }, [messages, loading]);
 

@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
         response: sendData.response,
         messageId,
         immediate: true,
+        result: sendData.result, // Pass through full result for preview actions
       });
     }
 

@@ -2,8 +2,40 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 
-// Simple chat component for automations
-function AutomationsChat({ onRefresh }: { onRefresh: () => void }) {
+// Types
+interface CronJob {
+  id: string;
+  name: string;
+  schedule: {
+    kind: "at" | "every" | "cron";
+    expr?: string;
+    everyMs?: number;
+    at?: string;
+  };
+  payload: {
+    kind: "systemEvent" | "agentTurn";
+    text?: string;
+    message?: string;
+  };
+  sessionTarget: "main" | "isolated";
+  enabled: boolean;
+  lastRun?: string;
+  nextRun?: string;
+}
+
+interface CronJobsResponse {
+  jobs: CronJob[];
+  status?: string;
+}
+
+// Simple chat component for automations with context
+interface AutomationsChatProps {
+  onRefresh: () => void;
+  selectedJob: CronJob | null;
+  onClearSelection: () => void;
+}
+
+function AutomationsChat({ onRefresh, selectedJob, onClearSelection }: AutomationsChatProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [loading, setLoading] = useState(false);
@@ -22,11 +54,18 @@ function AutomationsChat({ onRefresh }: { onRefresh: () => void }) {
     setLoading(true);
 
     try {
+      // Build context message with selected job details
+      let contextMessage = "[Automations Context] ";
+      if (selectedJob) {
+        contextMessage += `[Selected Automation: "${selectedJob.name || 'Unnamed'}" (ID: ${selectedJob.id}, Schedule: ${selectedJob.schedule.kind === 'cron' ? selectedJob.schedule.expr : selectedJob.schedule.kind}, Enabled: ${selectedJob.enabled}, Target: ${selectedJob.sessionTarget})] `;
+      }
+      contextMessage += userMessage;
+      
       const res = await fetch("/api/openclaw/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `[Automations Context] ${userMessage}`,
+          message: contextMessage,
           context: "automations",
         }),
       });
@@ -51,6 +90,23 @@ function AutomationsChat({ onRefresh }: { onRefresh: () => void }) {
 
   return (
     <div className="border-t border-zinc-800 bg-zinc-900/80 backdrop-blur-sm">
+      {/* Selected job context banner */}
+      {selectedJob && (
+        <div className="px-4 py-2 bg-indigo-900/30 border-b border-indigo-800/50 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-indigo-400">📝</span>
+            <span className="text-indigo-300">Editing:</span>
+            <span className="text-white font-medium">{selectedJob.name || "Unnamed Automation"}</span>
+          </div>
+          <button
+            onClick={onClearSelection}
+            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 hover:bg-indigo-800/30 rounded"
+          >
+            ✕ Clear
+          </button>
+        </div>
+      )}
+      
       {/* Messages area */}
       {messages.length > 0 && (
         <div className="max-h-48 overflow-y-auto p-4 space-y-3">
@@ -79,7 +135,10 @@ function AutomationsChat({ onRefresh }: { onRefresh: () => void }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-            placeholder="Create, edit, or manage automations... (e.g., 'create a daily reminder at 9am')"
+            placeholder={selectedJob 
+              ? `Ask about "${selectedJob.name}" or say what to change...`
+              : "Create, edit, or manage automations..."
+            }
             className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500"
             disabled={loading}
           />
@@ -92,42 +151,21 @@ function AutomationsChat({ onRefresh }: { onRefresh: () => void }) {
           </button>
         </div>
         <p className="text-xs text-zinc-500 mt-2">
-          Try: &quot;Create a reminder every day at 9am&quot; or &quot;Disable the session sync job&quot;
+          {selectedJob 
+            ? `Try: "Change to 10am" or "Disable this" or "What does this do?"`
+            : `Try: "Create a reminder every day at 9am" or "Disable the session sync job"`
+          }
         </p>
       </div>
     </div>
   );
 }
 
-interface CronJob {
-  id: string;
-  name: string;
-  schedule: {
-    kind: "at" | "every" | "cron";
-    expr?: string;
-    everyMs?: number;
-    at?: string;
-  };
-  payload: {
-    kind: "systemEvent" | "agentTurn";
-    text?: string;
-    message?: string;
-  };
-  sessionTarget: "main" | "isolated";
-  enabled: boolean;
-  lastRun?: string;
-  nextRun?: string;
-}
-
-interface CronJobsResponse {
-  jobs: CronJob[];
-  status?: string;
-}
-
 export default function AutomationsView() {
   const [jobs, setJobs] = useState<CronJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedJob, setSelectedJob] = useState<CronJob | null>(null);
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -296,15 +334,25 @@ export default function AutomationsView() {
                 {enabledJobs.map((job) => (
                   <div
                     key={job.id}
-                    className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors"
+                    onClick={() => setSelectedJob(selectedJob?.id === job.id ? null : job)}
+                    className={`p-4 bg-zinc-900/50 border rounded-xl cursor-pointer transition-all ${
+                      selectedJob?.id === job.id 
+                        ? "border-indigo-500 ring-2 ring-indigo-500/20" 
+                        : "border-zinc-800 hover:border-zinc-700"
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className={`w-2 h-2 rounded-full ${
+                            selectedJob?.id === job.id ? "bg-indigo-500" : "bg-emerald-500"
+                          } animate-pulse`} />
                           <h3 className="font-semibold truncate">
                             {job.name || "Unnamed Automation"}
                           </h3>
+                          {selectedJob?.id === job.id && (
+                            <span className="text-xs bg-indigo-600 px-1.5 py-0.5 rounded text-white">Selected</span>
+                          )}
                         </div>
                         <p className="text-sm text-indigo-400 mt-1">
                           🕐 {formatSchedule(job.schedule)}
@@ -338,14 +386,24 @@ export default function AutomationsView() {
                 {disabledJobs.map((job) => (
                   <div
                     key={job.id}
-                    className="p-3 bg-zinc-900/30 border border-zinc-800/50 rounded-lg opacity-60"
+                    onClick={() => setSelectedJob(selectedJob?.id === job.id ? null : job)}
+                    className={`p-3 bg-zinc-900/30 border rounded-lg cursor-pointer transition-all ${
+                      selectedJob?.id === job.id 
+                        ? "border-indigo-500 ring-2 ring-indigo-500/20 opacity-100" 
+                        : "border-zinc-800/50 opacity-60 hover:opacity-80"
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-zinc-600" />
+                        <span className={`w-2 h-2 rounded-full ${
+                          selectedJob?.id === job.id ? "bg-indigo-500" : "bg-zinc-600"
+                        }`} />
                         <span className="text-sm text-zinc-400 truncate">
                           {job.name || "Unnamed"}
                         </span>
+                        {selectedJob?.id === job.id && (
+                          <span className="text-xs bg-indigo-600 px-1.5 py-0.5 rounded text-white">Selected</span>
+                        )}
                       </div>
                       <span className="text-xs text-zinc-500">
                         Was: {formatSchedule(job.schedule)}
@@ -364,7 +422,11 @@ export default function AutomationsView() {
       </div>
 
       {/* Chat for managing automations */}
-      <AutomationsChat onRefresh={fetchJobs} />
+      <AutomationsChat 
+        onRefresh={fetchJobs} 
+        selectedJob={selectedJob}
+        onClearSelection={() => setSelectedJob(null)}
+      />
     </div>
   );
 }

@@ -530,8 +530,8 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   // Default: full email list view
   return (
     <div className="h-full flex flex-col bg-zinc-950">
-      {/* Header - Mobile Optimized */}
-      <div className="p-2 md:p-4 space-y-1.5 md:space-y-2">
+      {/* Header - STICKY, doesn't scroll */}
+      <div className="flex-shrink-0 p-2 md:p-4 space-y-1.5 md:space-y-2 bg-zinc-950 border-b border-zinc-800/50">
         {/* Row 1: Account Tabs - FULL WIDTH on mobile */}
         {accounts.length > 0 && (
           <div className="w-full">
@@ -546,52 +546,52 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
         )}
 
         {/* Row 2: Filter Pills + Action Icons */}
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide relative z-10 -mx-2 px-2">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide relative z-10 -mx-2 px-2">
           <button
             onClick={() => setFilter("needs-response")}
-            className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium transition-colors flex items-center gap-1 md:gap-1.5 whitespace-nowrap ${
+            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[36px] ${
               filter === "needs-response"
                 ? "bg-amber-600 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
             }`}
           >
-            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-amber-500" />
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
             Needs Response
             {needsResponseCount > 0 && (
-              <span className="text-[10px] md:text-xs text-zinc-300">{needsResponseCount}</span>
+              <span className="text-[10px] text-zinc-300">{needsResponseCount}</span>
             )}
           </button>
           <button
             onClick={() => setFilter("awaiting")}
-            className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium transition-colors flex items-center gap-1 md:gap-1.5 whitespace-nowrap ${
+            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[36px] ${
               filter === "awaiting"
                 ? "bg-blue-600 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
             }`}
           >
-            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-500" />
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
             Awaiting
             {awaitingCount > 0 && (
-              <span className="text-[10px] md:text-xs text-zinc-300">{awaitingCount}</span>
+              <span className="text-[10px] text-zinc-300">{awaitingCount}</span>
             )}
           </button>
           <button
             onClick={() => setFilter("unread")}
-            className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium transition-colors flex items-center gap-1 md:gap-1.5 whitespace-nowrap ${
+            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[36px] ${
               filter === "unread"
                 ? "bg-zinc-700 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
             }`}
           >
-            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-500" />
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
             Unread
             {unreadCount > 0 && (
-              <span className="text-[10px] md:text-xs text-zinc-400">{unreadCount}</span>
+              <span className="text-[10px] text-zinc-400">{unreadCount}</span>
             )}
           </button>
           <button
             onClick={() => setFilter("all")}
-            className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors whitespace-nowrap min-h-[36px] ${
               filter === "all"
                 ? "bg-zinc-700 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
@@ -601,31 +601,31 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           </button>
           
           {/* Spacer pushes icons to right */}
-          <div className="flex-1" />
+          <div className="flex-1 min-w-[8px]" />
           
-          {/* Action icons */}
+          {/* Action icons - bigger touch targets */}
           <button
             onClick={() => {
               setSelectionMode(!selectionMode);
               if (selectionMode) setSelectedIds(new Set());
             }}
-            className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
+            className={`p-2.5 rounded-lg transition-colors flex-shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center ${
               selectionMode 
                 ? "bg-indigo-600 text-white" 
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800"
             }`}
             title="Select mode"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
           </button>
           <button
             onClick={() => refresh()}
             disabled={loading}
-            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+            className="p-2.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center"
           >
-            <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>

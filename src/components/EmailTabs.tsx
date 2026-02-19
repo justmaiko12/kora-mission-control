@@ -131,7 +131,7 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
   };
 
   return (
-    <div className="flex items-center gap-1 px-2 overflow-x-auto scrollbar-hide">
+    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
       {accounts.map((account) => {
         const isActive = account.id === activeAccount;
         const isEditing = editingId === account.email;
@@ -147,7 +147,7 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
                 onChange={(e) => setEditValue(e.target.value)}
                 onBlur={() => handleSave(account.email)}
                 onKeyDown={(e) => handleKeyDown(e, account.email)}
-                className="py-1 px-2 text-xs font-medium bg-zinc-800 border border-indigo-500 rounded text-white outline-none w-24"
+                className="py-2 px-3 text-sm font-medium bg-zinc-800 border border-indigo-500 rounded-lg text-white outline-none w-24"
                 maxLength={20}
               />
             ) : (
@@ -155,21 +155,18 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
                 onClick={() => onChange(account.id)}
                 onDoubleClick={() => handleDoubleClick(account.email, displayName)}
                 title="Double-click to rename"
-                className={`relative py-2 px-2 text-xs font-medium transition-colors whitespace-nowrap ${
-                  isActive ? "text-indigo-300" : "text-zinc-400 hover:text-zinc-200"
+                className={`relative py-2.5 px-3 text-sm font-medium transition-colors whitespace-nowrap min-h-[40px] rounded-lg ${
+                  isActive ? "text-indigo-300 bg-zinc-800/50" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/30"
                 }`}
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <span>{displayName}</span>
                   {account.unreadCount > 0 && (
-                    <span className="px-1 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-600 text-white min-w-[16px] text-center">
+                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-600 text-white min-w-[18px] text-center">
                       {account.unreadCount}
                     </span>
                   )}
                 </div>
-                {isActive && (
-                  <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-indigo-500 rounded-full" />
-                )}
               </button>
             )}
           </div>

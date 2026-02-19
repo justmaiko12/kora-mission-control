@@ -135,6 +135,14 @@ export function useEmails() {
     const cached = emailCache[account];
     const timestamp = cacheTimestamps[account];
     if (cached && timestamp && Date.now() - timestamp < CACHE_TTL) {
+      // Validate cache has needsResponse field (required for filtering)
+      // If first email exists but lacks needsResponse, cache is stale
+      if (cached.length > 0 && cached[0].needsResponse === undefined) {
+        console.log(`[useEmails] Cache invalidated for ${account} - missing needsResponse`);
+        delete emailCache[account];
+        delete cacheTimestamps[account];
+        return null;
+      }
       return cached;
     }
     return null;

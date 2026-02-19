@@ -84,7 +84,7 @@ function HomeContent() {
   const [customChannels, setCustomChannels] = useState<CustomChannel[]>([]);
   const [activeCustomChannelId, setActiveCustomChannelId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [chatCollapsed, setChatCollapsed] = useState(false);
+  const [chatCollapsed, setChatCollapsed] = useState(true); // Start minimized
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [previewEmailIds, setPreviewEmailIds] = useState<string[]>([]);
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0);

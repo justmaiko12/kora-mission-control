@@ -202,6 +202,7 @@ export default function EmailDetail({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           draft: replyText,
+          account, // Pass account for signature lookup
           context: {
             subject: safeString(email.subject),
             from: safeString(lastMessage?.from || email.from),
@@ -475,8 +476,8 @@ export default function EmailDetail({
             onChange={(e) => setReplyText(e.target.value)}
             onKeyDown={(e) => (e.key === "Enter" && (e.metaKey || e.ctrlKey)) && handleReply()}
             placeholder="Type a quick reply..."
-            rows={3}
-            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+            rows={6}
+            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-colors resize-y min-h-[120px]"
           />
           <div className="flex flex-wrap gap-2">
             <button

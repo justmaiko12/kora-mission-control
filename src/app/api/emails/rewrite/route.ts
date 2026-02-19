@@ -6,7 +6,7 @@ const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { draft, context } = body;
+    const { draft, context, account } = body;
 
     if (!draft) {
       return NextResponse.json(
@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         draft,
         context: context || {},
+        account, // Pass account for signature lookup
       }),
     });
 

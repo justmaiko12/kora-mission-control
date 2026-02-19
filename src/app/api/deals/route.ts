@@ -82,6 +82,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(data);
     }
 
+    if (action === "link") {
+      // Link an email to an existing deal
+      const data = await bridgeFetch("/api/deals/link", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      return NextResponse.json(data);
+    }
+
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
     console.error("Deals action failed:", error);

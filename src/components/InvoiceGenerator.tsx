@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface Deal {
   id: string;
@@ -202,9 +203,16 @@ export default function InvoiceGenerator({
     }).format(amount);
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+  // Use portal to render outside of parent stacking contexts
+  const modalContent = (
+    <div 
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4" 
+      onClick={onClose}
+    >
+      <div 
+        className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
           <div>
@@ -441,4 +449,10 @@ export default function InvoiceGenerator({
       </div>
     </div>
   );
+
+  // Render via portal to document body to avoid stacking context issues
+  if (typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 }

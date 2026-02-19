@@ -203,12 +203,28 @@ export default function DealsView() {
     ? Object.values(pipelineData.requests).reduce((sum, items) => sum + items.length, 0)
     : 0;
 
+  // Calculate total awaiting money (active + completed + invoiced, NOT negotiating or paid)
+  const awaitingStages: (keyof DealPipeline)[] = ['active', 'completed', 'invoiced'];
+  const totalAwaitingMoney = pipelineData?.deals
+    ? awaitingStages.reduce((total, stage) => {
+        const deals = filterByBusiness(pipelineData.deals[stage] || []);
+        return total + deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
+      }, 0)
+    : 0;
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-3 md:p-4 border-b border-zinc-800">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-lg md:text-xl font-bold">💼 Business</h1>
+          <div>
+            <h1 className="text-lg md:text-xl font-bold">💼 Business</h1>
+            {totalAwaitingMoney > 0 && (
+              <p className="text-sm text-emerald-400 font-medium mt-0.5">
+                💵 {formatMoney(totalAwaitingMoney)} awaiting
+              </p>
+            )}
+          </div>
           <button
             onClick={fetchPipeline}
             disabled={loading}

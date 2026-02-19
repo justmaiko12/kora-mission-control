@@ -300,8 +300,9 @@ h1, h2, h3, h4 {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 500;
@@ -309,6 +310,7 @@ h1, h2, h3, h4 {
   transition: all var(--transition-fast);
   cursor: pointer;
   position: relative;
+  text-align: left;
 }
 
 .nav-item:hover {

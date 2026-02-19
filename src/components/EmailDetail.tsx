@@ -3,6 +3,16 @@
 import { useEffect, useState, useRef } from "react";
 import { EmailThread } from "@/lib/useEmails";
 import { safeString } from "@/lib/safeRender";
+import InvoiceGenerator from "./InvoiceGenerator";
+
+interface LinkedDeal {
+  id: string;
+  subject: string;
+  from: string;
+  amount?: number | null;
+  clientName?: string;
+  account: string;
+}
 
 interface EmailDetailProps {
   email: EmailThread;
@@ -13,6 +23,7 @@ interface EmailDetailProps {
   onDone: () => void;
   onReplySent?: () => void; // Called after successful reply - removes from "Needs Response"
   isMarking: boolean;
+  linkedDeal?: LinkedDeal | null; // Deal linked to this email
 }
 
 interface EmailMessage {
@@ -44,6 +55,7 @@ export default function EmailDetail({
   onDone,
   onReplySent,
   isMarking,
+  linkedDeal,
 }: EmailDetailProps) {
   const [messages, setMessages] = useState<EmailMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +64,17 @@ export default function EmailDetail({
   const [sending, setSending] = useState(false);
   const [rewriting, setRewriting] = useState(false);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
+  
+  // Invoice generation
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceSuccess, setInvoiceSuccess] = useState<string | null>(null);
+  
+  // Detect if thread mentions "invoice" (client asking for invoice)
+  const threadMentionsInvoice = messages.some(msg => {
+    const text = (msg.body + " " + msg.subject).toLowerCase();
+    // Look for invoice-related keywords
+    return /invoice|billing|payment details|send.*(invoice|bill)|please.*(invoice|bill)/i.test(text);
+  });
   
   // Reply recipients
   const [replyTo, setReplyTo] = useState<string[]>([]);
@@ -389,7 +412,25 @@ export default function EmailDetail({
           >
             🗑️ Archive
           </button>
+          
+          {/* Generate Invoice button - shows when "invoice" mentioned and linked to deal */}
+          {linkedDeal && threadMentionsInvoice && (
+            <button
+              onClick={() => setShowInvoiceModal(true)}
+              className="px-3 py-1.5 text-sm bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg transition-colors flex items-center gap-1"
+            >
+              📄 Generate Invoice
+            </button>
+          )}
         </div>
+        
+        {/* Invoice success message */}
+        {invoiceSuccess && (
+          <div className="mt-2 px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-sm text-emerald-400 flex items-center justify-between">
+            <span>✅ {invoiceSuccess}</span>
+            <button onClick={() => setInvoiceSuccess(null)} className="text-emerald-500 hover:text-white">×</button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -719,6 +760,26 @@ export default function EmailDetail({
           )}
         </div>
       </div>
+      
+      {/* Invoice Generator Modal */}
+      {showInvoiceModal && linkedDeal && (
+        <InvoiceGenerator
+          deal={{
+            id: linkedDeal.id,
+            subject: linkedDeal.subject || email.subject,
+            from: linkedDeal.from || email.from,
+            amount: linkedDeal.amount,
+            clientName: linkedDeal.clientName,
+            account: linkedDeal.account || account,
+          }}
+          emailSubject={email.subject}
+          onClose={() => setShowInvoiceModal(false)}
+          onSuccess={(invoiceId) => {
+            setShowInvoiceModal(false);
+            setInvoiceSuccess(`Invoice created (${invoiceId})`);
+          }}
+        />
+      )}
     </div>
   );
 }

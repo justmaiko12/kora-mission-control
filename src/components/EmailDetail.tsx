@@ -43,6 +43,12 @@ export default function EmailDetail({
   const [sending, setSending] = useState(false);
   const [rewriting, setRewriting] = useState(false);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
+  
+  // AI Assistant state
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiAnswer, setAiAnswer] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
 
   useEffect(() => {
     async function fetchThread() {
@@ -223,6 +229,43 @@ export default function EmailDetail({
     }
   };
 
+  // AI Assistant - ask questions about the thread
+  const handleAskAI = async () => {
+    if (!aiQuestion.trim() || aiLoading) return;
+    
+    setAiLoading(true);
+    setAiAnswer("");
+    try {
+      // Build thread context for AI
+      const threadContext = messages.map(m => 
+        `From: ${extractName(m.from)}\nDate: ${formatDate(m.date)}\n${stripQuotedContent(safeString(m.body))}`
+      ).join('\n\n---\n\n');
+      
+      const res = await fetch("/api/emails/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: aiQuestion,
+          threadContext,
+          subject: safeString(email.subject),
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to get answer");
+      }
+      
+      setAiAnswer(data.answer || "No answer received");
+    } catch (err) {
+      console.error("AI Ask error:", err);
+      setAiAnswer(`Error: ${err instanceof Error ? err.message : "Failed to get answer"}`);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -334,7 +377,7 @@ export default function EmailDetail({
                 </div>
               </div>
 
-              {/* Message Body */}
+              {/* Message Body - stripped of quoted chains */}
               <div className="p-4">
                 {msg.bodyHtml ? (
                   <div
@@ -349,17 +392,79 @@ export default function EmailDetail({
                       [&_h1]:!text-white [&_h2]:!text-white [&_h3]:!text-white
                       [&_td]:!bg-transparent [&_th]:!bg-transparent [&_table]:!bg-transparent
                       [&_div]:!bg-transparent"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(safeString(msg.bodyHtml)) }}
+                    dangerouslySetInnerHTML={{ __html: stripQuotedHtml(sanitizeHtml(safeString(msg.bodyHtml))) }}
                   />
                 ) : (
                   <pre className="whitespace-pre-wrap text-sm text-zinc-300 font-sans leading-relaxed">
-                    {safeString(msg.body)}
+                    {stripQuotedContent(safeString(msg.body))}
                   </pre>
                 )}
               </div>
             </div>
           ))}
         </div>
+        
+        {/* AI Assistant Section */}
+        {!loading && messages.length > 0 && (
+          <div className="mt-6 border-t border-zinc-800 pt-4">
+            <button
+              onClick={() => setShowAiAssistant(!showAiAssistant)}
+              className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors"
+            >
+              <span className="text-base">🤖</span>
+              <span>Ask AI about this thread</span>
+              <svg 
+                className={`w-4 h-4 transition-transform ${showAiAssistant ? 'rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {showAiAssistant && (
+              <div className="mt-3 p-3 bg-zinc-900/80 border border-zinc-700 rounded-lg">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={aiQuestion}
+                    onChange={(e) => setAiQuestion(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAskAI()}
+                    placeholder="What are the key points? What do they want? Summarize..."
+                    className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                  <button
+                    onClick={handleAskAI}
+                    disabled={aiLoading || !aiQuestion.trim()}
+                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-sm transition-colors whitespace-nowrap"
+                  >
+                    {aiLoading ? "..." : "Ask"}
+                  </button>
+                </div>
+                
+                {/* Quick suggestion chips */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {["Summarize", "What do they want?", "Key dates/deadlines", "Action items"].map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => { setAiQuestion(q); }}
+                      className="px-2 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded transition-colors"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+                
+                {aiAnswer && (
+                  <div className="mt-3 p-3 bg-zinc-800/50 rounded-lg">
+                    <p className="text-sm text-zinc-300 whitespace-pre-wrap">{aiAnswer}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Quick Reply Footer */}
@@ -414,4 +519,90 @@ function sanitizeHtml(html: string): string {
     .replace(/\son\w+='[^']*'/gi, "")
     .replace(/javascript:/gi, "")
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
+}
+
+// Strip quoted content from email body (the repeated thread chains)
+function stripQuotedContent(body: string): string {
+  const lines = body.split('\n');
+  const result: string[] = [];
+  let hitQuotedSection = false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    
+    // Detect "On [date], [name] wrote:" patterns
+    if (/^On .+(wrote|said|writes):?\s*$/i.test(trimmed)) {
+      hitQuotedSection = true;
+      break;
+    }
+    
+    // Detect "From: ... Sent: ... To: ... Subject:" forwarded blocks
+    if (/^-{2,}\s*(Original Message|Forwarded message)/i.test(trimmed)) {
+      hitQuotedSection = true;
+      break;
+    }
+    
+    // Detect "From:" header that starts a quoted chain
+    if (/^From:\s+.+@/.test(trimmed) && i > 3) {
+      // Check if next lines look like email headers
+      const nextLines = lines.slice(i, i + 4).join('\n');
+      if (/Sent:|To:|Subject:/i.test(nextLines)) {
+        hitQuotedSection = true;
+        break;
+      }
+    }
+    
+    // Detect Gmail's collapsed quotes
+    if (/^\[image:.*\]/.test(trimmed) && /wrote:/.test(lines[i - 1] || '')) {
+      break;
+    }
+    
+    // Stop if we hit a long section of ">" quoted lines
+    if (trimmed.startsWith('>')) {
+      // Look ahead - if next 3+ lines also start with >, this is a quote block
+      let quoteCount = 1;
+      for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+        if (lines[j].trim().startsWith('>')) quoteCount++;
+      }
+      if (quoteCount >= 3) {
+        hitQuotedSection = true;
+        break;
+      }
+    }
+    
+    result.push(line);
+  }
+  
+  // Trim trailing empty lines and signature separators
+  while (result.length > 0) {
+    const last = result[result.length - 1].trim();
+    if (last === '' || last === '--' || last === '—') {
+      result.pop();
+    } else {
+      break;
+    }
+  }
+  
+  return result.join('\n').trim();
+}
+
+// Strip quoted content from HTML emails
+function stripQuotedHtml(html: string): string {
+  // Remove Gmail quote blocks
+  let cleaned = html
+    .replace(/<div class="gmail_quote"[\s\S]*$/i, '')
+    .replace(/<blockquote[^>]*type="cite"[\s\S]*$/i, '')
+    .replace(/<div class="moz-cite-prefix">[\s\S]*$/i, '');
+  
+  // Remove Outlook quote blocks
+  cleaned = cleaned
+    .replace(/<div style="border:none;border-top:solid #[A-Fa-f0-9]+ 1\.0pt[\s\S]*$/i, '')
+    .replace(/<hr[^>]*>[\s\S]*<p class="MsoNormal"><b>From:<\/b>[\s\S]*$/i, '');
+  
+  // Remove generic quoted content divs
+  cleaned = cleaned
+    .replace(/<div[^>]*class="[^"]*quote[^"]*"[^>]*>[\s\S]*$/gi, '');
+  
+  return cleaned.trim();
 }

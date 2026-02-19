@@ -1,36 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 
-const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
-const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
+const BRIDGE_API = process.env.BRIDGE_API_URL || 'https://api.korabot.xyz';
+const BRIDGE_TOKEN = process.env.BRIDGE_API_TOKEN || '';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { module, itemId, itemTitle, feedback, notes } = body;
+    const { module, itemTitle, feedback, notes } = body;
 
-    if (!module) {
-      return NextResponse.json(
-        { error: "module is required" },
-        { status: 400 }
-      );
-    }
-
-    const res = await fetch(`${BRIDGE_URL}/api/briefing/${module}/feedback`, {
-      method: "POST",
+    const res = await fetch(`${BRIDGE_API}/briefing/feedback`, {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${BRIDGE_SECRET}`,
+        'Authorization': `Bearer ${BRIDGE_TOKEN}`,
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ itemId, itemTitle, feedback, notes }),
+      body: JSON.stringify({ module, itemTitle, feedback, notes }),
     });
 
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Briefing feedback error:', res.status, text);
+      return NextResponse.json({ error: 'Failed to save feedback' }, { status: res.status });
+    }
+
     const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    return NextResponse.json(data);
   } catch (error) {
-    console.error("Briefing feedback error:", error);
-    return NextResponse.json(
-      { error: "Failed to submit feedback" },
-      { status: 500 }
-    );
+    console.error('Briefing feedback API error:', error);
+    return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 });
   }
 }

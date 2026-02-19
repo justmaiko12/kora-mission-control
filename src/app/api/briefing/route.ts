@@ -1,28 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
-const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
-const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
+const BRIDGE_API = process.env.BRIDGE_API_URL || 'https://api.korabot.xyz';
+const BRIDGE_TOKEN = process.env.BRIDGE_API_TOKEN || '';
 
 export async function GET() {
   try {
-    const res = await fetch(`${BRIDGE_URL}/api/briefing`, {
+    const res = await fetch(`${BRIDGE_API}/briefing`, {
       headers: {
-        Authorization: `Bearer ${BRIDGE_SECRET}`,
+        'Authorization': `Bearer ${BRIDGE_TOKEN}`,
+        'Content-Type': 'application/json',
       },
-      next: { revalidate: 60 }, // Cache for 1 minute
+      cache: 'no-store',
     });
 
     if (!res.ok) {
-      throw new Error(`Bridge API error: ${res.status}`);
+      const text = await res.text();
+      console.error('Briefing fetch error:', res.status, text);
+      // Return empty structure if briefing not found
+      return NextResponse.json({
+        aiNews: { items: [], lastUpdated: null },
+        kpopNews: { items: [], lastUpdated: null },
+        teamTasks: { items: [], lastUpdated: null },
+        content: { items: [], lastUpdated: null },
+        preferences: {},
+      });
     }
 
     const data = await res.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Briefing fetch error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch briefing" },
-      { status: 500 }
-    );
+    console.error('Briefing API error:', error);
+    return NextResponse.json({
+      aiNews: { items: [], lastUpdated: null },
+      kpopNews: { items: [], lastUpdated: null },
+      teamTasks: { items: [], lastUpdated: null },
+      content: { items: [], lastUpdated: null },
+      preferences: {},
+    });
   }
 }

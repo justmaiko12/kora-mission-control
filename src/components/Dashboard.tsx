@@ -25,6 +25,8 @@ interface BriefingItem {
   assignee?: string;
   status?: string;
   dueDate?: string;
+  type?: "recording" | "posting";
+  platform?: string;
 }
 
 interface BriefingModule {
@@ -40,10 +42,10 @@ interface BriefingData {
   preferences: {
     aiNews?: { liked: string[]; disliked: string[]; notes: string };
     kpopNews?: { liked: string[]; disliked: string[]; notes: string };
-    teamTasks?: { notes: string };
-    content?: { notes: string };
   };
 }
+
+type ModuleKey = "aiNews" | "kpopNews" | "teamTasks" | "content";
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const [stats, setStats] = useState<QuickStats>({
@@ -54,6 +56,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   });
   const [briefing, setBriefing] = useState<BriefingData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedModule, setExpandedModule] = useState<ModuleKey | null>(null);
   const [expandedNotes, setExpandedNotes] = useState<string | null>(null);
   const [noteText, setNoteText] = useState<Record<string, string>>({});
 
@@ -63,12 +66,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       if (res.ok) {
         const data = await res.json();
         setBriefing(data);
-        // Initialize note text from preferences
         setNoteText({
           aiNews: data.preferences?.aiNews?.notes || "",
           kpopNews: data.preferences?.kpopNews?.notes || "",
-          teamTasks: data.preferences?.teamTasks?.notes || "",
-          content: data.preferences?.content?.notes || "",
         });
       }
     } catch (err) {
@@ -117,7 +117,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     return "Good evening";
   };
 
-  // Submit feedback for an item
   const submitFeedback = async (module: string, itemTitle: string, feedback: "like" | "dislike") => {
     try {
       await fetch("/api/briefing/feedback", {
@@ -125,14 +124,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ module, itemTitle, feedback }),
       });
-      // Refresh briefing to get updated preferences
       fetchBriefing();
     } catch (err) {
       console.error("Feedback error:", err);
     }
   };
 
-  // Save notes for a module
   const saveNotes = async (module: string) => {
     try {
       await fetch("/api/briefing/feedback", {
@@ -146,7 +143,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     }
   };
 
-  // Format relative time
   const formatTime = (dateStr: string | null) => {
     if (!dateStr) return "Not yet updated";
     const date = new Date(dateStr);
@@ -164,120 +160,412 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     { id: "kora-activity" as ViewType, icon: "📊", title: "Activity", stat: stats.koraStatus === "active" ? "●" : "○", statLabel: stats.koraStatus },
   ];
 
-  // Briefing module component
-  const BriefingModule = ({ 
-    moduleKey, 
-    title, 
-    icon, 
-    items, 
-    lastUpdated, 
-    preferences 
-  }: { 
-    moduleKey: string;
-    title: string; 
-    icon: string; 
+  // Group tasks by assignee
+  const groupTasksByPerson = (items: BriefingItem[]) => {
+    const grouped: Record<string, BriefingItem[]> = {};
+    items.forEach((item) => {
+      const person = item.assignee || "Unassigned";
+      if (!grouped[person]) grouped[person] = [];
+      grouped[person].push(item);
+    });
+    return grouped;
+  };
+
+  // Split content into recording and posting
+  const splitContent = (items: BriefingItem[]) => {
+    return {
+      recording: items.filter((i) => i.type === "recording" || i.title.toLowerCase().includes("record")),
+      posting: items.filter((i) => i.type === "posting" || i.title.toLowerCase().includes("post")),
+    };
+  };
+
+  // News Module Card (AI News & K-pop News with preferences)
+  const NewsModuleCard = ({
+    moduleKey,
+    title,
+    icon,
+    items,
+    lastUpdated,
+    preferences,
+  }: {
+    moduleKey: "aiNews" | "kpopNews";
+    title: string;
+    icon: string;
     items: BriefingItem[];
     lastUpdated: string | null;
     preferences?: { liked?: string[]; disliked?: string[]; notes?: string };
   }) => {
     const hasItems = items && items.length > 0;
-    const isExpanded = expandedNotes === moduleKey;
 
     return (
-      <div className="surface-card p-4 md:p-5 flex flex-col">
-        {/* Header */}
+      <div
+        onClick={() => setExpandedModule(moduleKey)}
+        className="surface-card p-4 md:p-5 flex flex-col cursor-pointer hover:border-[var(--accent)] transition-all group"
+      >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="text-xl">{icon}</span>
             <h3 className="font-semibold text-[var(--text-primary)]">{title}</h3>
           </div>
-          <span className="text-[10px] text-[var(--text-muted)]">{formatTime(lastUpdated)}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-[var(--text-muted)]">{formatTime(lastUpdated)}</span>
+            <span className="text-xs text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 space-y-2 mb-3 overflow-y-auto max-h-[200px]">
+        <div className="flex-1 space-y-2 overflow-hidden">
           {!hasItems ? (
             <p className="text-sm text-[var(--text-muted)] italic">No items yet. Updates at 5am PST.</p>
           ) : (
-            items.slice(0, 5).map((item) => (
-              <div key={item.id} className="group flex items-start gap-2 p-2 rounded-lg hover:bg-[var(--surface-2)] transition-colors">
-                <div className="flex-1 min-w-0">
-                  {item.url ? (
-                    <a 
-                      href={item.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--accent)] line-clamp-2"
-                    >
-                      {item.title}
-                    </a>
-                  ) : (
-                    <p className="text-sm font-medium text-[var(--text-secondary)] line-clamp-2">{item.title}</p>
-                  )}
-                  {item.summary && (
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-1">{item.summary}</p>
-                  )}
-                  {item.assignee && (
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                      {item.assignee} {item.dueDate && `• Due ${item.dueDate}`}
-                    </p>
-                  )}
+            items.slice(0, 3).map((item) => (
+              <div key={item.id} className="p-2 rounded-lg bg-[var(--surface-2)]/50">
+                <p className="text-sm font-medium text-[var(--text-secondary)] line-clamp-1">{item.title}</p>
+                {item.source && (
+                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{item.source}</p>
+                )}
+              </div>
+            ))
+          )}
+          {items.length > 3 && (
+            <p className="text-xs text-[var(--text-muted)] text-center">+{items.length - 3} more</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Team Tasks Card (grouped by person, no preferences)
+  const TeamTasksCard = ({ items, lastUpdated }: { items: BriefingItem[]; lastUpdated: string | null }) => {
+    const grouped = groupTasksByPerson(items);
+    const people = Object.keys(grouped);
+
+    return (
+      <div
+        onClick={() => setExpandedModule("teamTasks")}
+        className="surface-card p-4 md:p-5 flex flex-col cursor-pointer hover:border-[var(--accent)] transition-all group"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">✅</span>
+            <h3 className="font-semibold text-[var(--text-primary)]">Team Tasks</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-[var(--text-muted)]">{formatTime(lastUpdated)}</span>
+            <span className="text-xs text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-hidden">
+          {people.length === 0 ? (
+            <p className="text-sm text-[var(--text-muted)] italic">No tasks due today.</p>
+          ) : (
+            people.slice(0, 3).map((person) => (
+              <div key={person} className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[var(--accent)]/20 flex items-center justify-center text-sm font-medium text-[var(--accent)]">
+                  {person.charAt(0).toUpperCase()}
                 </div>
-                {/* Feedback buttons */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => submitFeedback(moduleKey, item.title, "like")}
-                    className={`p-1 rounded hover:bg-emerald-500/20 text-xs ${preferences?.liked?.includes(item.title) ? "text-emerald-400" : "text-[var(--text-muted)]"}`}
-                    title="More like this"
-                  >
-                    👍
-                  </button>
-                  <button 
-                    onClick={() => submitFeedback(moduleKey, item.title, "dislike")}
-                    className={`p-1 rounded hover:bg-red-500/20 text-xs ${preferences?.disliked?.includes(item.title) ? "text-red-400" : "text-[var(--text-muted)]"}`}
-                    title="Less like this"
-                  >
-                    👎
-                  </button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[var(--text-secondary)]">{person}</p>
+                  <p className="text-xs text-[var(--text-muted)]">{grouped[person].length} task{grouped[person].length !== 1 ? "s" : ""} due</p>
                 </div>
               </div>
             ))
           )}
+          {people.length > 3 && (
+            <p className="text-xs text-[var(--text-muted)] text-center">+{people.length - 3} more people</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Content Schedule Card (recording vs posting, no preferences)
+  const ContentScheduleCard = ({ items, lastUpdated }: { items: BriefingItem[]; lastUpdated: string | null }) => {
+    const { recording, posting } = splitContent(items);
+
+    return (
+      <div
+        onClick={() => setExpandedModule("content")}
+        className="surface-card p-4 md:p-5 flex flex-col cursor-pointer hover:border-[var(--accent)] transition-all group"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🎬</span>
+            <h3 className="font-semibold text-[var(--text-primary)]">Content Today</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-[var(--text-muted)]">{formatTime(lastUpdated)}</span>
+            <span className="text-xs text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
+          </div>
         </div>
 
-        {/* Notes Section */}
-        <div className="border-t border-[var(--border-subtle)] pt-2">
-          <button
-            onClick={() => setExpandedNotes(isExpanded ? null : moduleKey)}
-            className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
-          >
-            <span>📝</span>
-            <span>{preferences?.notes ? "Edit preferences" : "Add preferences"}</span>
-          </button>
-          
-          {isExpanded && (
-            <div className="mt-2 space-y-2">
-              <textarea
-                value={noteText[moduleKey] || ""}
-                onChange={(e) => setNoteText(prev => ({ ...prev, [moduleKey]: e.target.value }))}
-                placeholder="Tell me what you want to see more/less of..."
-                className="w-full px-2 py-1.5 text-xs bg-[var(--surface-2)] border border-[var(--border-subtle)] rounded-lg resize-none focus:outline-none focus:border-[var(--accent)]"
-                rows={2}
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setExpandedNotes(null)}
-                  className="px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => saveNotes(moduleKey)}
-                  className="px-2 py-1 text-xs bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded"
-                >
-                  Save
-                </button>
+        <div className="flex-1 grid grid-cols-2 gap-3">
+          {/* Recording */}
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="text-amber-400">🎥</span>
+              <span className="text-xs font-medium text-amber-400">Recording</span>
+            </div>
+            {recording.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">Nothing scheduled</p>
+            ) : (
+              <p className="text-lg font-bold text-[var(--text-primary)]">{recording.length}</p>
+            )}
+          </div>
+
+          {/* Posting */}
+          <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="text-emerald-400">📤</span>
+              <span className="text-xs font-medium text-emerald-400">Posting</span>
+            </div>
+            {posting.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">Nothing scheduled</p>
+            ) : (
+              <p className="text-lg font-bold text-[var(--text-primary)]">{posting.length}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Expanded Modal
+  const ExpandedModal = () => {
+    if (!expandedModule || !briefing) return null;
+
+    const moduleConfig = {
+      aiNews: { title: "AI News", icon: "🤖", items: briefing.aiNews.items, lastUpdated: briefing.aiNews.lastUpdated },
+      kpopNews: { title: "K-pop News", icon: "🎤", items: briefing.kpopNews.items, lastUpdated: briefing.kpopNews.lastUpdated },
+      teamTasks: { title: "Team Tasks", icon: "✅", items: briefing.teamTasks.items, lastUpdated: briefing.teamTasks.lastUpdated },
+      content: { title: "Content Today", icon: "🎬", items: briefing.content.items, lastUpdated: briefing.content.lastUpdated },
+    };
+
+    const config = moduleConfig[expandedModule];
+    const hasPreferences = expandedModule === "aiNews" || expandedModule === "kpopNews";
+    const preferences = hasPreferences ? briefing.preferences?.[expandedModule] : undefined;
+    const isNotesExpanded = expandedNotes === expandedModule;
+
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setExpandedModule(null);
+            setExpandedNotes(null);
+          }
+        }}
+      >
+        <div className="w-full max-w-2xl max-h-[85vh] bg-[var(--surface-0)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-in">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-[var(--border-subtle)]">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{config.icon}</span>
+              <div>
+                <h2 className="text-lg font-bold text-[var(--text-primary)]">{config.title}</h2>
+                <p className="text-xs text-[var(--text-muted)]">Updated {formatTime(config.lastUpdated)}</p>
               </div>
+            </div>
+            <button
+              onClick={() => {
+                setExpandedModule(null);
+                setExpandedNotes(null);
+              }}
+              className="p-2 rounded-lg hover:bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {expandedModule === "teamTasks" ? (
+              // Team Tasks - Grouped by person
+              <div className="space-y-4">
+                {Object.entries(groupTasksByPerson(config.items)).map(([person, tasks]) => (
+                  <div key={person} className="surface-card p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-[var(--accent)]/20 flex items-center justify-center text-lg font-medium text-[var(--accent)]">
+                        {person.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[var(--text-primary)]">{person}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{tasks.length} task{tasks.length !== 1 ? "s" : ""} due</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 ml-13">
+                      {tasks.map((task) => (
+                        <div key={task.id} className="flex items-start gap-2 p-2 rounded-lg bg-[var(--surface-2)]">
+                          <span className="text-[var(--text-muted)]">•</span>
+                          <div className="flex-1">
+                            <p className="text-sm text-[var(--text-secondary)]">{task.title}</p>
+                            {task.dueDate && (
+                              <p className="text-xs text-[var(--text-muted)]">Due: {task.dueDate}</p>
+                            )}
+                          </div>
+                          {task.status && (
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                              task.status === "overdue" ? "bg-red-500/20 text-red-400" :
+                              task.status === "due" ? "bg-amber-500/20 text-amber-400" :
+                              "bg-zinc-500/20 text-zinc-400"
+                            }`}>
+                              {task.status}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {config.items.length === 0 && (
+                  <p className="text-center text-[var(--text-muted)] py-8">No tasks due today 🎉</p>
+                )}
+              </div>
+            ) : expandedModule === "content" ? (
+              // Content Schedule - Recording vs Posting
+              <div className="space-y-4">
+                {/* Recording Section */}
+                <div className="surface-card p-4 border-l-4 border-amber-500">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">🎥</span>
+                    <h3 className="font-semibold text-[var(--text-primary)]">Recording Today</h3>
+                  </div>
+                  {splitContent(config.items).recording.length === 0 ? (
+                    <p className="text-sm text-[var(--text-muted)] italic">Nothing scheduled for recording</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {splitContent(config.items).recording.map((item) => (
+                        <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-[var(--text-primary)]">{item.title}</p>
+                            {item.platform && (
+                              <p className="text-xs text-[var(--text-muted)]">{item.platform}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Posting Section */}
+                <div className="surface-card p-4 border-l-4 border-emerald-500">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">📤</span>
+                    <h3 className="font-semibold text-[var(--text-primary)]">Posting Today</h3>
+                  </div>
+                  {splitContent(config.items).posting.length === 0 ? (
+                    <p className="text-sm text-[var(--text-muted)] italic">Nothing scheduled for posting</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {splitContent(config.items).posting.map((item) => (
+                        <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-[var(--text-primary)]">{item.title}</p>
+                            {item.platform && (
+                              <p className="text-xs text-[var(--text-muted)]">{item.platform}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              // News modules (AI News & K-pop News) - with feedback
+              <div className="space-y-2">
+                {config.items.length === 0 ? (
+                  <p className="text-center text-[var(--text-muted)] py-8">No news yet. Updates at 5am PST.</p>
+                ) : (
+                  config.items.map((item) => (
+                    <div key={item.id} className="group flex items-start gap-3 p-3 rounded-lg hover:bg-[var(--surface-2)] transition-colors">
+                      <div className="flex-1 min-w-0">
+                        {item.url ? (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--accent)]"
+                          >
+                            {item.title}
+                          </a>
+                        ) : (
+                          <p className="text-sm font-medium text-[var(--text-secondary)]">{item.title}</p>
+                        )}
+                        {item.summary && (
+                          <p className="text-xs text-[var(--text-muted)] mt-1">{item.summary}</p>
+                        )}
+                        {item.source && (
+                          <p className="text-[10px] text-[var(--text-muted)] mt-1">{item.source}</p>
+                        )}
+                      </div>
+                      {/* Feedback buttons for news only */}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            submitFeedback(expandedModule, item.title, "like");
+                          }}
+                          className={`p-1.5 rounded hover:bg-emerald-500/20 ${preferences?.liked?.includes(item.title) ? "text-emerald-400" : "text-[var(--text-muted)]"}`}
+                          title="More like this"
+                        >
+                          👍
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            submitFeedback(expandedModule, item.title, "dislike");
+                          }}
+                          className={`p-1.5 rounded hover:bg-red-500/20 ${preferences?.disliked?.includes(item.title) ? "text-red-400" : "text-[var(--text-muted)]"}`}
+                          title="Less like this"
+                        >
+                          👎
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer - Preferences (news modules only) */}
+          {hasPreferences && (
+            <div className="border-t border-[var(--border-subtle)] p-4">
+              <button
+                onClick={() => setExpandedNotes(isNotesExpanded ? null : expandedModule)}
+                className="flex items-center gap-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+              >
+                <span>📝</span>
+                <span>{preferences?.notes ? "Edit preferences" : "Add preferences"}</span>
+              </button>
+
+              {isNotesExpanded && (
+                <div className="mt-3 space-y-2">
+                  <textarea
+                    value={noteText[expandedModule] || ""}
+                    onChange={(e) => setNoteText((prev) => ({ ...prev, [expandedModule]: e.target.value }))}
+                    placeholder="Tell me what topics you want to see more/less of..."
+                    className="w-full px-3 py-2 text-sm bg-[var(--surface-2)] border border-[var(--border-subtle)] rounded-lg resize-none focus:outline-none focus:border-[var(--accent)]"
+                    rows={3}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setExpandedNotes(null)}
+                      className="px-3 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => saveNotes(expandedModule)}
+                      className="px-3 py-1.5 text-sm bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-lg"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -320,7 +608,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* Briefing Modules - 2x2 Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <BriefingModule
+        <NewsModuleCard
           moduleKey="aiNews"
           title="AI News"
           icon="🤖"
@@ -328,7 +616,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           lastUpdated={briefing?.aiNews?.lastUpdated || null}
           preferences={briefing?.preferences?.aiNews}
         />
-        <BriefingModule
+        <NewsModuleCard
           moduleKey="kpopNews"
           title="K-pop News"
           icon="🎤"
@@ -336,28 +624,23 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           lastUpdated={briefing?.kpopNews?.lastUpdated || null}
           preferences={briefing?.preferences?.kpopNews}
         />
-        <BriefingModule
-          moduleKey="teamTasks"
-          title="Team Tasks"
-          icon="✅"
+        <TeamTasksCard
           items={briefing?.teamTasks?.items || []}
           lastUpdated={briefing?.teamTasks?.lastUpdated || null}
-          preferences={briefing?.preferences?.teamTasks}
         />
-        <BriefingModule
-          moduleKey="content"
-          title="Content Schedule"
-          icon="🎬"
+        <ContentScheduleCard
           items={briefing?.content?.items || []}
           lastUpdated={briefing?.content?.lastUpdated || null}
-          preferences={briefing?.preferences?.content}
         />
       </div>
 
       {/* Quick hint */}
       <p className="text-center text-[10px] text-[var(--text-muted)]">
-        News refreshes daily at 5am PST • 👍👎 to improve recommendations
+        Click any card to expand • News refreshes daily at 5am PST
       </p>
+
+      {/* Expanded Modal */}
+      <ExpandedModal />
     </div>
   );
 }

@@ -164,7 +164,7 @@ export default function DealsView() {
       
       // Clear selection and refresh
       setSelectedDeal(null);
-      fetchDeals();
+      fetchPipeline();
     } catch (err) {
       console.error("Delete failed:", err);
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { EmailThread } from "@/lib/useEmails";
 import { safeString } from "@/lib/safeRender";
 
@@ -49,6 +49,16 @@ export default function EmailDetail({
   const [aiAnswer, setAiAnswer] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [showAiAssistant, setShowAiAssistant] = useState(false);
+  
+  // Ref for scrolling to latest message
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Scroll to bottom when messages load
+  useEffect(() => {
+    if (messages.length > 0 && !loading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, loading]);
 
   useEffect(() => {
     async function fetchThread() {
@@ -348,7 +358,7 @@ export default function EmailDetail({
         )}
 
         {/* Messages */}
-        <div className="space-y-4">
+        <div className="space-y-4" id="thread-messages">
           {messages.map((msg, idx) => (
             <div
               key={msg.id || idx}
@@ -403,6 +413,8 @@ export default function EmailDetail({
               </div>
             </div>
           ))}
+          {/* Scroll anchor for auto-scroll to latest */}
+          <div ref={messagesEndRef} />
         </div>
         
         {/* AI Assistant Section */}

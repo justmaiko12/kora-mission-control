@@ -20,7 +20,10 @@ export interface EmailThread {
   read: boolean;
   snippet: string;
   importanceScore?: number; // 0-100, learned from user actions
-  needsResponse?: boolean; // True if user hasn't replied to this thread
+  needsResponse?: boolean; // They sent last, I need to reply
+  awaitingResponse?: boolean; // I sent last, waiting on them
+  daysSinceActivity?: number; // Days since last message
+  iSentLast?: boolean; // True if I sent the last message
 }
 
 interface EmailsState {

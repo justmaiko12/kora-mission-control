@@ -45,7 +45,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const [bulkProcessing, setBulkProcessing] = useState(false);
   
   // Filter state (MUST be before any conditional returns!)
-  const [filter, setFilter] = useState<"all" | "unread" | "needs-response">("all");
+  const [filter, setFilter] = useState<"all" | "unread" | "needs-response" | "awaiting">("all");
   
   // Similar emails prompt state
   const [similarPrompt, setSimilarPrompt] = useState<{
@@ -439,13 +439,17 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
 
   // Check if email needs response (original flag OR manually flagged)
   const emailNeedsResponse = (e: EmailThread) => e.needsResponse || flaggedNeedsResponse.has(e.id);
+  const emailAwaitingResponse = (e: EmailThread) => e.awaitingResponse === true;
   
   const needsResponseCount = visibleEmails.filter(emailNeedsResponse).length;
+  const awaitingCount = visibleEmails.filter(emailAwaitingResponse).length;
   
   const filteredEmails = filter === "unread" 
     ? visibleEmails.filter(e => !e.read)
     : filter === "needs-response"
     ? visibleEmails.filter(emailNeedsResponse)
+    : filter === "awaiting"
+    ? visibleEmails.filter(emailAwaitingResponse)
     : visibleEmails;
 
   // Default: full email list view
@@ -509,6 +513,20 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
             Needs Response
             {needsResponseCount > 0 && (
               <span className="text-xs text-zinc-300">{needsResponseCount}</span>
+            )}
+          </button>
+          <button
+            onClick={() => setFilter("awaiting")}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+              filter === "awaiting"
+                ? "bg-blue-600 text-white"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            Awaiting Response
+            {awaitingCount > 0 && (
+              <span className="text-xs text-zinc-300">{awaitingCount}</span>
             )}
           </button>
           <button
@@ -645,7 +663,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           <svg className="w-12 h-12 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-          <p>{filter === "unread" ? "No unread emails" : filter === "needs-response" ? "All caught up! 🎉" : "No emails"}</p>
+          <p>{filter === "unread" ? "No unread emails" : filter === "needs-response" ? "All caught up! 🎉" : filter === "awaiting" ? "No emails awaiting response" : "No emails"}</p>
         </div>
       )}
 
@@ -710,7 +728,13 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                     )}
                   </div>
                   <span className="text-xs text-zinc-500 flex-shrink-0">
-                    {emailDate}
+                    {filter === "awaiting" && email.daysSinceActivity !== undefined ? (
+                      <span className={email.daysSinceActivity >= 3 ? "text-amber-400" : ""}>
+                        {email.daysSinceActivity === 0 ? "Today" : 
+                         email.daysSinceActivity === 1 ? "1 day" : 
+                         `${email.daysSinceActivity} days`}
+                      </span>
+                    ) : emailDate}
                   </span>
                 </div>
                 <p className={`text-sm truncate ${isRead ? "text-zinc-500" : "text-zinc-300"}`}>

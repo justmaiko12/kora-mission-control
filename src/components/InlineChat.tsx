@@ -20,8 +20,8 @@ interface PreviewAction {
 }
 
 interface InlineChatProps {
-  focusedItem: FocusedItem | null;
-  onClearFocus: () => void;
+  focusedItem?: FocusedItem | null;
+  onClearFocus?: () => void;
   chatContext?: ChatContext; // Which view's chat this is
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -30,6 +30,12 @@ interface InlineChatProps {
   onPreviewEmails?: (emailIds: string[]) => void; // Highlight emails in list
   onRefreshEmails?: () => void; // Trigger email list refresh
   activeEmailAccount?: string; // Current email account tab
+  // New simplified context props for tasks, etc.
+  contextType?: string; // e.g., "tasks", "memory"
+  contextId?: string; // e.g., task ID
+  contextLabel?: string; // e.g., "Task: Build feature X"
+  contextData?: string; // Extra context string to send with messages
+  onTaskComplete?: () => void; // Callback when task should be marked done
 }
 
 interface Message {
@@ -139,6 +145,11 @@ export default function InlineChat({
   onPreviewEmails,
   onRefreshEmails,
   activeEmailAccount,
+  contextType,
+  contextId,
+  contextLabel,
+  contextData,
+  onTaskComplete,
 }: InlineChatProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -284,6 +295,11 @@ export default function InlineChat({
             id: focusedItem.id,
             title: focusedItem.title,
             metadata: focusedItem.metadata,
+          } : contextData ? {
+            type: contextType || "custom",
+            id: contextId,
+            title: contextLabel,
+            data: contextData,
           } : null,
           chatContext,
           activeAccount: activeEmailAccount, // Pass current email account tab
@@ -471,8 +487,13 @@ export default function InlineChat({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {focusedItem && (
+          {focusedItem && onClearFocus && (
             <ContextBadge item={focusedItem} onClear={onClearFocus} compact />
+          )}
+          {contextLabel && !focusedItem && (
+            <div className="px-2 py-1 bg-indigo-600/20 border border-indigo-500/30 rounded-lg text-xs text-indigo-300 truncate max-w-[150px]" title={contextLabel}>
+              📌 {contextLabel}
+            </div>
           )}
           {onToggleFullscreen && (
             <button
@@ -564,7 +585,7 @@ export default function InlineChat({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder={focusedItem ? `Ask about "${safeString(focusedItem.title)}"...` : `Message ${chatTitles[chatContext]}...`}
+              placeholder={focusedItem ? `Ask about "${safeString(focusedItem.title)}"...` : contextLabel ? `Ask about this task...` : `Message ${chatTitles[chatContext]}...`}
               className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
             />
             <button

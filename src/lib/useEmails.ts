@@ -35,6 +35,87 @@ const emailCache: Record<string, EmailThread[]> = {};
 const cacheTimestamps: Record<string, number> = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Patterns for emails that DON'T need a response
+const NO_REPLY_PATTERNS = [
+  /no-?reply/i,
+  /noreply/i,
+  /do-?not-?reply/i,
+  /notifications?@/i,
+  /mailer-daemon/i,
+  /postmaster@/i,
+  /bounce@/i,
+  /alerts?@/i,
+  /updates?@/i,
+  /news(letter)?@/i,
+  /info@/i,
+  /support@.*\.com$/i, // Generic support@ (but not direct replies)
+  /hello@mail\./i, // Marketing
+  /marketing@/i,
+  /promo(tions)?@/i,
+  /deals@/i,
+  /offers@/i,
+  /receipts?@/i,
+  /billing@/i,
+  /orders?@/i,
+  /shipping@/i,
+  /delivery@/i,
+];
+
+const PROMO_SUBJECT_PATTERNS = [
+  /unsubscribe/i,
+  /\bsale\b/i,
+  /\b\d+%\s*off\b/i,
+  /limited time/i,
+  /free shipping/i,
+  /order confirm/i,
+  /your order/i,
+  /your receipt/i,
+  /your invoice/i,
+  /your subscription/i,
+  /password reset/i,
+  /verify your/i,
+  /confirm your/i,
+  /security alert/i,
+  /sign-?in/i,
+  /logged in/i,
+  /new device/i,
+  /newsletter/i,
+  /weekly digest/i,
+  /daily digest/i,
+  /\[github\]/i,
+  /run failed/i, // CI notifications
+  /build failed/i,
+  /deployment/i,
+];
+
+function computeNeedsResponse(email: EmailThread): boolean {
+  // Must be unread to need response
+  if (email.read) return false;
+  
+  // Already replied (SENT label means we sent something in this thread)
+  if (email.labels?.some(l => l.toUpperCase() === "SENT")) return false;
+  
+  // Check if from a no-reply address
+  const fromLower = (email.from || "").toLowerCase();
+  if (NO_REPLY_PATTERNS.some(pattern => pattern.test(fromLower))) return false;
+  
+  // Check for promotional/social labels
+  const labelSet = new Set((email.labels || []).map(l => l.toUpperCase()));
+  if (labelSet.has("CATEGORY_PROMOTIONS")) return false;
+  if (labelSet.has("CATEGORY_SOCIAL")) return false;
+  if (labelSet.has("CATEGORY_UPDATES")) return false;
+  if (labelSet.has("CATEGORY_FORUMS")) return false;
+  if (labelSet.has("SPAM")) return false;
+  if (labelSet.has("TRASH")) return false;
+  
+  // Check subject for promotional patterns
+  const subject = email.subject || "";
+  if (PROMO_SUBJECT_PATTERNS.some(pattern => pattern.test(subject))) return false;
+  
+  // Passed all filters - likely needs a response
+  return true;
+}
+
 export function useEmails() {
   const [state, setState] = useState<EmailsState>({
     accounts: [],
@@ -102,6 +183,12 @@ export function useEmails() {
       } catch (scoreErr) {
         console.warn("Failed to fetch email scores:", scoreErr);
       }
+
+      // Compute needsResponse for each email
+      emailList = emailList.map((email) => ({
+        ...email,
+        needsResponse: computeNeedsResponse(email),
+      }));
 
       // Cache it
       emailCache[account] = emailList;

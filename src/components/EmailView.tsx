@@ -18,6 +18,7 @@ interface EmailViewProps {
   navigateToEmailId?: string | null; // Navigate to this email on load
   navigateToEmailAccount?: string | null; // Account for the email to navigate to
   onNavigationComplete?: () => void; // Called after navigation is done
+  onNavigateToDeal?: (dealId: string) => void; // Navigate to Deals tab with specific deal
 }
 
 export default function EmailView({ 
@@ -30,6 +31,7 @@ export default function EmailView({
   navigateToEmailId,
   navigateToEmailAccount,
   onNavigationComplete,
+  onNavigateToDeal,
 }: EmailViewProps) {
   const { accounts, emails, loading, error, activeAccount, setActiveAccount, refresh } =
     useEmails();
@@ -619,8 +621,9 @@ export default function EmailView({
             onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
             onViewDeal={(deal) => {
               // Navigate to Deals tab with this deal selected
-              // For now, open in Invoicer
-              window.open(`https://internal-promo-invoicer.vercel.app/?view=tracker&taskId=${deal.id}`, "_blank");
+              if (onNavigateToDeal) {
+                onNavigateToDeal(deal.id);
+              }
             }}
             onReplySent={handleReplySent}
             isMarking={markingDeal === selectedEmail.id}

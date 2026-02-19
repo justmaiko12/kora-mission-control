@@ -92,6 +92,7 @@ function HomeContent() {
   const [visibleEmails, setVisibleEmails] = useState<Array<{ from: string; subject: string; id: string }>>([]);
   const [navigateToEmailId, setNavigateToEmailId] = useState<string | null>(null);
   const [navigateToEmailAccount, setNavigateToEmailAccount] = useState<string | null>(null);
+  const [navigateToDealId, setNavigateToDealId] = useState<string | null>(null);
   const searchParams = useSearchParams();
   
   // Callbacks for chat to control email view
@@ -113,6 +114,12 @@ function HomeContent() {
     setNavigateToEmailId(emailId);
     setNavigateToEmailAccount(account);
     setActiveView("email");
+  }, []);
+  
+  // Navigate to a specific deal from another view (e.g., Email)
+  const handleNavigateToDeal = useCallback((dealId: string) => {
+    setNavigateToDealId(dealId);
+    setActiveView("business"); // "business" is the ViewType for Deals tab
   }, []);
   
   const handleVisibleEmailsChange = useCallback((emails: Array<{ from: string; subject: string; id: string }>) => {
@@ -169,6 +176,7 @@ function HomeContent() {
                 setNavigateToEmailId(null);
                 setNavigateToEmailAccount(null);
               }}
+              onNavigateToDeal={handleNavigateToDeal}
             />
           </ErrorBoundary>
         );
@@ -214,7 +222,13 @@ function HomeContent() {
       case "integrations":
         return <Integrations />;
       case "business":
-        return <DealsView onNavigateToEmail={handleNavigateToEmail} />;
+        return (
+          <DealsView 
+            onNavigateToEmail={handleNavigateToEmail}
+            navigateToDealId={navigateToDealId}
+            onNavigationComplete={() => setNavigateToDealId(null)}
+          />
+        );
       default:
         return <Dashboard onNavigate={setActiveView} />;
     }

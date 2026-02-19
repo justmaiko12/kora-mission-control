@@ -5,6 +5,8 @@ import { safeString } from "@/lib/safeRender";
 
 interface DealsViewProps {
   onNavigateToEmail?: (emailId: string, account: string) => void;
+  navigateToDealId?: string | null; // Auto-select this deal on load
+  onNavigationComplete?: () => void; // Called after navigation is done
 }
 
 interface Deal {
@@ -73,7 +75,7 @@ const getInvoicerLink = (dealId: string): string => {
   return `${INVOICER_URL}/?view=tracker&taskId=${dealId}`;
 };
 
-export default function DealsView({ onNavigateToEmail }: DealsViewProps) {
+export default function DealsView({ onNavigateToEmail, navigateToDealId, onNavigationComplete }: DealsViewProps) {
   const [pipelineData, setPipelineData] = useState<PipelineData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +112,25 @@ export default function DealsView({ onNavigateToEmail }: DealsViewProps) {
   useEffect(() => {
     fetchPipeline();
   }, [fetchPipeline]);
+
+  // Auto-select deal when navigating from another view
+  useEffect(() => {
+    if (navigateToDealId && pipelineData?.deals) {
+      // Search all stages for the deal
+      const allDeals = Object.values(pipelineData.deals).flat() as Deal[];
+      const foundDeal = allDeals.find(d => d.id === navigateToDealId);
+      if (foundDeal) {
+        setSelectedDeal(foundDeal);
+        // Scroll the deal card into view after a short delay
+        setTimeout(() => {
+          const dealElement = document.querySelector(`[data-deal-id="${navigateToDealId}"]`);
+          dealElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
+      }
+      // Clear the navigation state
+      onNavigationComplete?.();
+    }
+  }, [navigateToDealId, pipelineData, onNavigationComplete]);
 
   const generateDraft = async (deal: Deal, instruction?: string) => {
     setDraftLoading(true);
@@ -299,6 +320,7 @@ export default function DealsView({ onNavigateToEmail }: DealsViewProps) {
                   {filteredDeals.map((deal) => (
                     <div
                       key={deal.id}
+                      data-deal-id={deal.id}
                       onClick={() => { setSelectedDeal(deal); setDraft(""); }}
                       className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
                         DEAL_STAGES[stage].color

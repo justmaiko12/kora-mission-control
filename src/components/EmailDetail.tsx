@@ -9,7 +9,6 @@ interface EmailDetailProps {
   account: string;
   onClose: () => void;
   onMarkAsDeal: (e: React.MouseEvent) => void;
-  onMarkAsRequest: (e: React.MouseEvent) => void;
   onIgnore: () => void;
   onDone: () => void;
   onReplySent?: () => void; // Called after successful reply - removes from "Needs Response"
@@ -41,7 +40,6 @@ export default function EmailDetail({
   account,
   onClose,
   onMarkAsDeal,
-  onMarkAsRequest,
   onIgnore,
   onDone,
   onReplySent,
@@ -375,13 +373,6 @@ export default function EmailDetail({
             className="px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded-lg transition-colors disabled:opacity-50"
           >
             💰 Deal
-          </button>
-          <button
-            onClick={onMarkAsRequest}
-            disabled={isMarking}
-            className="px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors disabled:opacity-50"
-          >
-            📋 Request
           </button>
           <button
             onClick={onDone}

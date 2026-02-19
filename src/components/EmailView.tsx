@@ -611,7 +611,6 @@ export default function EmailView({
             onIgnore={() => handleIgnore(selectedEmail)}
             onDone={() => handleDone(selectedEmail)}
             onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
-            onMarkAsRequest={(e) => handleMarkAsRequest(e, selectedEmail)}
             onReplySent={handleReplySent}
             isMarking={markingDeal === selectedEmail.id}
           />

@@ -26,16 +26,8 @@ interface DealPipeline {
   paid: Deal[];
 }
 
-interface RequestPipeline {
-  new: Deal[];
-  reviewing: Deal[];
-  approved: Deal[];
-  completed: Deal[];
-}
-
 interface PipelineData {
   deals: DealPipeline;
-  requests: RequestPipeline;
 }
 
 const DEAL_STAGES = {
@@ -44,15 +36,6 @@ const DEAL_STAGES = {
   completed: { label: "✅ Completed", color: "bg-green-500/20 border-green-500/50" },
   invoiced: { label: "🧾 Invoiced", color: "bg-cyan-500/20 border-cyan-500/50" },
 };
-
-const REQUEST_STAGES = {
-  new: { label: "📩 New", color: "bg-slate-500/20 border-slate-500/50" },
-  reviewing: { label: "👀 Reviewing", color: "bg-amber-500/20 border-amber-500/50" },
-  approved: { label: "✅ Approved", color: "bg-teal-500/20 border-teal-500/50" },
-  completed: { label: "✔️ Done", color: "bg-zinc-500/20 border-zinc-500/50" },
-};
-
-type TabType = "deals" | "requests";
 type BusinessFilter = "shluv" | "mtr";
 
 // Map email accounts to businesses
@@ -93,7 +76,6 @@ export default function DealsView() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [draft, setDraft] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<TabType>("deals");
   const [businessFilter, setBusinessFilter] = useState<BusinessFilter>("shluv");
   
   // Filter deals by business (always filtered, no "all" option)
@@ -198,10 +180,6 @@ export default function DealsView() {
   const totalDeals = pipelineData?.deals
     ? Object.values(pipelineData.deals).reduce((sum, items) => sum + items.length, 0)
     : 0;
-  
-  const totalRequests = pipelineData?.requests
-    ? Object.values(pipelineData.requests).reduce((sum, items) => sum + items.length, 0)
-    : 0;
 
   // Calculate total awaiting money (active + completed + invoiced, NOT negotiating or paid)
   const awaitingStages: (keyof DealPipeline)[] = ['active', 'completed', 'invoiced'];
@@ -218,7 +196,7 @@ export default function DealsView() {
       <div className="p-3 md:p-4 border-b border-zinc-800">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h1 className="text-lg md:text-xl font-bold">💼 Business</h1>
+            <h1 className="text-lg md:text-xl font-bold">💰 Brand Deals</h1>
             {totalAwaitingMoney > 0 && (
               <p className="text-sm text-emerald-400 font-medium mt-0.5">
                 💵 {formatMoney(totalAwaitingMoney)} awaiting
@@ -251,28 +229,9 @@ export default function DealsView() {
           ))}
         </div>
         
-        {/* Tabs */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab("deals")}
-            className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-lg transition-colors ${
-              activeTab === "deals"
-                ? "bg-indigo-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-white"
-            }`}
-          >
-            💰 <span className="hidden sm:inline">Brand </span>Deals {!loading && <span className="ml-1 opacity-70">({totalDeals})</span>}
-          </button>
-          <button
-            onClick={() => setActiveTab("requests")}
-            className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-lg transition-colors ${
-              activeTab === "requests"
-                ? "bg-indigo-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-white"
-            }`}
-          >
-            📋 Requests {!loading && <span className="ml-1 opacity-70">({totalRequests})</span>}
-          </button>
+        {/* Deal count */}
+        <div className="text-sm text-zinc-400">
+          💰 {!loading && <span>{totalDeals} deals in pipeline</span>}
         </div>
       </div>
 
@@ -289,7 +248,7 @@ export default function DealsView() {
       <div className="flex-1 overflow-x-auto p-2 md:p-4">
         <div className="flex gap-2 md:gap-4 min-w-max h-full">
           {/* Deals Pipeline */}
-          {activeTab === "deals" && pipelineData?.deals &&
+          {pipelineData?.deals &&
             (Object.keys(DEAL_STAGES) as Array<keyof typeof DEAL_STAGES>).map((stage) => {
               const filteredDeals = filterByBusiness(pipelineData.deals[stage] || []);
               return (
@@ -315,7 +274,12 @@ export default function DealsView() {
                       } ${selectedDeal?.id === deal.id ? "ring-2 ring-indigo-500" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium line-clamp-2">{safeString(deal.subject)}</p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {deal.emailId && (
+                            <span className="text-indigo-400 flex-shrink-0" title="Has linked email">✉️</span>
+                          )}
+                          <p className="text-sm font-medium line-clamp-2">{safeString(deal.subject)}</p>
+                        </div>
                         {deal.unread && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1" />}
                       </div>
                       <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(deal.from)}</p>
@@ -346,51 +310,6 @@ export default function DealsView() {
                 </div>
               </div>
             );
-            })}
-
-          {/* Requests Pipeline */}
-          {activeTab === "requests" && pipelineData?.requests &&
-            (Object.keys(REQUEST_STAGES) as Array<keyof typeof REQUEST_STAGES>).map((stage) => {
-              const filteredRequests = filterByBusiness(pipelineData.requests[stage] || []);
-              return (
-              <div
-                key={stage}
-                className="w-56 md:w-72 flex-shrink-0 flex flex-col bg-zinc-900/30 rounded-xl border border-zinc-800"
-              >
-                <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
-                  <span className="font-medium text-sm">
-                    {REQUEST_STAGES[stage].label}
-                  </span>
-                  <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">
-                    {filteredRequests.length}
-                  </span>
-                </div>
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {filteredRequests.map((req) => (
-                    <div
-                      key={req.id}
-                      onClick={() => { setSelectedDeal(req); setDraft(""); }}
-                      className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                        REQUEST_STAGES[stage].color
-                      } ${selectedDeal?.id === req.id ? "ring-2 ring-indigo-500" : ""}`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium line-clamp-2">{safeString(req.subject)}</p>
-                        {req.unread && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1" />}
-                      </div>
-                      <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(req.from)}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-zinc-500">{formatDate(req.date)}</span>
-                        {req.messageCount > 1 && <span className="text-xs text-zinc-500">{req.messageCount} msgs</span>}
-                      </div>
-                    </div>
-                  ))}
-                  {filteredRequests.length === 0 && (
-                    <div className="text-center text-zinc-500 text-xs py-4">No requests</div>
-                  )}
-                </div>
-              </div>
-              );
             })}
         </div>
       </div>

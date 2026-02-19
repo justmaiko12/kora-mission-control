@@ -12,6 +12,7 @@ interface EmailDetailProps {
   onMarkAsRequest: (e: React.MouseEvent) => void;
   onIgnore: () => void;
   onDone: () => void;
+  onReplySent?: () => void; // Called after successful reply - removes from "Needs Response"
   isMarking: boolean;
 }
 
@@ -34,6 +35,7 @@ export default function EmailDetail({
   onMarkAsRequest,
   onIgnore,
   onDone,
+  onReplySent,
   isMarking,
 }: EmailDetailProps) {
   const [messages, setMessages] = useState<EmailMessage[]>([]);
@@ -184,6 +186,12 @@ export default function EmailDetail({
       // Clear input and show success
       setReplyText("");
       setSendSuccess(true);
+      
+      // Notify parent that reply was sent - this updates the email state
+      // so it moves from "Needs Response" to "Awaiting Response"
+      if (onReplySent) {
+        onReplySent();
+      }
       
       // Refresh thread to show the new message (after brief delay for Gmail to process)
       setTimeout(() => {

@@ -477,6 +477,19 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
     }
   }, [visibleEmails, onVisibleEmailsChange]);
 
+  // Handle reply sent - update email state so it moves from "Needs Response" to "Awaiting"
+  const handleReplySent = () => {
+    if (selectedEmail) {
+      // Update the email in local state
+      selectedEmail.needsResponse = false;
+      selectedEmail.awaitingResponse = true;
+      selectedEmail.iSentLast = true;
+      
+      // Force re-render by updating the selected email reference
+      setSelectedEmail({ ...selectedEmail });
+    }
+  };
+
   // Show detail view when email is selected
   if (selectedEmail) {
     return (
@@ -489,6 +502,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           onDone={() => handleDone(selectedEmail)}
           onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
           onMarkAsRequest={(e) => handleMarkAsRequest(e, selectedEmail)}
+          onReplySent={handleReplySent}
           isMarking={markingDeal === selectedEmail.id}
         />
       </ErrorBoundary>

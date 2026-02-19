@@ -156,6 +156,36 @@ export default function DealsView({ onNavigateToEmail }: DealsViewProps) {
     }
   };
 
+  const updateDealStage = async (deal: Deal, newStage: string) => {
+    try {
+      const res = await fetch("/api/deals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update",
+          id: deal.id,
+          stage: newStage,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update stage");
+      
+      // Clear selection if deal moved, refresh pipeline
+      setSelectedDeal(null);
+      fetchPipeline();
+    } catch (err) {
+      console.error("Stage update failed:", err);
+    }
+  };
+
+  // Get current stage of a deal
+  const getDealStage = (deal: Deal): string | null => {
+    if (!pipelineData?.deals) return null;
+    for (const [stage, deals] of Object.entries(pipelineData.deals)) {
+      if (deals.some(d => d.id === deal.id)) return stage;
+    }
+    return null;
+  };
+
   const openLinkedEmail = (deal: Deal) => {
     // Navigate to email view within Mission Control
     if (deal.emailId && deal.account && onNavigateToEmail) {
@@ -246,9 +276,11 @@ export default function DealsView({ onNavigateToEmail }: DealsViewProps) {
       {/* Pipeline Board */}
       <div className="flex-1 overflow-x-auto p-2 md:p-4">
         <div className="flex gap-2 md:gap-4 min-w-max h-full">
-          {/* Deals Pipeline */}
+          {/* Deals Pipeline - only show non-empty columns */}
           {pipelineData?.deals &&
-            (Object.keys(DEAL_STAGES) as Array<keyof typeof DEAL_STAGES>).map((stage) => {
+            (Object.keys(DEAL_STAGES) as Array<keyof typeof DEAL_STAGES>)
+              .filter((stage) => filterByBusiness(pipelineData.deals[stage] || []).length > 0)
+              .map((stage) => {
               const filteredDeals = filterByBusiness(pipelineData.deals[stage] || []);
               return (
               <div
@@ -303,69 +335,108 @@ export default function DealsView({ onNavigateToEmail }: DealsViewProps) {
                       )}
                     </div>
                   ))}
-                  {filteredDeals.length === 0 && (
-                    <div className="text-center text-zinc-500 text-xs py-4">No deals</div>
-                  )}
                 </div>
               </div>
             );
             })}
+          
+          {/* Empty state when no deals at all */}
+          {pipelineData?.deals && 
+            Object.keys(DEAL_STAGES).every((stage) => 
+              filterByBusiness(pipelineData.deals[stage as keyof DealPipeline] || []).length === 0
+            ) && (
+            <div className="flex-1 flex items-center justify-center text-zinc-500">
+              <div className="text-center">
+                <span className="text-4xl">💼</span>
+                <p className="mt-2">No deals yet for {BUSINESS_LABELS[businessFilter]}</p>
+                <p className="text-sm">Mark emails as deals to start tracking</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Selected Deal Panel */}
       {selectedDeal && (
         <div className="border-t border-zinc-800 p-3 md:p-4 bg-zinc-900/50">
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 md:gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between">
-                <h3 className="font-medium line-clamp-1 md:truncate text-sm md:text-base">{safeString(selectedDeal.subject)}</h3>
-                <button
-                  onClick={() => setSelectedDeal(null)}
-                  className="md:hidden p-1 text-zinc-500 hover:text-white"
-                >
-                  ✕
-                </button>
+          <div className="flex flex-col gap-3">
+            {/* Deal Info Row */}
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 md:gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between">
+                  <h3 className="font-medium line-clamp-1 md:truncate text-sm md:text-base">{safeString(selectedDeal.subject)}</h3>
+                  <button
+                    onClick={() => setSelectedDeal(null)}
+                    className="md:hidden p-1 text-zinc-500 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-xs md:text-sm text-zinc-400 truncate">
+                    {extractSender(selectedDeal.from)} • {selectedDeal.account}
+                  </p>
+                  {selectedDeal.amount && (
+                    <span className="px-2 py-0.5 text-xs font-bold bg-emerald-500/20 text-emerald-400 rounded-full">
+                      {formatMoney(selectedDeal.amount)}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-xs md:text-sm text-zinc-400 truncate">
-                  {extractSender(selectedDeal.from)} • {selectedDeal.account}
-                </p>
-                {selectedDeal.amount && (
-                  <span className="px-2 py-0.5 text-xs font-bold bg-emerald-500/20 text-emerald-400 rounded-full">
-                    {formatMoney(selectedDeal.amount)}
-                  </span>
+              <div className="flex flex-wrap gap-2 flex-shrink-0">
+                {/* Open in Invoicer */}
+                <a
+                  href={getInvoicerLink(selectedDeal.id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  📋 Open in Invoicer
+                </a>
+                
+                {/* Go to Email (if linked) */}
+                {selectedDeal.emailId && (
+                  <button
+                    onClick={() => openLinkedEmail(selectedDeal)}
+                    className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+                  >
+                    ✉️ Go to Email
+                  </button>
                 )}
+                
+                {/* Delete */}
+                <button
+                  onClick={() => deleteDeal(selectedDeal)}
+                  className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-red-600/80 hover:bg-red-600 rounded-lg transition-colors"
+                >
+                  🗑️ Delete
+                </button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 flex-shrink-0">
-              {/* Open in Invoicer */}
-              <a
-                href={getInvoicerLink(selectedDeal.id)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center gap-1"
-              >
-                📋 Open in Invoicer
-              </a>
-              
-              {/* Go to Email (if linked) */}
-              {selectedDeal.emailId && (
-                <button
-                  onClick={() => openLinkedEmail(selectedDeal)}
-                  className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
-                >
-                  ✉️ Go to Email
-                </button>
-              )}
-              
-              {/* Delete */}
-              <button
-                onClick={() => deleteDeal(selectedDeal)}
-                className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm bg-red-600/80 hover:bg-red-600 rounded-lg transition-colors"
-              >
-                🗑️ Delete
-              </button>
+            
+            {/* Status Change Row */}
+            <div className="flex items-center gap-2 pt-2 border-t border-zinc-800">
+              <span className="text-xs text-zinc-500">Move to:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(DEAL_STAGES) as Array<keyof typeof DEAL_STAGES>).map((stage) => {
+                  const currentStage = getDealStage(selectedDeal);
+                  const isCurrentStage = currentStage === stage;
+                  return (
+                    <button
+                      key={stage}
+                      onClick={() => !isCurrentStage && updateDealStage(selectedDeal, stage)}
+                      disabled={isCurrentStage}
+                      className={`px-2 py-1 text-xs rounded-lg transition-colors ${
+                        isCurrentStage
+                          ? "bg-indigo-600 text-white cursor-default"
+                          : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                      }`}
+                    >
+                      {DEAL_STAGES[stage].label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

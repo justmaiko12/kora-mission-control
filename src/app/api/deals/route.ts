@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(data);
     }
 
-    if (action === "update") {
+    if (action === "update" || action === "updateStatus") {
       // Update deal stage, add deadline, etc.
       const data = await bridgeFetch("/api/deals/update", {
         method: "PUT",

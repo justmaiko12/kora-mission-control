@@ -665,7 +665,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
         )}
 
         {/* Row 2: Filter Pills + Action Icons */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide relative z-10 -mx-2 px-2">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide relative -mx-2 px-2">
           <button
             onClick={() => setFilter("needs-response")}
             className={`px-3 py-2 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[36px] ${

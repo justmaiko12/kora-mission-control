@@ -189,12 +189,16 @@ export default function Sidebar({
         className={`
           fixed lg:relative inset-y-0 left-0 lg:inset-auto z-[200] lg:z-50
           w-[240px] bg-[var(--surface-1)] border-r border-[var(--border)]
-          flex flex-col flex-shrink-0 h-screen isolate
-          transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+          flex flex-col flex-shrink-0 h-screen
+          transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
           shadow-2xl lg:shadow-none
           ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
-        style={{ pointerEvents: 'auto' }}
+        style={{ 
+          pointerEvents: 'auto',
+          isolation: 'isolate',
+          contain: 'layout style',
+        }}
       >
         {/* Logo / Brand */}
         <div className="px-4 py-4 flex items-center justify-between">

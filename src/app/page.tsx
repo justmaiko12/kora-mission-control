@@ -229,7 +229,7 @@ function HomeContent() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative z-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0" style={{ isolation: 'isolate' }}>
         {/* Mobile Header - hidden on email view (email has its own header) */}
         {activeView !== "email" && (
           <header className="lg:hidden flex items-center gap-3 p-3 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur">

@@ -176,12 +176,12 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
       const res = await fetch(`/api/deals?view=pipeline&account=${encodeURIComponent(activeAccount)}`);
       if (res.ok) {
         const data = await res.json();
-        // Flatten pipeline stages into a single list of active deals (not paid/completed)
+        // Flatten pipeline stages into a single list of linkable deals (not paid)
         const pipeline = data.deals || {};
         const activeDeals: Array<{ id: string; name: string; brand: string }> = [];
         
-        // Include negotiating, active, invoiced stages (not paid/completed)
-        const activeStages = ['negotiating', 'active', 'invoiced'];
+        // Include all stages except paid (paid deals are done)
+        const activeStages = ['negotiating', 'active', 'completed', 'invoiced'];
         for (const stage of activeStages) {
           if (pipeline[stage] && Array.isArray(pipeline[stage])) {
             for (const deal of pipeline[stage]) {

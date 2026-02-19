@@ -91,6 +91,17 @@ export default function EmailView({
   // Email IDs that are linked to deals (from API)
   const [linkedEmailIds, setLinkedEmailIds] = useState<Set<string>>(new Set());
   
+  // Full linked deal data for selected email
+  interface LinkedDeal {
+    id: string;
+    subject: string;
+    from: string;
+    amount?: number | null;
+    clientName?: string;
+    account: string;
+  }
+  const [selectedEmailDeal, setSelectedEmailDeal] = useState<LinkedDeal | null>(null);
+  
   // Fetch linked email IDs
   const fetchLinkedEmails = async () => {
     try {
@@ -101,6 +112,24 @@ export default function EmailView({
       }
     } catch (err) {
       console.error("Failed to fetch linked emails:", err);
+    }
+  };
+  
+  // Fetch linked deal when email is selected
+  const fetchLinkedDeal = async (emailId: string) => {
+    try {
+      const res = await fetch(`/api/deals/by-email?emailId=${encodeURIComponent(emailId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.deal) {
+          setSelectedEmailDeal(data.deal);
+          return;
+        }
+      }
+      setSelectedEmailDeal(null);
+    } catch (err) {
+      console.error("Failed to fetch linked deal:", err);
+      setSelectedEmailDeal(null);
     }
   };
   
@@ -192,6 +221,13 @@ export default function EmailView({
   const handleSelectEmail = (email: EmailThread) => {
     console.log("[EmailView] handleSelectEmail called with:", email);
     setSelectedEmail(email);
+    
+    // Fetch linked deal if this email is linked
+    if (linkedEmailIds.has(email.id)) {
+      fetchLinkedDeal(email.id);
+    } else {
+      setSelectedEmailDeal(null);
+    }
     
     // Mark as read when opening (if unread)
     if (!email.read) {
@@ -581,8 +617,14 @@ export default function EmailView({
             onIgnore={() => handleIgnore(selectedEmail)}
             onDone={() => handleDone(selectedEmail)}
             onMarkAsDeal={(e) => handleMarkAsDeal(e, selectedEmail)}
+            onViewDeal={(deal) => {
+              // Navigate to Deals tab with this deal selected
+              // For now, open in Invoicer
+              window.open(`https://internal-promo-invoicer.vercel.app/?view=tracker&taskId=${deal.id}`, "_blank");
+            }}
             onReplySent={handleReplySent}
             isMarking={markingDeal === selectedEmail.id}
+            linkedDeal={selectedEmailDeal}
           />
         </ErrorBoundary>
         

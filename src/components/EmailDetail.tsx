@@ -19,6 +19,7 @@ interface EmailDetailProps {
   account: string;
   onClose: () => void;
   onMarkAsDeal: (e: React.MouseEvent) => void;
+  onViewDeal?: (deal: LinkedDeal) => void; // Navigate to linked deal
   onIgnore: () => void;
   onDone: () => void;
   onReplySent?: () => void; // Called after successful reply - removes from "Needs Response"
@@ -51,6 +52,7 @@ export default function EmailDetail({
   account,
   onClose,
   onMarkAsDeal,
+  onViewDeal,
   onIgnore,
   onDone,
   onReplySent,
@@ -391,13 +393,28 @@ export default function EmailDetail({
         </div>
         {/* Action buttons - wrap on mobile */}
         <div className="flex flex-wrap gap-2 mt-3">
-          <button
-            onClick={onMarkAsDeal}
-            disabled={isMarking}
-            className="px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded-lg transition-colors disabled:opacity-50"
-          >
-            💰 Deal
-          </button>
+          {/* Deal button - different behavior based on whether already linked */}
+          {linkedDeal ? (
+            <button
+              onClick={() => onViewDeal?.(linkedDeal)}
+              className="px-3 py-1.5 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg transition-colors flex items-center gap-1"
+            >
+              💼 View Deal
+              {linkedDeal.amount && (
+                <span className="text-xs opacity-75">
+                  (${linkedDeal.amount.toLocaleString()})
+                </span>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={onMarkAsDeal}
+              disabled={isMarking}
+              className="px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded-lg transition-colors disabled:opacity-50"
+            >
+              💰 Mark as Deal
+            </button>
+          )}
           <button
             onClick={onDone}
             disabled={isMarking}

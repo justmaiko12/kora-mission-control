@@ -455,8 +455,8 @@ export default function InlineChat({
             )}
             {onToggleCollapse && (
               <button
-                onClick={onToggleCollapse}
-                className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
+                onPointerUp={onToggleCollapse}
+                className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white touch-manipulation"
                 title="Expand chat"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -497,8 +497,8 @@ export default function InlineChat({
           )}
           {onToggleFullscreen && (
             <button
-              onClick={onToggleFullscreen}
-              className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
+              onPointerUp={onToggleFullscreen}
+              className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white touch-manipulation"
               title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
             >
               {isFullscreen ? (
@@ -514,8 +514,8 @@ export default function InlineChat({
           )}
           {onToggleCollapse && !isFullscreen && (
             <button
-              onClick={onToggleCollapse}
-              className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
+              onPointerUp={onToggleCollapse}
+              className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white touch-manipulation"
               title="Collapse chat"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

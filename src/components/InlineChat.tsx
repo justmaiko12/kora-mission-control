@@ -104,7 +104,7 @@ const parseChannelCommand = (input: string): ChannelSuggestion | null => {
   };
 };
 
-// Store messages per context in memory (could be localStorage for persistence)
+// Store messages per context in memory (synced to API for persistence)
 const messageStore: Record<ChatContext, Message[]> = {
   dashboard: [],
   email: [],
@@ -114,6 +114,18 @@ const messageStore: Record<ChatContext, Message[]> = {
   integrations: [],
   payables: [],
   general: [],
+};
+
+// Track if we've loaded from API for each context
+const loadedFromApi: Record<ChatContext, boolean> = {
+  dashboard: false,
+  email: false,
+  deals: false,
+  tasks: false,
+  memory: false,
+  integrations: false,
+  payables: false,
+  general: false,
 };
 
 export default function InlineChat({ 
@@ -136,24 +148,59 @@ export default function InlineChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevContextRef = useRef<ChatContext>(chatContext);
 
-  // Initialize messages for this context - only run when context changes
+  // Initialize messages for this context - load from API for persistence
   useEffect(() => {
     // Save current messages to store before switching
     if (prevContextRef.current !== chatContext) {
-      // Save previous context messages
-      const currentMessages = messageStore[prevContextRef.current];
-      if (currentMessages && currentMessages.length > 0) {
-        // Already saved via the other effect
-      }
       prevContextRef.current = chatContext;
     }
 
-    // Load messages for new context
+    // If we already have messages in memory, use those
     const storedMessages = messageStore[chatContext];
     if (storedMessages && storedMessages.length > 0) {
-      setMessages([...storedMessages]); // Create new array to avoid reference issues
+      setMessages([...storedMessages]);
+      return;
+    }
+
+    // Load from API if not loaded yet
+    if (!loadedFromApi[chatContext]) {
+      loadedFromApi[chatContext] = true;
+      fetch(`/api/chat-history?context=${chatContext}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.messages && data.messages.length > 0) {
+            // Convert stored messages back to proper format
+            const loaded = data.messages.map((m: { id: string; content: string; sender: string; timestamp: string }) => ({
+              ...m,
+              timestamp: new Date(m.timestamp),
+            }));
+            messageStore[chatContext] = loaded;
+            setMessages(loaded);
+          } else {
+            // Initialize with welcome message
+            const welcomeMsg = {
+              id: `welcome-${chatContext}`,
+              content: welcomeMessages[chatContext],
+              sender: "kora" as const,
+              timestamp: new Date(),
+            };
+            setMessages([welcomeMsg]);
+            messageStore[chatContext] = [welcomeMsg];
+          }
+        })
+        .catch(() => {
+          // Fallback to welcome message
+          const welcomeMsg = {
+            id: `welcome-${chatContext}`,
+            content: welcomeMessages[chatContext],
+            sender: "kora" as const,
+            timestamp: new Date(),
+          };
+          setMessages([welcomeMsg]);
+          messageStore[chatContext] = [welcomeMsg];
+        });
     } else {
-      // Initialize with welcome message
+      // No messages yet, show welcome
       const welcomeMsg = {
         id: `welcome-${chatContext}`,
         content: welcomeMessages[chatContext],
@@ -163,13 +210,26 @@ export default function InlineChat({
       setMessages([welcomeMsg]);
       messageStore[chatContext] = [welcomeMsg];
     }
-  }, [chatContext]); // Only depend on chatContext, not messages
+  }, [chatContext]);
 
-  // Save messages to store when they change (separate effect)
+  // Save messages to API when they change (debounced)
   useEffect(() => {
-    if (messages.length > 0 && messages[0]?.id !== `welcome-${chatContext}` || messages.length > 1) {
-      messageStore[chatContext] = messages;
+    if (messages.length <= 1 && messages[0]?.id?.startsWith('welcome-')) {
+      return; // Don't save just welcome message
     }
+    
+    messageStore[chatContext] = messages;
+    
+    // Debounce API save
+    const timeout = setTimeout(() => {
+      fetch('/api/chat-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: chatContext, messages }),
+      }).catch(err => console.warn('Failed to save chat history:', err));
+    }, 1000); // Save 1s after last change
+    
+    return () => clearTimeout(timeout);
   }, [messages, chatContext]);
 
   // Load settings

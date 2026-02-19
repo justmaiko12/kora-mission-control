@@ -44,12 +44,20 @@ interface InvoiceData {
   currency: string;
 }
 
+interface InvoiceAttachment {
+  filename: string;
+  data: string; // base64 data URL
+  mimeType: string;
+}
+
 interface InvoiceGeneratorProps {
   deal: Deal;
   emailSubject: string;
   emailFrom: string;
+  existingInvoiceId?: string; // If provided, load existing invoice in view mode
   onClose: () => void;
   onSuccess: (invoiceId: string) => void;
+  onAttachToReply?: (attachment: InvoiceAttachment) => void; // Callback to attach PDF to reply
 }
 
 // Fallback sender presets (used while loading real data)
@@ -298,18 +306,23 @@ export default function InvoiceGenerator({
   deal,
   emailSubject,
   emailFrom,
+  existingInvoiceId,
   onClose,
   onSuccess,
+  onAttachToReply,
 }: InvoiceGeneratorProps) {
-  const [mode, setMode] = useState<"edit" | "preview">("edit");
+  // Start in preview mode if viewing existing invoice
+  const [mode, setMode] = useState<"edit" | "preview">(existingInvoiceId ? "preview" : "edit");
   const [creating, setCreating] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [attaching, setAttaching] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(existingInvoiceId || null);
+  const [loadingExisting, setLoadingExisting] = useState(!!existingInvoiceId);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  // Invoice form state - invoice number will be set from Invoicer
+  // Invoice form state
   const [invoiceNumber, setInvoiceNumber] = useState("Loading...");
   const [invoiceDate, setInvoiceDate] = useState(getDateString());
   const [dueDate, setDueDate] = useState(getDateString(30));
@@ -324,6 +337,47 @@ export default function InvoiceGenerator({
   const [sender, setSender] = useState<Company | null>(null);
   const [loadingSender, setLoadingSender] = useState(true);
 
+  // Fetch existing invoice data if viewing
+  useEffect(() => {
+    if (!existingInvoiceId) return;
+
+    async function fetchExistingInvoice() {
+      try {
+        const res = await fetch(`/api/invoices/${existingInvoiceId}`);
+        if (res.ok) {
+          const data = await res.json();
+          // Populate form with existing data
+          setInvoiceNumber(data.invoice_number || data.invoiceNumber || "");
+          setInvoiceDate(data.date || data.invoice_date || getDateString());
+          setDueDate(data.due_date || data.dueDate || getDateString(30));
+          setClientName(data.client_name || data.clientName || "");
+          setClientEmail(data.client_email || data.clientEmail || "");
+          setNotes(data.notes || "");
+          setTaxRate(data.tax_rate || data.taxRate || 0);
+          setCurrency(data.currency || "USD");
+          
+          // Parse line items
+          const lineItems = data.line_items || data.items || [];
+          if (lineItems.length > 0) {
+            setItems(lineItems.map((item: { description?: string; quantity?: number; unit_price?: number; unitPrice?: number }, idx: number) => ({
+              id: `item_${idx}`,
+              description: item.description || "",
+              quantity: item.quantity || 1,
+              unitPrice: item.unit_price || item.unitPrice || 0,
+            })));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch existing invoice:", err);
+        setError("Failed to load invoice");
+      } finally {
+        setLoadingExisting(false);
+      }
+    }
+
+    fetchExistingInvoice();
+  }, [existingInvoiceId]);
+
   // Fetch real company data and next invoice number from Invoicer
   useEffect(() => {
     async function fetchCompany() {
@@ -332,20 +386,23 @@ export default function InvoiceGenerator({
         if (res.ok) {
           const data = await res.json();
           setSender(data.company);
-          // Set invoice number from Invoicer (sequential)
-          if (data.nextInvoiceNumber) {
-            setInvoiceNumber(data.nextInvoiceNumber);
-          } else {
-            setInvoiceNumber(generateFallbackInvoiceNumber());
+          // Only set invoice number if not viewing existing
+          if (!existingInvoiceId) {
+            if (data.nextInvoiceNumber) {
+              setInvoiceNumber(data.nextInvoiceNumber);
+            } else {
+              setInvoiceNumber(generateFallbackInvoiceNumber());
+            }
           }
         } else {
           console.error("Failed to fetch company");
-          // Use minimal fallback
           setSender({
             name: deal.account.includes("meettherodz") ? "Meet The Rodz" : "Shluv Enterprise LLC",
             email: deal.account,
           });
-          setInvoiceNumber(generateFallbackInvoiceNumber());
+          if (!existingInvoiceId) {
+            setInvoiceNumber(generateFallbackInvoiceNumber());
+          }
         }
       } catch (err) {
         console.error("Company fetch error:", err);
@@ -353,16 +410,20 @@ export default function InvoiceGenerator({
           name: deal.account.includes("meettherodz") ? "Meet The Rodz" : "Shluv Enterprise LLC",
           email: deal.account,
         });
-        setInvoiceNumber(generateFallbackInvoiceNumber());
+        if (!existingInvoiceId) {
+          setInvoiceNumber(generateFallbackInvoiceNumber());
+        }
       } finally {
         setLoadingSender(false);
       }
     }
     fetchCompany();
-  }, [deal.account]);
+  }, [deal.account, existingInvoiceId]);
 
-  // Initialize from deal data
+  // Initialize from deal data (only if not viewing existing)
   useEffect(() => {
+    if (existingInvoiceId) return; // Don't override if viewing existing
+    
     const fromField = emailFrom || deal.from;
     const name = deal.clientName || extractClientName(fromField);
     const email = extractEmail(fromField);
@@ -381,7 +442,7 @@ export default function InvoiceGenerator({
         unitPrice: amount,
       },
     ]);
-  }, [deal, emailSubject, emailFrom]);
+  }, [deal, emailSubject, emailFrom, existingInvoiceId]);
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -450,7 +511,7 @@ export default function InvoiceGenerator({
 
       const data = await res.json();
       setInvoiceId(data.invoiceId);
-      setMode("preview"); // Switch to preview mode
+      setMode("preview");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create invoice");
     } finally {
@@ -458,30 +519,55 @@ export default function InvoiceGenerator({
     }
   };
 
+  // Generate PDF as blob/base64
+  const generatePdf = async (): Promise<{ blob: Blob; base64: string }> => {
+    const element = document.getElementById("invoice-preview-modal");
+    if (!element) throw new Error("Invoice preview not found");
+
+    const html2pdf = (await import("html2pdf.js")).default;
+
+    const opt = {
+      margin: 0,
+      image: { type: "jpeg" as const, quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      },
+      pagebreak: { mode: ["avoid-all", "css", "legacy"] as const },
+      jsPDF: { unit: "mm" as const, format: "a4" as const, orientation: "portrait" as const },
+    };
+
+    const pdfBlob = await html2pdf().set(opt).from(element).outputPdf("blob");
+
+    // Convert blob to base64
+    const reader = new FileReader();
+    const base64Promise = new Promise<string>((resolve) => {
+      reader.onloadend = () => {
+        resolve(reader.result as string);
+      };
+    });
+    reader.readAsDataURL(pdfBlob);
+    const base64 = await base64Promise;
+
+    return { blob: pdfBlob, base64 };
+  };
+
   // Download PDF
   const handleDownload = async () => {
-    const element = document.getElementById("invoice-preview-modal");
-    if (!element) return;
-
     setDownloading(true);
     try {
-      // Dynamic import html2pdf
-      const html2pdf = (await import("html2pdf.js")).default;
-
-      const opt = {
-        margin: 0,
-        filename: `${invoiceNumber}.pdf`,
-        image: { type: "jpeg" as const, quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-        },
-        pagebreak: { mode: ["avoid-all", "css", "legacy"] as const },
-        jsPDF: { unit: "mm" as const, format: "a4" as const, orientation: "portrait" as const },
-      };
-
-      await html2pdf().set(opt).from(element).save();
+      const { blob } = await generatePdf();
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${invoiceNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error("PDF download failed:", err);
       setError("Failed to download PDF");
@@ -490,42 +576,41 @@ export default function InvoiceGenerator({
     }
   };
 
-  // Send to client via email
-  const handleSendToClient = async () => {
-    const element = document.getElementById("invoice-preview-modal");
-    if (!element) return;
+  // Attach PDF to reply (opens reply composer with attachment)
+  const handleAttachToReply = async () => {
+    if (!onAttachToReply) return;
+    
+    setAttaching(true);
+    setError(null);
 
+    try {
+      const { base64 } = await generatePdf();
+      
+      // Call parent with attachment data
+      onAttachToReply({
+        filename: `${invoiceNumber}.pdf`,
+        data: base64,
+        mimeType: "application/pdf",
+      });
+      
+      // Close the modal
+      onClose();
+    } catch (err) {
+      console.error("Attach to reply failed:", err);
+      setError("Failed to generate PDF");
+    } finally {
+      setAttaching(false);
+    }
+  };
+
+  // Send directly to client via email
+  const handleSendToClient = async () => {
     setSending(true);
     setError(null);
 
     try {
-      // Generate PDF as base64
-      const html2pdf = (await import("html2pdf.js")).default;
-
-      const opt = {
-        margin: 0,
-        image: { type: "jpeg" as const, quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-        },
-        pagebreak: { mode: ["avoid-all", "css", "legacy"] as const },
-        jsPDF: { unit: "mm" as const, format: "a4" as const, orientation: "portrait" as const },
-      };
-
-      const pdfBlob = await html2pdf().set(opt).from(element).outputPdf("blob");
-
-      // Convert blob to base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          resolve(base64);
-        };
-      });
-      reader.readAsDataURL(pdfBlob);
-      const pdfBase64 = await base64Promise;
+      const { base64 } = await generatePdf();
+      const pdfBase64 = base64.split(",")[1]; // Remove data:... prefix
 
       // Send email with PDF attachment
       const senderName = sender?.name || "Our Team";
@@ -556,7 +641,6 @@ export default function InvoiceGenerator({
         throw new Error(data.error || "Failed to send email");
       }
 
-      // Success!
       onSuccess(invoiceId || "");
       onClose();
     } catch (err) {
@@ -583,6 +667,23 @@ export default function InvoiceGenerator({
     currency,
   };
 
+  // Show loading state for existing invoice
+  if (loadingExisting) {
+    const loadingContent = (
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4" onClick={onClose}>
+        <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-8 text-center" onClick={(e) => e.stopPropagation()}>
+          <div className="animate-spin text-3xl mb-4">⏳</div>
+          <p className="text-zinc-400">Loading invoice...</p>
+        </div>
+      </div>
+    );
+    
+    if (typeof document !== "undefined") {
+      return createPortal(loadingContent, document.body);
+    }
+    return loadingContent;
+  }
+
   const modalContent = (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4" onClick={onClose}>
       <div
@@ -594,10 +695,15 @@ export default function InvoiceGenerator({
         <div className="p-4 border-b border-zinc-800 flex items-center justify-between flex-shrink-0">
           <div>
             <h2 className="text-lg font-bold flex items-center gap-2">
-              {mode === "edit" ? "📄 Generate Invoice" : "📄 Invoice Preview"}
+              {mode === "edit" ? "📄 Generate Invoice" : existingInvoiceId ? "📄 Invoice" : "📄 Invoice Preview"}
             </h2>
             <p className="text-xs text-zinc-500 mt-0.5">
-              {mode === "edit" ? "Auto-filled from deal • Review before creating" : "Ready to download or send"}
+              {mode === "edit" 
+                ? "Auto-filled from deal • Review before creating" 
+                : existingInvoiceId 
+                  ? `${invoiceNumber}` 
+                  : "Ready to download or send"
+              }
             </p>
           </div>
           <button
@@ -837,12 +943,17 @@ export default function InvoiceGenerator({
             </>
           ) : (
             <>
-              <button
-                onClick={() => setMode("edit")}
-                className="px-4 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
-              >
-                ← Edit
-              </button>
+              {/* Only show Edit button if NOT viewing existing (i.e., just created) */}
+              {!existingInvoiceId && (
+                <button
+                  onClick={() => setMode("edit")}
+                  className="px-4 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
+                >
+                  ← Edit
+                </button>
+              )}
+              {existingInvoiceId && <div />}
+              
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDownload}
@@ -861,23 +972,48 @@ export default function InvoiceGenerator({
                     </>
                   )}
                 </button>
-                <button
-                  onClick={handleSendToClient}
-                  disabled={sending}
-                  className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2"
-                >
-                  {sending ? (
-                    <>
-                      <span className="animate-spin">⏳</span>
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <span>📧</span>
-                      Send to Client
-                    </>
-                  )}
-                </button>
+                
+                {/* Attach to Reply button - only show if callback provided */}
+                {onAttachToReply && (
+                  <button
+                    onClick={handleAttachToReply}
+                    disabled={attaching}
+                    className="px-4 py-2 text-sm bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    {attaching ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        Attaching...
+                      </>
+                    ) : (
+                      <>
+                        <span>📎</span>
+                        Attach to Reply
+                      </>
+                    )}
+                  </button>
+                )}
+                
+                {/* Send to Client - only show if NOT attaching (i.e., full send workflow) */}
+                {!onAttachToReply && (
+                  <button
+                    onClick={handleSendToClient}
+                    disabled={sending}
+                    className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    {sending ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <span>📧</span>
+                        Send to Client
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </>
           )}

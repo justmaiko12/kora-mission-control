@@ -81,6 +81,7 @@ export default function EmailDetail({
   
   // Invoice generation
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [viewingInvoiceId, setViewingInvoiceId] = useState<string | null>(null); // For viewing existing invoice
   const [invoiceSuccess, setInvoiceSuccess] = useState<string | null>(null);
   const [localInvoiceId, setLocalInvoiceId] = useState<string | null>(linkedDeal?.invoiceId || null);
   
@@ -557,19 +558,23 @@ export default function EmailDetail({
           {/* Invoice button - Generate or View based on whether invoice exists */}
           {linkedDeal && (effectiveInvoiceId || threadMentionsInvoice) && (
             effectiveInvoiceId ? (
-              // Invoice already exists - show View button
-              <a
-                href={`https://internal-promo-invoicer.vercel.app?view=invoices&invoiceId=${effectiveInvoiceId}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              // Invoice already exists - show View button (opens modal, not external link)
+              <button
+                onClick={() => {
+                  setViewingInvoiceId(effectiveInvoiceId);
+                  setShowInvoiceModal(true);
+                }}
                 className="px-3 py-1.5 text-sm bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-colors flex items-center gap-1"
               >
                 📄 View Invoice
-              </a>
+              </button>
             ) : (
               // No invoice yet - show Generate button
               <button
-                onClick={() => setShowInvoiceModal(true)}
+                onClick={() => {
+                  setViewingInvoiceId(null);
+                  setShowInvoiceModal(true);
+                }}
                 className="px-3 py-1.5 text-sm bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg transition-colors flex items-center gap-1"
               >
                 📄 Generate Invoice
@@ -1041,12 +1046,33 @@ export default function EmailDetail({
           }}
           emailSubject={email.subject}
           emailFrom={email.from}
-          onClose={() => setShowInvoiceModal(false)}
+          existingInvoiceId={viewingInvoiceId || undefined}
+          onClose={() => {
+            setShowInvoiceModal(false);
+            setViewingInvoiceId(null);
+          }}
           onSuccess={(invoiceId) => {
             setShowInvoiceModal(false);
+            setViewingInvoiceId(null);
             setInvoiceSuccess(`Invoice created (${invoiceId})`);
             // Update local state so button changes to "View Invoice"
             setLocalInvoiceId(invoiceId);
+          }}
+          onAttachToReply={(attachment) => {
+            // Close invoice modal
+            setShowInvoiceModal(false);
+            setViewingInvoiceId(null);
+            
+            // Expand reply composer and add attachment
+            setReplyExpanded(true);
+            
+            // Convert base64 data URL to File object
+            fetch(attachment.data)
+              .then(res => res.blob())
+              .then(blob => {
+                const file = new File([blob], attachment.filename, { type: attachment.mimeType });
+                setAttachments(prev => [...prev, { file }]);
+              });
           }}
         />
       )}

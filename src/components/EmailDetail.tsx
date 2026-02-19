@@ -532,14 +532,18 @@ export default function EmailDetail({
   );
 }
 
-// Basic HTML sanitization (remove scripts, on* attributes)
+// Basic HTML sanitization (remove scripts, on* attributes, fix broken images)
 function sanitizeHtml(html: string): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
     .replace(/\son\w+="[^"]*"/gi, "")
     .replace(/\son\w+='[^']*'/gi, "")
     .replace(/javascript:/gi, "")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+    // Remove CID images (embedded attachments that won't load)
+    .replace(/<img[^>]*src=["']cid:[^"']*["'][^>]*>/gi, '<span class="text-zinc-500 text-xs">[embedded image]</span>')
+    // Add onerror to remaining images to hide broken ones
+    .replace(/<img\s/gi, '<img onerror="this.style.display=\'none\'" ');
 }
 
 // Strip quoted content from email body (the repeated thread chains)

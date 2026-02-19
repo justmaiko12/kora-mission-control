@@ -52,10 +52,14 @@ export default function EmailDetail({
         const res = await fetch(
           `/api/emails/thread?id=${encodeURIComponent(email.id)}&account=${encodeURIComponent(account)}`
         );
-        if (!res.ok) throw new Error("Failed to fetch thread");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.details || errData.error || `HTTP ${res.status}`);
+        }
         const data = await res.json();
         setMessages(data.messages || []);
       } catch (err) {
+        console.error("Thread fetch error:", err);
         setError(err instanceof Error ? err.message : "Failed to load email");
       } finally {
         setLoading(false);
@@ -63,6 +67,17 @@ export default function EmailDetail({
     }
     fetchThread();
   }, [email.id, account]);
+  
+  // Retry function
+  const retryFetch = () => {
+    setError(null);
+    setLoading(true);
+    fetch(`/api/emails/thread?id=${encodeURIComponent(email.id)}&account=${encodeURIComponent(account)}`)
+      .then(res => res.ok ? res.json() : Promise.reject(new Error("Failed")))
+      .then(data => setMessages(data.messages || []))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  };
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -271,8 +286,14 @@ export default function EmailDetail({
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-800/50 bg-red-900/20 p-4 text-red-400 text-sm">
-            {error}
+          <div className="rounded-xl border border-red-800/50 bg-red-900/20 p-4">
+            <p className="text-red-400 text-sm mb-2">{error}</p>
+            <button
+              onClick={retryFetch}
+              className="px-3 py-1.5 text-xs bg-red-800/30 hover:bg-red-700/40 text-red-300 rounded-lg transition-colors"
+            >
+              Retry
+            </button>
           </div>
         )}
 

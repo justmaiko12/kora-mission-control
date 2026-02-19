@@ -297,17 +297,28 @@ export default function ActivityView() {
             data.agents.sessions.map((session) => (
               <div
                 key={session.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50"
+                className={`flex items-center gap-3 p-3 rounded-lg ${
+                  session.type === "sub-agent" 
+                    ? "bg-cyan-900/30 border border-cyan-500/30" 
+                    : "bg-zinc-800/50"
+                }`}
               >
                 <div className={`w-2 h-2 rounded-full ${
-                  session.status === "active" ? "bg-emerald-400" :
+                  session.status === "active" ? "bg-emerald-400 animate-pulse" :
                   session.status === "idle" ? "bg-amber-400" : "bg-zinc-500"
                 }`} />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{session.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm truncate">{session.name}</p>
+                    {session.type === "sub-agent" && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 uppercase tracking-wider">
+                        Sub-Agent
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-zinc-500 truncate">{session.currentTask}</p>
                 </div>
-                <span className="text-xs text-zinc-500 capitalize">{session.type}</span>
+                <span className="text-xs text-zinc-500 capitalize">{session.type === "sub-agent" ? "" : session.type}</span>
               </div>
             ))
           )}

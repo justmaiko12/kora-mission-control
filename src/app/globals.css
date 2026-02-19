@@ -330,6 +330,8 @@ button, a, [role="button"], input, select, textarea {
   cursor: pointer;
   position: relative;
   text-align: left;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-item:hover {

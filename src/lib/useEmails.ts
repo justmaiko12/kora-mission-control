@@ -188,12 +188,8 @@ export function useEmails() {
         console.warn("Failed to fetch email scores:", scoreErr);
       }
 
-      // Use needsResponse from API (based on learned preferences)
-      // Only compute locally as fallback if API didn't provide it
-      emailList = emailList.map((email) => ({
-        ...email,
-        needsResponse: email.needsResponse ?? computeNeedsResponse(email),
-      }));
+      // Use needsResponse directly from API (simple: they sent last = needs response)
+      // No local computation - trust the backend
 
       // Cache it
       emailCache[account] = emailList;

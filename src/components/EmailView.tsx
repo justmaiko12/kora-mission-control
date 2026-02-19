@@ -691,6 +691,18 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      handleDone(email);
+                    }}
+                    className="p-2 hover:bg-blue-600/30 rounded-lg transition-colors text-zinc-400 hover:text-blue-400"
+                    title="Done (read, no action needed)"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
                       handleIgnore(email);
                     }}
                     className="p-2 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-white"

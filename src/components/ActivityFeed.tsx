@@ -113,7 +113,7 @@ export default function ActivityFeed({ context = "general", onCommand, emailAcco
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 border-t border-zinc-800">
+    <div className="flex flex-col h-full max-h-full bg-zinc-950 border-t border-zinc-800 overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -154,8 +154,17 @@ export default function ActivityFeed({ context = "general", onCommand, emailAcco
 
       {/* Command Result */}
       {commandResult && (
-        <div className="mx-4 mb-2 px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-sm text-emerald-300">
-          {commandResult}
+        <div className="mx-4 mb-2 px-3 py-2 bg-emerald-900/30 border border-emerald-700/50 rounded-lg text-sm text-emerald-300 relative">
+          <button
+            onClick={() => setCommandResult(null)}
+            className="absolute top-1 right-1 p-1 hover:bg-emerald-800/50 rounded text-emerald-400 hover:text-emerald-200"
+            title="Dismiss"
+          >
+            ✕
+          </button>
+          <div className="max-h-24 overflow-y-auto pr-6">
+            {commandResult.length > 300 ? `${commandResult.slice(0, 300)}...` : commandResult}
+          </div>
         </div>
       )}
 

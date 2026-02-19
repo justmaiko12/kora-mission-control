@@ -11,17 +11,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Command required" }, { status: 400 });
     }
 
-    // Build context-aware message
-    let contextMessage = command;
-    if (context === "email" && visibleEmails?.length > 0) {
-      const emailList = visibleEmails
-        .slice(0, 15)
-        .map((e: { from: string; subject: string }, i: number) => `${i + 1}. From: ${e.from} | Subject: ${e.subject}`)
-        .join("\n");
-      contextMessage = `User is looking at ${emailAccount || "their inbox"} with these emails:\n${emailList}\n\nUser says: "${command}"\n\nHelp them manage these emails. If they want to archive/delete/spam, tell them which specific senders or patterns to target.`;
-    }
-
-    // Route command to Bridge API chat
+    // Send the command AND visible emails separately
+    // So the email command parser can search based on the raw command
+    // but also know what emails the user is looking at
     const res = await fetch(`${BRIDGE_URL}/api/chat/send`, {
       method: "POST",
       headers: {
@@ -29,10 +21,12 @@ export async function POST(req: Request) {
         Authorization: `Bearer ${BRIDGE_SECRET}`,
       },
       body: JSON.stringify({
-        message: contextMessage,
+        message: command, // Keep the command clean!
         chatContext: context || "general",
         userId: "michael",
         account: emailAccount,
+        // Pass visible emails separately for context
+        visibleEmails: visibleEmails?.slice(0, 15) || [],
       }),
     });
 

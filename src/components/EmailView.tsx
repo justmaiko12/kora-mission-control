@@ -575,7 +575,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 relative z-10">
           <button
             onClick={() => setFilter("needs-response")}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${

@@ -131,7 +131,7 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
   };
 
   return (
-    <div className="flex items-center gap-1 px-2 overflow-x-auto">
+    <div className="flex items-center gap-1 px-2 overflow-x-auto scrollbar-hide">
       {accounts.map((account) => {
         const isActive = account.id === activeAccount;
         const isEditing = editingId === account.email;

@@ -12,6 +12,7 @@ interface LinkedDeal {
   amount?: number | null;
   clientName?: string;
   account: string;
+  invoiceId?: string; // Set after invoice is generated
 }
 
 interface EmailDetailProps {
@@ -78,6 +79,17 @@ export default function EmailDetail({
   // Invoice generation
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceSuccess, setInvoiceSuccess] = useState<string | null>(null);
+  const [localInvoiceId, setLocalInvoiceId] = useState<string | null>(linkedDeal?.invoiceId || null);
+  
+  // Update local invoice ID if linkedDeal changes
+  useEffect(() => {
+    if (linkedDeal?.invoiceId) {
+      setLocalInvoiceId(linkedDeal.invoiceId);
+    }
+  }, [linkedDeal?.invoiceId]);
+  
+  // Effective invoice ID (from prop or local state)
+  const effectiveInvoiceId = localInvoiceId || linkedDeal?.invoiceId;
   
   // Detect if thread mentions "invoice" (client asking for invoice)
   const threadMentionsInvoice = messages.some(msg => {
@@ -459,14 +471,27 @@ export default function EmailDetail({
             🗑️ Archive
           </button>
           
-          {/* Generate Invoice button - shows when "invoice" mentioned and linked to deal */}
-          {linkedDeal && threadMentionsInvoice && (
-            <button
-              onClick={() => setShowInvoiceModal(true)}
-              className="px-3 py-1.5 text-sm bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg transition-colors flex items-center gap-1"
-            >
-              📄 Generate Invoice
-            </button>
+          {/* Invoice button - Generate or View based on whether invoice exists */}
+          {linkedDeal && (effectiveInvoiceId || threadMentionsInvoice) && (
+            effectiveInvoiceId ? (
+              // Invoice already exists - show View button
+              <a
+                href={`https://internal-promo-invoicer.vercel.app?view=invoices&invoiceId=${effectiveInvoiceId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 text-sm bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-colors flex items-center gap-1"
+              >
+                📄 View Invoice
+              </a>
+            ) : (
+              // No invoice yet - show Generate button
+              <button
+                onClick={() => setShowInvoiceModal(true)}
+                className="px-3 py-1.5 text-sm bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 rounded-lg transition-colors flex items-center gap-1"
+              >
+                📄 Generate Invoice
+              </button>
+            )
           )}
         </div>
         
@@ -920,6 +945,8 @@ export default function EmailDetail({
           onSuccess={(invoiceId) => {
             setShowInvoiceModal(false);
             setInvoiceSuccess(`Invoice created (${invoiceId})`);
+            // Update local state so button changes to "View Invoice"
+            setLocalInvoiceId(invoiceId);
           }}
         />
       )}

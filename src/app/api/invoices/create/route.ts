@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 // Invoicer Edge Function URL
 const INVOICER_API_URL = "https://dpnsdxfiirqjztcfsvuj.supabase.co/functions/v1/kora-api";
 const INVOICER_SERVICE_KEY = process.env.INVOICER_SUPABASE_SERVICE_KEY || "";
+const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
+const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
 
 // Company ID mapping
 const COMPANY_MAP: Record<string, string> = {
@@ -72,6 +74,27 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
+    
+    // Update the deal with the invoiceId so we remember it
+    if (dealId && data.invoiceId) {
+      try {
+        await fetch(`${BRIDGE_URL}/api/deals/${dealId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${BRIDGE_SECRET}`,
+          },
+          body: JSON.stringify({
+            invoiceId: data.invoiceId,
+            invoiceNumber: data.invoiceNumber,
+          }),
+        });
+        console.log(`Updated deal ${dealId} with invoiceId ${data.invoiceId}`);
+      } catch (err) {
+        // Non-fatal - invoice was created, just couldn't link it to deal
+        console.warn("Failed to update deal with invoiceId:", err);
+      }
+    }
     
     return NextResponse.json({
       success: true,

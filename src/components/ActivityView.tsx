@@ -176,37 +176,41 @@ export default function ActivityView() {
   ];
 
   return (
-    <div className="p-4 md:p-6 space-y-6 overflow-auto h-full">
+    <div className="p-5 md:p-8 max-w-5xl mx-auto space-y-6 overflow-auto h-full animate-fade-in">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl md:text-2xl font-bold">Kora Activity</h1>
-        <span className="text-xs text-zinc-500">
-          Updated: {data.agents.updatedAt ?? "just now"}
+        <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-white">
+          Kora Activity
+        </h1>
+        <span className="text-[11px] text-[#4a4a57] font-medium">
+          Updated {data.agents.updatedAt ?? "just now"}
         </span>
       </div>
 
-      {/* Agent Activity Hero - 8-bit Pixel Home */}
-      <div className="relative overflow-hidden rounded-2xl border border-emerald-900/40 bg-gradient-to-br from-emerald-950/80 via-zinc-950 to-zinc-900/70 p-4 md:p-6">
-        <div className="absolute -left-24 -top-24 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="absolute -bottom-32 right-0 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
+      {/* Agent Activity Hero - 8-bit Pixel Home (kept as-is, polished frame) */}
+      <div className="relative overflow-hidden rounded-xl border border-emerald-500/[0.15] bg-gradient-to-br from-emerald-950/60 via-[#0a0a0c] to-[#111113]">
+        {/* Ambient glow effects */}
+        <div className="absolute -left-20 -top-20 h-48 w-48 rounded-full bg-emerald-500/[0.06] blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 right-0 h-48 w-48 rounded-full bg-cyan-500/[0.06] blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-stretch">
+        <div className="relative z-10 p-5 md:p-6 flex flex-col gap-5 lg:flex-row lg:items-stretch">
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-lg md:text-2xl font-semibold text-emerald-100">Agent Status</h2>
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-emerald-200">
-                <span className="relative flex h-2 w-2">
-                  <span className={`absolute inline-flex h-full w-full rounded-full ${isAwake ? "animate-ping bg-emerald-300 opacity-60" : "bg-zinc-500"}`} />
-                  <span className={`relative inline-flex h-2 w-2 rounded-full ${isAwake ? "bg-emerald-300" : "bg-zinc-500"}`} />
+              <h2 className="text-lg font-semibold text-white">Agent Status</h2>
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/[0.25] bg-emerald-500/[0.08] px-2.5 py-1 text-[10px] uppercase tracking-[0.15em] font-semibold text-emerald-300/90">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className={`absolute inline-flex h-full w-full rounded-full ${isAwake ? "animate-ping bg-emerald-300 opacity-60" : "bg-[#4a4a57]"}`} />
+                  <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${isAwake ? "bg-emerald-300" : "bg-[#4a4a57]"}`} />
                 </span>
                 {isAwake ? "Active" : "Idle"}
               </span>
             </div>
-            <p className="mt-2 text-sm text-emerald-100/70">
+            <p className="mt-1.5 text-[13px] text-[#6c6c7a]">
               Monitoring agents and sessions across the Kora mesh.
             </p>
 
             {/* 8-bit Pixel Home */}
-            <div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_200px]">
+            <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
               <div className="relative aspect-square w-full max-w-[420px] overflow-hidden rounded-none border-2 border-emerald-300/40 bg-[#0b1b1a] p-4 shadow-[0_0_0_2px_rgba(6,24,23,0.95),0_0_0_4px_rgba(16,185,129,0.25)]">
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,185,129,0.06)_1px,transparent_1px),linear-gradient(rgba(16,185,129,0.06)_1px,transparent_1px)] bg-[size:12px_12px] opacity-70" />
                 <div className="absolute inset-x-4 top-4 h-2 border-2 border-emerald-300/50 bg-emerald-900/60" />
@@ -267,15 +271,15 @@ export default function ActivityView() {
 
               {/* Stats sidebar */}
               <div className="space-y-3 font-mono">
-                <div className="rounded-none border-2 border-emerald-400/30 bg-emerald-950/70 p-3">
-                  <p className="text-[10px] uppercase tracking-[0.35em] text-emerald-200/70">Active</p>
-                  <p className="text-2xl font-semibold text-emerald-100">
+                <div className="rounded-lg border border-emerald-400/[0.15] bg-emerald-950/40 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/50 font-semibold">Active</p>
+                  <p className="text-2xl font-semibold text-emerald-100 mt-0.5">
                     {data.loading ? "—" : activeSessions.length}
                   </p>
                 </div>
-                <div className="rounded-none border-2 border-emerald-400/30 bg-emerald-950/70 p-3">
-                  <p className="text-[10px] uppercase tracking-[0.35em] text-emerald-200/70">Idle</p>
-                  <p className="text-2xl font-semibold text-emerald-100">
+                <div className="rounded-lg border border-emerald-400/[0.15] bg-emerald-950/40 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/50 font-semibold">Idle</p>
+                  <p className="text-2xl font-semibold text-emerald-100 mt-0.5">
                     {data.loading ? "—" : idleSessions.length}
                   </p>
                 </div>
@@ -286,58 +290,71 @@ export default function ActivityView() {
       </div>
 
       {/* Session List */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-        <h3 className="font-semibold mb-3">Sessions</h3>
-        <div className="space-y-2">
+      <div className="rounded-xl border border-white/[0.06] bg-[#111113] overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-white/[0.04] flex items-center justify-between">
+          <h3 className="text-[14px] font-semibold text-white">Sessions</h3>
+          <span className="text-[11px] text-[#4a4a57] font-medium">
+            {data.agents.sessions.length} total
+          </span>
+        </div>
+        <div className="p-2">
           {data.loading ? (
-            <div className="text-zinc-500 text-sm">Loading...</div>
+            <div className="px-3 py-8 text-center">
+              <div className="inline-block w-5 h-5 border-2 border-white/[0.1] border-t-indigo-400 rounded-full animate-spin" />
+            </div>
           ) : data.agents.sessions.length === 0 ? (
-            <div className="text-zinc-500 text-sm">No sessions</div>
+            <div className="px-3 py-8 text-center text-[13px] text-[#4a4a57]">
+              No active sessions
+            </div>
           ) : (
-            data.agents.sessions.map((session) => (
-              <div
-                key={session.id}
-                className={`flex items-center gap-3 p-3 rounded-lg ${
-                  session.type === "sub-agent" 
-                    ? "bg-cyan-900/30 border border-cyan-500/30" 
-                    : "bg-zinc-800/50"
-                }`}
-              >
-                <div className={`w-2 h-2 rounded-full ${
-                  session.status === "active" ? "bg-emerald-400 animate-pulse" :
-                  session.status === "idle" ? "bg-amber-400" : "bg-zinc-500"
-                }`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-sm truncate">{session.name}</p>
-                    {session.type === "sub-agent" && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 uppercase tracking-wider">
-                        Sub-Agent
-                      </span>
-                    )}
+            <div className="space-y-0.5">
+              {data.agents.sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-150 ${
+                    session.type === "sub-agent" 
+                      ? "bg-cyan-500/[0.04] border border-cyan-500/[0.1]" 
+                      : "hover:bg-white/[0.02]"
+                  }`}
+                >
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    session.status === "active" ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)]" :
+                    session.status === "idle" ? "bg-amber-400" : "bg-[#4a4a57]"
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[13px] font-medium text-[#ededef] truncate">{session.name}</p>
+                      {session.type === "sub-agent" && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-cyan-500/[0.1] text-cyan-300/80 uppercase tracking-wider font-semibold border border-cyan-500/[0.15]">
+                          Sub
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12px] text-[#6c6c7a] truncate mt-0.5">{session.currentTask}</p>
                   </div>
-                  <p className="text-xs text-zinc-500 truncate">{session.currentTask}</p>
+                  <span className="text-[11px] text-[#4a4a57] capitalize flex-shrink-0">
+                    {session.type === "sub-agent" ? "" : session.type}
+                  </span>
                 </div>
-                <span className="text-xs text-zinc-500 capitalize">{session.type === "sub-agent" ? "" : session.type}</span>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </div>
 
       {/* Usage & Costs */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 md:p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <h3 className="text-lg font-semibold">Usage & Costs</h3>
-          <div className="flex gap-2">
+      <div className="rounded-xl border border-white/[0.06] bg-[#111113] overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/[0.04] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <h3 className="text-[15px] font-semibold text-white">Usage & Costs</h3>
+          <div className="flex gap-1">
             {timeFilters.map((filter) => (
               <button
                 key={filter}
                 onClick={() => setTimeFilter(filter)}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                className={`px-2.5 py-1 text-[12px] font-medium rounded-md transition-all duration-150 ${
                   timeFilter === filter
-                    ? "bg-zinc-700 text-white"
-                    : "text-zinc-400 hover:bg-zinc-800"
+                    ? "bg-white/[0.08] text-white"
+                    : "text-[#6c6c7a] hover:text-[#9b9ba7] hover:bg-white/[0.03]"
                 }`}
               >
                 {filter}
@@ -346,84 +363,89 @@ export default function ActivityView() {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-zinc-800/50 rounded-xl p-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-wide">Total Cost</p>
-            <p className="text-2xl font-bold mt-1">{formatCurrency(data.usage.totalCost)}</p>
-          </div>
-          <div className="bg-zinc-800/50 rounded-xl p-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-wide">Tokens</p>
-            <p className="text-2xl font-bold mt-1">{formatNumber(data.usage.totalTokens)}</p>
-          </div>
-          <div className="bg-zinc-800/50 rounded-xl p-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-wide">Conversations</p>
-            <p className="text-2xl font-bold mt-1">{formatNumber(data.usage.conversations)}</p>
-          </div>
-          <div className="bg-zinc-800/50 rounded-xl p-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-wide">Activity</p>
-            <p className="text-2xl font-bold mt-1">{formatNumber(data.usage.activity)}</p>
-          </div>
-        </div>
-
-        {/* Chart */}
-        <div className="mb-6">
-          <div className="flex gap-2 mb-4">
-            {metricTabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setMetricFilter(tab)}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                  metricFilter === tab
-                    ? "bg-indigo-600 text-white"
-                    : "text-zinc-400 hover:bg-zinc-800"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <div className="h-32 flex items-end gap-1">
-            {chartData.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-zinc-500 text-sm">
-                No data yet
-              </div>
-            ) : (
-              chartData.map((entry, i) => (
-                <div key={entry.date} className="flex-1 flex flex-col items-center gap-1">
-                  <div
-                    className="w-full bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t transition-all"
-                    style={{
-                      height: maxChartValue > 0 ? `${(entry.value / maxChartValue) * 100}%` : "0%",
-                      minHeight: entry.value > 0 ? "4px" : "0px",
-                    }}
-                  />
-                  <span className="text-[10px] text-zinc-500">{entry.dateLabel}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Model Breakdown */}
-        <div>
-          <h4 className="text-sm font-medium mb-3">By Model</h4>
-          <div className="space-y-2">
-            {data.usage.byModel.map((model) => (
-              <div key={model.name} className="flex items-center gap-3">
-                <span className="text-sm text-zinc-400 w-32 truncate">{model.name}</span>
-                <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-indigo-500 rounded-full"
-                    style={{ width: `${model.percentage}%` }}
-                  />
-                </div>
-                <span className="text-xs text-zinc-500 w-16 text-right">
-                  {formatCurrency(model.cost)}
-                </span>
+        <div className="p-5">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            {[
+              { label: "Total Cost", value: formatCurrency(data.usage.totalCost) },
+              { label: "Tokens", value: formatNumber(data.usage.totalTokens) },
+              { label: "Conversations", value: formatNumber(data.usage.conversations) },
+              { label: "Activity", value: formatNumber(data.usage.activity) },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3.5">
+                <p className="text-[11px] text-[#4a4a57] uppercase tracking-wider font-medium">{item.label}</p>
+                <p className="text-xl font-semibold text-white mt-1">{item.value}</p>
               </div>
             ))}
           </div>
+
+          {/* Chart */}
+          <div className="mb-6">
+            <div className="flex gap-1 mb-4">
+              {metricTabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setMetricFilter(tab)}
+                  className={`px-2.5 py-1 text-[12px] font-medium rounded-md transition-all duration-150 ${
+                    metricFilter === tab
+                      ? "bg-indigo-500/[0.15] text-indigo-300 border border-indigo-500/[0.2]"
+                      : "text-[#6c6c7a] hover:text-[#9b9ba7] hover:bg-white/[0.03]"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div className="h-32 flex items-end gap-[3px]">
+              {chartData.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center text-[#4a4a57] text-[13px]">
+                  No data yet
+                </div>
+              ) : (
+                chartData.map((entry) => (
+                  <div key={entry.date} className="group flex-1 flex flex-col items-center gap-1.5 relative">
+                    {/* Tooltip */}
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
+                      <div className="bg-[#222328] text-white text-[10px] font-medium px-2 py-1 rounded-md shadow-lg border border-white/[0.06] whitespace-nowrap">
+                        {metricFilter === "Cost" ? formatCurrency(entry.value) : formatNumber(entry.value)}
+                      </div>
+                    </div>
+                    <div
+                      className="w-full rounded-sm bg-gradient-to-t from-indigo-600/80 to-indigo-400/80 group-hover:from-indigo-500 group-hover:to-indigo-300 transition-all duration-200"
+                      style={{
+                        height: maxChartValue > 0 ? `${(entry.value / maxChartValue) * 100}%` : "0%",
+                        minHeight: entry.value > 0 ? "3px" : "0px",
+                      }}
+                    />
+                    <span className="text-[9px] text-[#4a4a57]">{entry.dateLabel}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Model Breakdown */}
+          {data.usage.byModel.length > 0 && (
+            <div>
+              <h4 className="text-[13px] font-medium text-[#9b9ba7] mb-3">By Model</h4>
+              <div className="space-y-2.5">
+                {data.usage.byModel.map((model) => (
+                  <div key={model.name} className="flex items-center gap-3">
+                    <span className="text-[12px] text-[#6c6c7a] w-32 truncate font-medium">{model.name}</span>
+                    <div className="flex-1 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full transition-all duration-500"
+                        style={{ width: `${model.percentage}%` }}
+                      />
+                    </div>
+                    <span className="text-[11px] text-[#4a4a57] w-16 text-right font-medium">
+                      {formatCurrency(model.cost)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

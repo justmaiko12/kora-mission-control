@@ -228,21 +228,37 @@ function HomeContent() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative z-0">
-        {/* Mobile Header */}
-        <header className="lg:hidden flex items-center gap-3 p-3 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <div className="flex items-center gap-2">
-            <Avatar size="sm" />
-            <span className="font-semibold">{viewTitles[activeView]}</span>
-          </div>
-        </header>
+        {/* Mobile Header - hidden on email view (email has its own header) */}
+        {activeView !== "email" && (
+          <header className="lg:hidden flex items-center gap-3 p-3 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-lg hover:bg-zinc-800 transition-colors touch-manipulation"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-2">
+              <Avatar size="sm" />
+              <span className="font-semibold">{viewTitles[activeView]}</span>
+            </div>
+          </header>
+        )}
+        
+        {/* Email View Mobile Header - just hamburger + accounts */}
+        {activeView === "email" && (
+          <header className="lg:hidden flex items-center gap-2 p-2 border-b border-zinc-800 bg-zinc-950">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-lg hover:bg-zinc-800 transition-colors touch-manipulation flex-shrink-0"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </header>
+        )}
 
         {/* Top: Current View - shrink when mobile chat is open */}
         <main className={`overflow-auto min-h-0 ${mobileChatOpen ? "flex-1 h-[50%]" : "flex-1"}`}>

@@ -139,23 +139,23 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   const handleSelectEmail = (email: EmailThread) => {
     console.log("[EmailView] handleSelectEmail called with:", email);
     setSelectedEmail(email);
-    // TEMPORARILY DISABLED to debug error
-    // Also set as focused item for chat context
-    // if (onFocusItem) {
-    //   onFocusItem({
-    //     type: "email",
-    //     id: safeString(email.id),
-    //     title: safeString(email.subject) || "(no subject)",
-    //     preview: `${safeString(email.from)} • ${safeString(email.snippet)}`,
-    //     metadata: {
-    //       from: safeString(email.from),
-    //       date: safeString(email.date),
-    //       labels: email.labels,
-    //       messageCount: email.messageCount,
-    //       account: activeAccount,
-    //     },
-    //   });
-    // }
+    
+    // Mark as read when opening (if unread)
+    if (!email.read) {
+      // Update local state immediately (optimistic)
+      email.read = true;
+      
+      // Call API to mark as read in background
+      fetch("/api/emails/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: email.id,
+          account: activeAccount,
+          action: "read", // Just mark as read, don't archive
+        }),
+      }).catch(err => console.error("Failed to mark as read:", err));
+    }
   };
 
   // Deal linking state

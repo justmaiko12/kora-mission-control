@@ -156,6 +156,16 @@ h1, h2, h3, h4 {
   display: none;  /* Chrome, Safari, Opera */
 }
 
+/* Fix double-tap issue on mobile - all interactive elements */
+button, a, [role="button"], input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* Explicit class for touch-friendly elements */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;

@@ -231,45 +231,9 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* Custom Channels Section */}
-          <div>
-            <div className="flex items-center justify-between px-3 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              <span>Custom Channels</span>
-              <button
-                onClick={handleCreateChannel}
-                className="text-base text-zinc-500 hover:text-zinc-200 transition-colors"
-              >
-                +
-              </button>
-            </div>
-            <div className="space-y-1">
-              {customChannels.length === 0 && (
-                <div className="px-3 py-2 text-xs text-zinc-600">Create a channel in chat.</div>
-              )}
-              {customChannels.map((channel) => {
-                const isActive = activeView === "custom" && activeCustomChannelId === channel.id;
-                return (
-                  <button
-                    key={channel.id}
-                    onClick={() => {
-                      onSelectCustomChannel(channel.id);
-                      onClose();
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
-                      isActive
-                        ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
-                        : "hover:bg-white/5 text-zinc-400 hover:text-zinc-200"
-                    }`}
-                  >
-                    <span className="text-lg">{channel.emoji}</span>
-                    <span className="flex-1 text-sm font-medium">{channel.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* Custom Channels - hidden until properly built out */}
 
-          {/* Automations Section */}
+          {/* Kora Section */}
           <div>
             <h2 className="px-3 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Kora

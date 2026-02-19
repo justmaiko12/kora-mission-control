@@ -228,35 +228,87 @@ export default function ActivityView() {
 
                 {/* Kora sprite */}
                 <div className="absolute left-1/2 top-[44%] flex -translate-x-1/2 flex-col items-center">
+                  {/* Thought bubbles when active */}
+                  {isAwake && (
+                    <>
+                      <div className="absolute -top-8 -right-4 animate-[thought-1_2s_ease-in-out_infinite]">
+                        <div className="w-2 h-2 rounded-full bg-cyan-300/60" />
+                      </div>
+                      <div className="absolute -top-12 right-0 animate-[thought-2_2s_ease-in-out_infinite_0.3s]">
+                        <div className="w-3 h-3 rounded-full bg-cyan-300/50" />
+                      </div>
+                      <div className="absolute -top-16 right-2 animate-[thought-3_2s_ease-in-out_infinite_0.6s]">
+                        <div className="w-4 h-4 rounded-full bg-cyan-300/40" />
+                      </div>
+                    </>
+                  )}
+                  
+                  {/* Processing sparkles when active */}
+                  {isAwake && (
+                    <>
+                      <div className="absolute -left-6 top-2 text-[8px] text-yellow-300 animate-[sparkle_0.8s_steps(2,end)_infinite]">✦</div>
+                      <div className="absolute -right-6 top-4 text-[8px] text-cyan-300 animate-[sparkle_0.8s_steps(2,end)_infinite_0.4s]">✦</div>
+                      <div className="absolute -left-4 bottom-2 text-[6px] text-emerald-300 animate-[sparkle_0.8s_steps(2,end)_infinite_0.2s]">✦</div>
+                    </>
+                  )}
+                  
                   <div
                     className={`relative h-14 w-14 border-2 border-emerald-200/80 bg-emerald-300/80 shadow-[0_0_0_2px_rgba(6,24,23,0.95)] ${
-                      isAwake ? "animate-[kora-bob_1.2s_steps(2,end)_infinite]" : "animate-[kora-snooze_1.8s_steps(2,end)_infinite]"
+                      isAwake ? "animate-[kora-active_0.6s_steps(2,end)_infinite]" : "animate-[kora-snooze_1.8s_steps(2,end)_infinite]"
                     }`}
                   >
-                    <div className="absolute left-3 top-4 h-2 w-2 bg-emerald-950" />
-                    <div className="absolute right-3 top-4 h-2 w-2 bg-emerald-950" />
+                    {/* Eyes - blink when active */}
+                    <div className={`absolute left-3 top-4 h-2 w-2 bg-emerald-950 ${isAwake ? "animate-[blink_3s_steps(1)_infinite]" : ""}`} />
+                    <div className={`absolute right-3 top-4 h-2 w-2 bg-emerald-950 ${isAwake ? "animate-[blink_3s_steps(1)_infinite]" : ""}`} />
+                    {/* Mouth */}
                     <div className="absolute left-1/2 bottom-3 h-1 w-6 -translate-x-1/2 bg-emerald-900/70" />
+                    
+                    {/* Activity glow when working */}
+                    {isAwake && (
+                      <div className="absolute inset-0 border-2 border-cyan-300/50 animate-[glow-pulse_1s_ease-in-out_infinite]" />
+                    )}
                   </div>
                   <div className="mt-2 rounded-sm border-2 border-emerald-300/60 bg-emerald-950/80 px-2 py-1 text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-200">
                     Kora
                   </div>
                 </div>
 
+                {/* Status text with typing dots when active */}
                 {!data.loading && (
-                  <div className="absolute left-1/2 top-[26%] -translate-x-1/2 text-[10px] font-mono uppercase tracking-[0.25em] text-emerald-200/80">
-                    {isAwake ? "Awake" : "Sleeping"}
+                  <div className="absolute left-1/2 top-[24%] -translate-x-1/2 flex flex-col items-center gap-1">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-emerald-200/80">
+                      {isAwake ? "Working" : "Sleeping"}
+                    </div>
+                    {isAwake && (
+                      <div className="flex gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-[typing_1.4s_ease-in-out_infinite]" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-[typing_1.4s_ease-in-out_infinite_0.2s]" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-[typing_1.4s_ease-in-out_infinite_0.4s]" />
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Helper sprites */}
+                {/* Helper sprites (sub-agents) */}
                 {!data.loading &&
                   activeSessions.slice(0, 4).map((session, index) => {
                     const pos = helperPositions[index % helperPositions.length];
+                    const isSubAgent = session.type === "sub-agent" || session.name?.toLowerCase().includes("gemini") || session.name?.toLowerCase().includes("codex");
                     return (
                       <div key={session.id} className="absolute" style={{ top: pos.top, left: pos.left }}>
                         <div className="flex flex-col items-center">
-                          <div className="h-5 w-5 border-2 border-cyan-200/70 bg-cyan-300/70 shadow-[0_0_0_2px_rgba(8,26,30,0.9)] animate-[helper-hop_1.4s_steps(2,end)_infinite]" />
-                          <span className="mt-1 text-[9px] font-mono text-cyan-100/70">{session.name}</span>
+                          {/* Processing indicator above helper */}
+                          <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-0.5">
+                            <div className="w-1 h-1 rounded-full bg-yellow-300 animate-[typing_1s_ease-in-out_infinite]" />
+                            <div className="w-1 h-1 rounded-full bg-yellow-300 animate-[typing_1s_ease-in-out_infinite_0.2s]" />
+                            <div className="w-1 h-1 rounded-full bg-yellow-300 animate-[typing_1s_ease-in-out_infinite_0.4s]" />
+                          </div>
+                          {/* Helper sprite with glow */}
+                          <div className={`relative h-5 w-5 border-2 ${isSubAgent ? "border-yellow-200/70 bg-yellow-300/70" : "border-cyan-200/70 bg-cyan-300/70"} shadow-[0_0_0_2px_rgba(8,26,30,0.9)] animate-[helper-work_0.5s_steps(2,end)_infinite]`}>
+                            {/* Activity glow */}
+                            <div className={`absolute inset-0 ${isSubAgent ? "bg-yellow-300/30" : "bg-cyan-300/30"} animate-[glow-pulse_0.8s_ease-in-out_infinite]`} />
+                          </div>
+                          <span className={`mt-1 text-[9px] font-mono ${isSubAgent ? "text-yellow-100/80" : "text-cyan-100/70"} truncate max-w-[60px]`}>{session.name}</span>
                         </div>
                       </div>
                     );
@@ -450,21 +502,59 @@ export default function ActivityView() {
       </div>
 
       <style jsx>{`
-        @keyframes kora-bob {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
+        /* Active Kora - more energetic bounce */
+        @keyframes kora-active {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-6px) scale(1.02); }
         }
+        /* Sleeping Kora - gentle breathing */
         @keyframes kora-snooze {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(2px); }
         }
-        @keyframes helper-hop {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-3px); }
+        /* Helper working animation */
+        @keyframes helper-work {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          25% { transform: translateY(-4px) rotate(-3deg); }
+          75% { transform: translateY(-4px) rotate(3deg); }
         }
+        /* Zzz floating */
         @keyframes zzz-float {
           0%, 100% { transform: translateY(0); opacity: 0.6; }
           50% { transform: translateY(-4px); opacity: 1; }
+        }
+        /* Typing dots */
+        @keyframes typing {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+          40% { transform: translateY(-4px); opacity: 1; }
+        }
+        /* Thought bubbles floating up */
+        @keyframes thought-1 {
+          0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
+          50% { transform: translateY(-3px) scale(1.1); opacity: 0.8; }
+        }
+        @keyframes thought-2 {
+          0%, 100% { transform: translateY(0) scale(1); opacity: 0.5; }
+          50% { transform: translateY(-4px) scale(1.1); opacity: 0.7; }
+        }
+        @keyframes thought-3 {
+          0%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
+          50% { transform: translateY(-5px) scale(1.1); opacity: 0.6; }
+        }
+        /* Sparkle twinkle */
+        @keyframes sparkle {
+          0%, 100% { transform: scale(1); opacity: 0; }
+          50% { transform: scale(1.3); opacity: 1; }
+        }
+        /* Glow pulse for active elements */
+        @keyframes glow-pulse {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.7; }
+        }
+        /* Eye blink */
+        @keyframes blink {
+          0%, 90%, 100% { transform: scaleY(1); }
+          95% { transform: scaleY(0.1); }
         }
       `}</style>
     </div>

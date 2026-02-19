@@ -818,9 +818,9 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                 </p>
               </div>
 
-              {/* Quick Actions (visible on hover) */}
+              {/* Quick Actions - DESKTOP: hover reveal, MOBILE: hidden (use swipe or detail view) */}
               {!selectionMode && (
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

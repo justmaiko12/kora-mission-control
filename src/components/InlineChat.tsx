@@ -450,7 +450,7 @@ export default function InlineChat({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {focusedItem && (
+            {focusedItem && onClearFocus && (
               <ContextBadge item={focusedItem} onClear={onClearFocus} compact />
             )}
             {onToggleCollapse && (

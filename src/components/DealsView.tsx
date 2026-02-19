@@ -181,7 +181,7 @@ export default function DealsView({ onNavigateToEmail }: DealsViewProps) {
   const getDealStage = (deal: Deal): string | null => {
     if (!pipelineData?.deals) return null;
     for (const [stage, deals] of Object.entries(pipelineData.deals)) {
-      if (deals.some(d => d.id === deal.id)) return stage;
+      if (deals.some((d: Deal) => d.id === deal.id)) return stage;
     }
     return null;
   };

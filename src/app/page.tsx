@@ -90,6 +90,8 @@ function HomeContent() {
   const [emailRefreshTrigger, setEmailRefreshTrigger] = useState(0);
   const [activeEmailAccount, setActiveEmailAccount] = useState<string>("");
   const [visibleEmails, setVisibleEmails] = useState<Array<{ from: string; subject: string; id: string }>>([]);
+  const [navigateToEmailId, setNavigateToEmailId] = useState<string | null>(null);
+  const [navigateToEmailAccount, setNavigateToEmailAccount] = useState<string | null>(null);
   const searchParams = useSearchParams();
   
   // Callbacks for chat to control email view
@@ -104,6 +106,13 @@ function HomeContent() {
   
   const handleActiveAccountChange = useCallback((account: string) => {
     setActiveEmailAccount(account);
+  }, []);
+  
+  // Navigate to a specific email from another view (e.g., Deals)
+  const handleNavigateToEmail = useCallback((emailId: string, account: string) => {
+    setNavigateToEmailId(emailId);
+    setNavigateToEmailAccount(account);
+    setActiveView("email");
   }, []);
   
   const handleVisibleEmailsChange = useCallback((emails: Array<{ from: string; subject: string; id: string }>) => {
@@ -154,6 +163,12 @@ function HomeContent() {
               refreshTrigger={emailRefreshTrigger}
               onActiveAccountChange={handleActiveAccountChange}
               onVisibleEmailsChange={handleVisibleEmailsChange}
+              navigateToEmailId={navigateToEmailId}
+              navigateToEmailAccount={navigateToEmailAccount}
+              onNavigationComplete={() => {
+                setNavigateToEmailId(null);
+                setNavigateToEmailAccount(null);
+              }}
             />
           </ErrorBoundary>
         );
@@ -199,7 +214,7 @@ function HomeContent() {
       case "integrations":
         return <Integrations />;
       case "business":
-        return <DealsView />;
+        return <DealsView onNavigateToEmail={handleNavigateToEmail} />;
       default:
         return <Dashboard onNavigate={setActiveView} />;
     }

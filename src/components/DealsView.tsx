@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { safeString } from "@/lib/safeRender";
 
+interface DealsViewProps {
+  onNavigateToEmail?: (emailId: string, account: string) => void;
+}
+
 interface Deal {
   id: string;
   emailId?: string;
@@ -69,7 +73,7 @@ const getInvoicerLink = (dealId: string): string => {
   return `${INVOICER_URL}/?view=tracker&taskId=${dealId}`;
 };
 
-export default function DealsView() {
+export default function DealsView({ onNavigateToEmail }: DealsViewProps) {
   const [pipelineData, setPipelineData] = useState<PipelineData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -153,10 +157,9 @@ export default function DealsView() {
   };
 
   const openLinkedEmail = (deal: Deal) => {
-    // Navigate to email view with the linked email
-    // For now, open Gmail directly
-    if (deal.emailId && deal.account) {
-      window.open(`https://mail.google.com/mail/u/?authuser=${deal.account}#inbox/${deal.emailId}`, "_blank");
+    // Navigate to email view within Mission Control
+    if (deal.emailId && deal.account && onNavigateToEmail) {
+      onNavigateToEmail(deal.emailId, deal.account);
     }
   };
 
@@ -270,17 +273,17 @@ export default function DealsView() {
                       } ${selectedDeal?.id === deal.id ? "ring-2 ring-indigo-500" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {deal.emailId && (
-                            <span className="text-indigo-400 flex-shrink-0" title="Has linked email">✉️</span>
-                          )}
-                          <p className="text-sm font-medium line-clamp-2">{safeString(deal.subject)}</p>
-                        </div>
+                        <p className="text-sm font-medium line-clamp-2">{safeString(deal.subject)}</p>
                         {deal.unread && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1" />}
                       </div>
                       <p className="text-xs text-zinc-400 mt-1 truncate">{extractSender(deal.from)}</p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-zinc-500">{formatDate(deal.date)}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-zinc-500">{formatDate(deal.date)}</span>
+                          {deal.emailId && (
+                            <span className="text-indigo-400" title="Has linked email">✉️</span>
+                          )}
+                        </div>
                         {deal.amount ? (
                           <span className="text-xs font-semibold text-emerald-400">{formatMoney(deal.amount)}</span>
                         ) : deal.messageCount > 1 ? (

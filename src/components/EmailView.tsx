@@ -15,9 +15,22 @@ interface EmailViewProps {
   refreshTrigger?: number; // Increment to force refresh
   onActiveAccountChange?: (account: string) => void; // Report active account to parent
   onVisibleEmailsChange?: (emails: Array<{ from: string; subject: string; id: string }>) => void;
+  navigateToEmailId?: string | null; // Navigate to this email on load
+  navigateToEmailAccount?: string | null; // Account for the email to navigate to
+  onNavigationComplete?: () => void; // Called after navigation is done
 }
 
-export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = [], refreshTrigger = 0, onActiveAccountChange, onVisibleEmailsChange }: EmailViewProps) {
+export default function EmailView({ 
+  focusedItem, 
+  onFocusItem, 
+  previewEmailIds = [], 
+  refreshTrigger = 0, 
+  onActiveAccountChange, 
+  onVisibleEmailsChange,
+  navigateToEmailId,
+  navigateToEmailAccount,
+  onNavigationComplete,
+}: EmailViewProps) {
   const { accounts, emails, loading, error, activeAccount, setActiveAccount, refresh } =
     useEmails();
   
@@ -35,6 +48,28 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
       onActiveAccountChange(activeAccount);
     }
   }, [activeAccount, onActiveAccountChange]);
+  
+  // Handle navigation from other views (e.g., Deals -> Email)
+  useEffect(() => {
+    if (navigateToEmailId && navigateToEmailAccount && !loading) {
+      // Switch to the correct account if needed
+      if (navigateToEmailAccount !== activeAccount) {
+        setActiveAccount(navigateToEmailAccount);
+      }
+      
+      // Find the email and select it
+      const email = emails.find(e => e.id === navigateToEmailId);
+      if (email) {
+        setSelectedEmail(email);
+        onNavigationComplete?.();
+      } else {
+        // Email might not be in current list - refresh and try again
+        console.log("[EmailView] Email not found, may need to refresh");
+        onNavigationComplete?.();
+      }
+    }
+  }, [navigateToEmailId, navigateToEmailAccount, emails, loading, activeAccount, setActiveAccount, onNavigationComplete]);
+  
   const [selectedEmail, setSelectedEmail] = useState<EmailThread | null>(null);
   const [markingDeal, setMarkingDeal] = useState<string | null>(null);
   const [ignoredIds, setIgnoredIds] = useState<Set<string>>(new Set());

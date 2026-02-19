@@ -246,12 +246,12 @@ function HomeContent() {
           </header>
         )}
         
-        {/* Email View Mobile Header - just hamburger + accounts */}
+        {/* Email View Mobile Header - just hamburger */}
         {activeView === "email" && (
-          <header className="lg:hidden flex items-center gap-2 p-2 border-b border-zinc-800 bg-zinc-950">
+          <header className="lg:hidden flex items-center gap-2 p-2 border-b border-zinc-800 bg-zinc-950 relative z-[150]">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-zinc-800 transition-colors touch-manipulation flex-shrink-0"
+              className="p-2 rounded-lg hover:bg-zinc-800 transition-colors touch-manipulation flex-shrink-0 relative z-[151]"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />

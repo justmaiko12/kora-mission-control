@@ -530,12 +530,12 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   // Default: full email list view
   return (
     <div className="h-full flex flex-col bg-zinc-950">
-      {/* Header with Search */}
-      <div className="p-4 space-y-3">
-        {/* Account Tabs */}
-        <div className="flex items-center gap-2">
+      {/* Header - Mobile Optimized */}
+      <div className="p-2 md:p-4 space-y-2">
+        {/* Row 1: Account Tabs (full width on mobile) */}
+        <div className="flex items-center justify-between gap-2">
           {accounts.length > 0 && (
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <ErrorBoundary name="EmailTabs-Main">
                 <EmailTabs
                   accounts={accounts}
@@ -545,82 +545,83 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
               </ErrorBoundary>
             </div>
           )}
-          <div className="flex items-center gap-1">
+          {/* Action icons - always visible */}
+          <div className="flex items-center gap-1 flex-shrink-0">
             <button
               onClick={() => {
                 setSelectionMode(!selectionMode);
                 if (selectionMode) setSelectedIds(new Set());
               }}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${
                 selectionMode 
                   ? "bg-indigo-600 text-white" 
                   : "text-zinc-400 hover:text-white hover:bg-zinc-800"
               }`}
               title="Select mode"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </button>
             <button
               onClick={() => refresh()}
               disabled={loading}
-              className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50 min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
-              <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
           </div>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 relative z-10">
+        {/* Row 2: Filter Pills (full width, scrollable) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide relative z-10 -mx-2 px-2">
           <button
             onClick={() => setFilter("needs-response")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+            className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium transition-colors flex items-center gap-1 md:gap-1.5 whitespace-nowrap ${
               filter === "needs-response"
                 ? "bg-amber-600 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-amber-500" />
             Needs Response
             {needsResponseCount > 0 && (
-              <span className="text-xs text-zinc-300">{needsResponseCount}</span>
+              <span className="text-[10px] md:text-xs text-zinc-300">{needsResponseCount}</span>
             )}
           </button>
           <button
             onClick={() => setFilter("awaiting")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+            className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium transition-colors flex items-center gap-1 md:gap-1.5 whitespace-nowrap ${
               filter === "awaiting"
                 ? "bg-blue-600 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
-            Awaiting Response
+            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-500" />
+            Awaiting
             {awaitingCount > 0 && (
-              <span className="text-xs text-zinc-300">{awaitingCount}</span>
+              <span className="text-[10px] md:text-xs text-zinc-300">{awaitingCount}</span>
             )}
           </button>
           <button
             onClick={() => setFilter("unread")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+            className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium transition-colors flex items-center gap-1 md:gap-1.5 whitespace-nowrap ${
               filter === "unread"
                 ? "bg-zinc-700 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-500" />
             Unread
             {unreadCount > 0 && (
-              <span className="text-xs text-zinc-400">{unreadCount}</span>
+              <span className="text-[10px] md:text-xs text-zinc-400">{unreadCount}</span>
             )}
           </button>
           <button
             onClick={() => setFilter("all")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${
               filter === "all"
                 ? "bg-zinc-700 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
@@ -743,7 +744,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
       )}
 
       {/* Email List */}
-      <div className="flex-1 overflow-y-auto px-2">
+      <div className="flex-1 overflow-y-auto px-1 md:px-2">
         {filteredEmails.map((email) => {
           const emailId = safeString(email.id);
           const isPreview = previewEmailIds.includes(emailId);
@@ -759,7 +760,7 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
             <div
               key={emailId}
               onClick={() => selectionMode ? toggleSelect(emailId) : handleSelectEmail(email)}
-              className={`group flex items-center gap-3 px-3 py-3 mx-1 my-0.5 rounded-xl cursor-pointer transition-all ${
+              className={`group flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2.5 md:py-3 rounded-lg md:rounded-xl cursor-pointer transition-all ${
                 isSelected
                   ? "bg-indigo-600/20"
                   : isPreview 
@@ -778,11 +779,11 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                 />
               ) : (
                 <div className="relative flex-shrink-0">
-                  <div className={`w-10 h-10 rounded-full ${getAvatarColor(fromStr)} flex items-center justify-center text-white font-semibold`}>
+                  <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${getAvatarColor(fromStr)} flex items-center justify-center text-white font-semibold text-sm md:text-base`}>
                     {getSenderInitial(fromStr)}
                   </div>
                   {!isRead && (
-                    <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-zinc-950" />
+                    <span className="absolute -top-0.5 -left-0.5 w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-blue-500 border-2 border-zinc-950" />
                   )}
                 </div>
               )}

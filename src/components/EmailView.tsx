@@ -55,6 +55,27 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
   
   // Manually flagged as needs-response (local override)
   const [flaggedNeedsResponse, setFlaggedNeedsResponse] = useState<Set<string>>(new Set());
+  
+  // Email IDs that are linked to deals (from API)
+  const [linkedEmailIds, setLinkedEmailIds] = useState<Set<string>>(new Set());
+  
+  // Fetch linked email IDs
+  const fetchLinkedEmails = async () => {
+    try {
+      const res = await fetch("/api/deals/linked-emails");
+      if (res.ok) {
+        const data = await res.json();
+        setLinkedEmailIds(new Set(data.linkedEmailIds || []));
+      }
+    } catch (err) {
+      console.error("Failed to fetch linked emails:", err);
+    }
+  };
+  
+  // Fetch on mount and when refresh is triggered
+  useEffect(() => {
+    fetchLinkedEmails();
+  }, [refreshTrigger]);
 
   // Toggle individual email selection
   const toggleSelect = (emailId: string) => {
@@ -239,6 +260,9 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
         }),
       }).catch(() => {});
       
+      // Refresh linked emails to show the icon
+      fetchLinkedEmails();
+      
     } catch (err) {
       console.error("Failed to create deal:", err);
     }
@@ -278,6 +302,9 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
           email: { from: dealLinkEmail.from, subject: dealLinkEmail.subject },
         }),
       }).catch(() => {});
+      
+      // Refresh linked emails to show the icon
+      fetchLinkedEmails();
       
     } catch (err) {
       console.error("Failed to link deal:", err);
@@ -887,6 +914,10 @@ export default function EmailView({ focusedItem, onFocusItem, previewEmailIds = 
                     <p className={`font-medium truncate ${isRead ? "text-zinc-400" : "text-white"}`}>
                       {senderName}
                     </p>
+                    {/* Linked to deal indicator */}
+                    {linkedEmailIds.has(emailId) && (
+                      <span className="text-emerald-400 flex-shrink-0" title="Linked to deal">💼</span>
+                    )}
                     {/* Importance indicator */}
                     {email.importanceScore !== undefined && email.importanceScore >= 70 && (
                       <span className="text-amber-400 flex-shrink-0" title={`Importance: ${email.importanceScore}`}>⭐</span>

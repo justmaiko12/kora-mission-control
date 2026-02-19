@@ -61,7 +61,8 @@ const FALLBACK_SENDER: Company = {
   paymentInstructions: "",
 };
 
-function generateInvoiceNumber(): string {
+// Fallback invoice number (only used if fetch fails)
+function generateFallbackInvoiceNumber(): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -308,8 +309,8 @@ export default function InvoiceGenerator({
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  // Invoice form state
-  const [invoiceNumber, setInvoiceNumber] = useState(generateInvoiceNumber());
+  // Invoice form state - invoice number will be set from Invoicer
+  const [invoiceNumber, setInvoiceNumber] = useState("Loading...");
   const [invoiceDate, setInvoiceDate] = useState(getDateString());
   const [dueDate, setDueDate] = useState(getDateString(30));
   const [clientName, setClientName] = useState("");
@@ -323,7 +324,7 @@ export default function InvoiceGenerator({
   const [sender, setSender] = useState<Company | null>(null);
   const [loadingSender, setLoadingSender] = useState(true);
 
-  // Fetch real company data from Invoicer
+  // Fetch real company data and next invoice number from Invoicer
   useEffect(() => {
     async function fetchCompany() {
       try {
@@ -331,6 +332,12 @@ export default function InvoiceGenerator({
         if (res.ok) {
           const data = await res.json();
           setSender(data.company);
+          // Set invoice number from Invoicer (sequential)
+          if (data.nextInvoiceNumber) {
+            setInvoiceNumber(data.nextInvoiceNumber);
+          } else {
+            setInvoiceNumber(generateFallbackInvoiceNumber());
+          }
         } else {
           console.error("Failed to fetch company");
           // Use minimal fallback
@@ -338,6 +345,7 @@ export default function InvoiceGenerator({
             name: deal.account.includes("meettherodz") ? "Meet The Rodz" : "Shluv Enterprise LLC",
             email: deal.account,
           });
+          setInvoiceNumber(generateFallbackInvoiceNumber());
         }
       } catch (err) {
         console.error("Company fetch error:", err);
@@ -345,6 +353,7 @@ export default function InvoiceGenerator({
           name: deal.account.includes("meettherodz") ? "Meet The Rodz" : "Shluv Enterprise LLC",
           email: deal.account,
         });
+        setInvoiceNumber(generateFallbackInvoiceNumber());
       } finally {
         setLoadingSender(false);
       }

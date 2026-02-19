@@ -12,6 +12,28 @@ const COMPANY_MAP: Record<string, string> = {
   "business@meettherodz.com": "1e9a87f3-0a12-48b0-be03-c4a98359f71f",
 };
 
+// Get next invoice number for a company (same logic as Invoicer)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getNextInvoiceNumber(supabase: any, companyId: string): Promise<string> {
+  const { data } = await supabase
+    .from("invoices")
+    .select("invoice_number")
+    .eq("sender_id", companyId)
+    .order("invoice_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const invoiceNumber = (data as any)?.invoice_number;
+  if (!invoiceNumber) return "INV-001";
+
+  const match = String(invoiceNumber).match(/^INV-(\d+)$/i);
+  if (!match) return "INV-001";
+
+  const nextNum = parseInt(match[1], 10) + 1;
+  return `INV-${String(nextNum).padStart(3, "0")}`;
+}
+
 export async function GET(req: NextRequest) {
   const account = req.nextUrl.searchParams.get("account");
   const companyId = req.nextUrl.searchParams.get("companyId");
@@ -57,7 +79,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Return company data (sanitize sensitive fields if needed)
+    // Get next invoice number
+    const nextInvoiceNumber = await getNextInvoiceNumber(supabase, targetId);
+
+    // Return company data with next invoice number
     return NextResponse.json({
       company: {
         id: data.id,
@@ -73,6 +98,7 @@ export async function GET(req: NextRequest) {
         logoUrl: data.logo_url || data.logoUrl,
         paymentInstructions: data.payment_instructions || data.paymentInstructions,
       },
+      nextInvoiceNumber,
     });
   } catch (err) {
     console.error("Company fetch error:", err);

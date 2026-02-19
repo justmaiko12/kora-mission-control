@@ -147,18 +147,12 @@ export default function Sidebar({
     return (
       <button 
         type="button"
-        onPointerDown={(e) => {
-          console.log('[Sidebar] Button PointerDown:', item.id);
-        }}
-        onMouseDown={(e) => {
-          console.log('[Sidebar] Button MouseDown:', item.id);
-        }}
-        onClick={(e) => {
+        onPointerUp={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log('[Sidebar] Nav clicked:', item.id);
+          console.log('[Sidebar] Button PointerUp (navigating):', item.id);
           if (item.id) handleNavigate(item.id);
-        }} 
+        }}
         className={className}
         style={{ pointerEvents: 'auto' }}
       >
@@ -183,13 +177,6 @@ export default function Sidebar({
     <>
       {/* Sidebar - no overlay, just slides in/out */}
       <aside
-        onClick={(e) => {
-          console.log('[Sidebar] Aside clicked at:', e.clientX, e.clientY, 'target:', (e.target as HTMLElement).tagName, (e.target as HTMLElement).className?.slice(0, 50));
-          e.stopPropagation();
-        }}
-        onPointerDown={(e) => {
-          console.log('[Sidebar] PointerDown at:', e.clientX, e.clientY, 'target:', (e.target as HTMLElement).tagName);
-        }}
         className={`
           fixed lg:relative inset-y-0 left-0 lg:inset-auto z-[200] lg:z-10
           w-[240px] bg-[var(--surface-1)] border-r border-[var(--border)]

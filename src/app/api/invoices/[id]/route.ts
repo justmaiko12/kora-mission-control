@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { invoicerSupabase } from '@/lib/invoicerSupabase';
+import { getInvoicerSupabase } from '@/lib/invoicerSupabase';
 
 export async function GET(
   req: NextRequest,
@@ -12,8 +12,10 @@ export async function GET(
       return NextResponse.json({ error: 'Invoice ID required' }, { status: 400 });
     }
 
+    const supabase = getInvoicerSupabase();
+
     // Fetch invoice from Supabase
-    const { data: invoice, error } = await invoicerSupabase
+    const { data: invoice, error } = await supabase
       .from('invoices')
       .select('*')
       .eq('id', id)

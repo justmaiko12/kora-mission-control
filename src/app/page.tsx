@@ -211,7 +211,9 @@ function HomeContent() {
       <Sidebar
         activeView={activeView}
         onNavigate={(view) => {
+          console.log('[Page] onNavigate called with:', view, 'current activeView:', activeView);
           setActiveView(view);
+          console.log('[Page] setActiveView called');
           if (view !== "custom") {
             setActiveCustomChannelId(null);
           }

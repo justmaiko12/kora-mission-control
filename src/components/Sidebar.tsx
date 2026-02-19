@@ -106,8 +106,12 @@ export default function Sidebar({
   ];
 
   const handleNavigate = (view: ViewType) => {
+    console.log('[Sidebar] handleNavigate called with:', view);
+    console.log('[Sidebar] onNavigate function:', typeof onNavigate);
     onNavigate(view);
+    console.log('[Sidebar] onNavigate completed, calling onClose');
     onClose();
+    console.log('[Sidebar] onClose completed');
   };
 
   const NavButton = ({ item }: { item: NavItem }) => {

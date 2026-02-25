@@ -61,32 +61,53 @@ export async function GET(request: NextRequest) {
 
     console.log("[DEALS API] Fetched tasks:", tasks?.length || 0);
 
+    // Map Supabase promo_tasks to frontend Deal interface
+    const mapPromoTaskToDeal = (task: any) => ({
+      id: task.id,
+      subject: task.title,
+      from: task.client_name || "Unknown Client",
+      date: task.created_at || new Date().toISOString(),
+      account: task.owner_company_id || account || "unknown",
+      labels: task.payment_status ? [task.payment_status] : [],
+      messageCount: 1,
+      amount: task.fee || 0,
+      ownerCompanyId: task.owner_company_id,
+      source: "invoicer" as const,
+    });
+
     if (view === "inbox") {
-      return NextResponse.json({ deals: { inbox: tasks || [] } });
+      return NextResponse.json({ 
+        deals: { 
+          inbox: (tasks || []).map(mapPromoTaskToDeal)
+        } 
+      });
     }
 
-    // Pipeline view: group by payment status
+    // Pipeline view: group by payment status (match frontend stages)
     const pipeline = {
-      prospecting: [] as typeof tasks,
-      negotiation: [] as typeof tasks,
-      won: [] as typeof tasks,
-      lost: [] as typeof tasks,
+      negotiating: [] as any[],
+      active: [] as any[],
+      completed: [] as any[],
+      invoiced: [] as any[],
+      paid: [] as any[],
     };
 
     (tasks || []).forEach((task: any) => {
-      // Map payment_status to pipeline groups
+      const deal = mapPromoTaskToDeal(task);
+      // Map payment_status to frontend pipeline stages
       if (task.payment_status === "not_invoiced" || task.status === "todo") {
-        pipeline.prospecting.push(task);
-      } else if (
-        task.payment_status === "invoiced" ||
-        task.payment_status === "partial"
-      ) {
-        pipeline.negotiation.push(task);
+        pipeline.negotiating.push(deal);
+      } else if (task.work_status === "in_progress") {
+        pipeline.active.push(deal);
+      } else if (task.work_status === "completed" && task.payment_status !== "paid") {
+        pipeline.completed.push(deal);
+      } else if (task.payment_status === "invoiced" || task.payment_status === "partial") {
+        pipeline.invoiced.push(deal);
       } else if (task.payment_status === "paid" || task.status === "paid") {
-        pipeline.won.push(task);
+        pipeline.paid.push(deal);
       } else {
-        // Default to negotiation for any other status
-        pipeline.negotiation.push(task);
+        // Default to active for any other status
+        pipeline.active.push(deal);
       }
     });
 

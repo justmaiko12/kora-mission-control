@@ -1,0 +1,2 @@
+console.log('INVOICER_SUPABASE_URL:', process.env.INVOICER_SUPABASE_URL);
+console.log('INVOICER_SUPABASE_ANON_KEY:', process.env.INVOICER_SUPABASE_ANON_KEY ? '***' : 'MISSING');

@@ -11,8 +11,11 @@ export async function GET(request: NextRequest) {
     const supabaseUrl = process.env.INVOICER_SUPABASE_URL;
     const supabaseKey = process.env.INVOICER_SUPABASE_ANON_KEY;
 
+    console.log("[DEALS API] URL configured:", !!supabaseUrl);
+    console.log("[DEALS API] Key configured:", !!supabaseKey);
+
     if (!supabaseUrl || !supabaseKey) {
-      console.warn("Invoicer Supabase credentials not configured");
+      console.warn("[DEALS API] Invoicer Supabase credentials not configured");
       return NextResponse.json(
         { deals: { prospecting: [], negotiation: [], won: [], lost: [] } }
       );
@@ -34,7 +37,6 @@ export async function GET(request: NextRequest) {
         status,
         work_status,
         payment_status,
-        deal_stage,
         client_name,
         client_id,
         email_context,
@@ -45,24 +47,25 @@ export async function GET(request: NextRequest) {
         due_date,
         owner_company_id,
         paid_amount,
-        payment_history,
-        completed_at
+        payment_history
       `
       )
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Failed to fetch promo_tasks:", error);
+      console.error("[DEALS API] Failed to fetch promo_tasks:", error);
       return NextResponse.json(
         { deals: { prospecting: [], negotiation: [], won: [], lost: [] } }
       );
     }
 
+    console.log("[DEALS API] Fetched tasks:", tasks?.length || 0);
+
     if (view === "inbox") {
       return NextResponse.json({ deals: { inbox: tasks || [] } });
     }
 
-    // Pipeline view: group by deal_stage
+    // Pipeline view: group by payment status
     const pipeline = {
       prospecting: [] as typeof tasks,
       negotiation: [] as typeof tasks,
@@ -71,21 +74,19 @@ export async function GET(request: NextRequest) {
     };
 
     (tasks || []).forEach((task: any) => {
-      const stage = task.deal_stage || task.status;
-      
-      // Map deal stages to pipeline groups
-      if (stage === "discussions" || stage === "todo") {
+      // Map payment_status to pipeline groups
+      if (task.payment_status === "not_invoiced" || task.status === "todo") {
         pipeline.prospecting.push(task);
       } else if (
-        stage === "in_progress" ||
-        stage === "collecting_payment" ||
-        stage === "invoiced"
+        task.payment_status === "invoiced" ||
+        task.payment_status === "partial"
       ) {
         pipeline.negotiation.push(task);
-      } else if (stage === "done" || stage === "completed" || stage === "paid") {
+      } else if (task.payment_status === "paid" || task.status === "paid") {
         pipeline.won.push(task);
-      } else if (stage === "lost" || stage === "rejected") {
-        pipeline.lost.push(task);
+      } else {
+        // Default to negotiation for any other status
+        pipeline.negotiation.push(task);
       }
     });
 
@@ -126,10 +127,10 @@ export async function POST(request: NextRequest) {
           fee: body.fee,
           client_name: body.clientName,
           client_id: body.clientId,
-          deal_stage: body.dealStage || "discussions",
           work_status: body.workStatus || "todo",
           payment_status: body.paymentStatus || "not_invoiced",
           owner_company_id: body.ownerCompanyId,
+          status: body.status || "todo",
         },
       ]);
 
@@ -151,12 +152,12 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase
         .from("promo_tasks")
         .update({
-          deal_stage: body.dealStage,
           work_status: body.workStatus,
           payment_status: body.paymentStatus,
           title: body.title,
           details: body.details,
           fee: body.fee,
+          status: body.status,
         })
         .eq("id", body.id);
 

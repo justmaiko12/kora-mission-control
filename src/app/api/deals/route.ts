@@ -136,16 +136,19 @@ export async function GET(request: NextRequest) {
       
       // Map to invoicer-style pipeline stages
       if (task.work_status === "in_progress") {
-        // Currently being worked on
+        // Currently being worked on (recurring tasks, stipends, etc)
         pipeline.inProgress.push(deal);
       } else if (task.work_status === "completed") {
         // Work is done but payment pending/partial
         pipeline.awaitingPayment.push(deal);
       } else if (task.payment_status === "not_invoiced" || task.status === "todo") {
-        // Not started yet (negotiating/potential)
+        // Not started yet (potential deals)
         pipeline.potential.push(deal);
+      } else if (task.payment_status === "invoiced" && task.work_status !== "completed") {
+        // Invoiced but still in progress (like recurring stipends)
+        pipeline.inProgress.push(deal);
       } else {
-        // Invoiced but not completed work = in progress
+        // Default: invoiced work goes to in progress
         pipeline.inProgress.push(deal);
       }
     });

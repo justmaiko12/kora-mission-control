@@ -120,6 +120,7 @@ export async function GET(request: NextRequest) {
       active: [] as any[],
       completed: [] as any[],
       invoiced: [] as any[],
+      partial: [] as any[],
       paid: [] as any[],
     };
 
@@ -130,15 +131,17 @@ export async function GET(request: NextRequest) {
         pipeline.negotiating.push(deal);
       } else if (task.work_status === "in_progress") {
         pipeline.active.push(deal);
-      } else if (task.work_status === "completed" && task.payment_status !== "paid") {
+      } else if (task.work_status === "completed" && task.payment_status === "not_invoiced") {
         pipeline.completed.push(deal);
-      } else if (task.payment_status === "invoiced" || task.payment_status === "partial") {
+      } else if (task.payment_status === "invoiced") {
         pipeline.invoiced.push(deal);
+      } else if (task.payment_status === "partial") {
+        pipeline.partial.push(deal);
       } else if (task.payment_status === "paid" || task.status === "paid") {
         pipeline.paid.push(deal);
       } else {
-        // Default to active for any other status
-        pipeline.active.push(deal);
+        // Default to negotiating for any other status
+        pipeline.negotiating.push(deal);
       }
     });
 

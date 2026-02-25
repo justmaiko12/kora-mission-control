@@ -29,6 +29,7 @@ interface DealPipeline {
   active: Deal[];
   completed: Deal[];
   invoiced: Deal[];
+  partial: Deal[];
   paid: Deal[];
 }
 
@@ -41,6 +42,8 @@ const DEAL_STAGES = {
   active: { label: "🎬 Active", color: "bg-orange-500/20 border-orange-500/50" },
   completed: { label: "✅ Completed", color: "bg-green-500/20 border-green-500/50" },
   invoiced: { label: "🧾 Invoiced", color: "bg-cyan-500/20 border-cyan-500/50" },
+  partial: { label: "💰 Semi-Paid", color: "bg-emerald-500/20 border-emerald-500/50" },
+  paid: { label: "✅ Paid", color: "bg-green-500/20 border-green-500/50" },
 };
 type BusinessFilter = "shluv" | "mtr";
 
@@ -235,8 +238,8 @@ export default function DealsView({ onNavigateToEmail, navigateToDealId, onNavig
     ? Object.values(pipelineData.deals).reduce((sum, items) => sum + items.length, 0)
     : 0;
 
-  // Calculate total awaiting money (active + completed + invoiced, NOT negotiating or paid)
-  const awaitingStages: (keyof DealPipeline)[] = ['active', 'completed', 'invoiced'];
+  // Calculate total awaiting money (active + completed + invoiced + partial, NOT negotiating or paid)
+  const awaitingStages: (keyof DealPipeline)[] = ['active', 'completed', 'invoiced', 'partial'];
   const totalAwaitingMoney = pipelineData?.deals
     ? awaitingStages.reduce((total, stage) => {
         const deals = filterByBusiness(pipelineData.deals[stage] || []);

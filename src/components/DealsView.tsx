@@ -20,16 +20,16 @@ interface Deal {
   messageCount: number;
   unread?: boolean;
   amount?: number | null;
+  paidAmount?: number | null;
+  paymentStatus?: string;
   ownerCompanyId?: string;
   source?: "local" | "invoicer";
 }
 
 interface DealPipeline {
-  negotiating: Deal[];
-  active: Deal[];
-  completed: Deal[];
-  invoiced: Deal[];
-  partial: Deal[];
+  potential: Deal[];
+  inProgress: Deal[];
+  awaitingPayment: Deal[];
 }
 
 interface PipelineData {
@@ -37,11 +37,9 @@ interface PipelineData {
 }
 
 const DEAL_STAGES = {
-  negotiating: { label: "💬 Negotiating", color: "bg-yellow-500/20 border-yellow-500/50" },
-  active: { label: "🎬 Active", color: "bg-orange-500/20 border-orange-500/50" },
-  completed: { label: "✅ Completed", color: "bg-green-500/20 border-green-500/50" },
-  invoiced: { label: "🧾 Invoiced", color: "bg-cyan-500/20 border-cyan-500/50" },
-  partial: { label: "💰 Semi-Paid", color: "bg-emerald-500/20 border-emerald-500/50" },
+  potential: { label: "💭 Potential", color: "bg-blue-500/20 border-blue-500/50" },
+  inProgress: { label: "🎬 In Progress", color: "bg-orange-500/20 border-orange-500/50" },
+  awaitingPayment: { label: "💰 Awaiting Payment", color: "bg-emerald-500/20 border-emerald-500/50" },
 };
 type BusinessFilter = "shluv" | "mtr";
 
@@ -236,8 +234,8 @@ export default function DealsView({ onNavigateToEmail, navigateToDealId, onNavig
     ? Object.values(pipelineData.deals).reduce((sum, items) => sum + items.length, 0)
     : 0;
 
-  // Calculate total awaiting money (active + completed + invoiced + partial, NOT negotiating or paid)
-  const awaitingStages: (keyof DealPipeline)[] = ['active', 'completed', 'invoiced', 'partial'];
+  // Calculate total awaiting money (inProgress + awaitingPayment)
+  const awaitingStages: (keyof DealPipeline)[] = ['inProgress', 'awaitingPayment'];
   const totalAwaitingMoney = pipelineData?.deals
     ? awaitingStages.reduce((total, stage) => {
         const deals = filterByBusiness(pipelineData.deals[stage] || []);
@@ -340,7 +338,12 @@ export default function DealsView({ onNavigateToEmail, navigateToDealId, onNavig
                           )}
                         </div>
                         {deal.amount ? (
-                          <span className="text-xs font-semibold text-emerald-400">{formatMoney(deal.amount)}</span>
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="text-xs font-semibold text-emerald-400">{formatMoney(deal.amount)}</span>
+                            {deal.paidAmount && deal.paidAmount > 0 && (
+                              <span className="text-xs text-zinc-400">{formatMoney(deal.paidAmount)} paid</span>
+                            )}
+                          </div>
                         ) : deal.messageCount > 1 ? (
                           <span className="text-xs text-zinc-500">{deal.messageCount} msgs</span>
                         ) : null}

@@ -101,6 +101,8 @@ export async function GET(request: NextRequest) {
         labels: task.payment_status ? [task.payment_status] : [],
         messageCount: 1,
         amount: task.fee || 0,
+        paidAmount: task.paid_amount || 0,
+        paymentStatus: task.payment_status,
         ownerCompanyId: task.owner_company_id,
         source: "invoicer" as const,
       };
@@ -114,37 +116,37 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Pipeline view: group by payment status (match frontend stages)
-    // Note: We exclude "paid" deals from the view
+    // Pipeline view: match invoicer structure
+    // Potential = negotiating/not started
+    // In Progress = active work
+    // Done Awaiting Payment = completed work not fully paid
     const pipeline = {
-      negotiating: [] as any[],
-      active: [] as any[],
-      completed: [] as any[],
-      invoiced: [] as any[],
-      partial: [] as any[],
+      potential: [] as any[],
+      inProgress: [] as any[],
+      awaitingPayment: [] as any[],
     };
 
     (tasks || []).forEach((task: any) => {
-      // Skip paid deals - don't show them
+      // Skip fully paid deals
       if (task.payment_status === "paid" || task.status === "paid") {
         return;
       }
 
       const deal = mapPromoTaskToDeal(task);
-      // Map payment_status to frontend pipeline stages
-      if (task.payment_status === "not_invoiced" || task.status === "todo") {
-        pipeline.negotiating.push(deal);
-      } else if (task.work_status === "in_progress") {
-        pipeline.active.push(deal);
-      } else if (task.work_status === "completed" && task.payment_status === "not_invoiced") {
-        pipeline.completed.push(deal);
-      } else if (task.payment_status === "invoiced") {
-        pipeline.invoiced.push(deal);
-      } else if (task.payment_status === "partial") {
-        pipeline.partial.push(deal);
+      
+      // Map to invoicer-style pipeline stages
+      if (task.work_status === "in_progress") {
+        // Currently being worked on
+        pipeline.inProgress.push(deal);
+      } else if (task.work_status === "completed") {
+        // Work is done but payment pending/partial
+        pipeline.awaitingPayment.push(deal);
+      } else if (task.payment_status === "not_invoiced" || task.status === "todo") {
+        // Not started yet (negotiating/potential)
+        pipeline.potential.push(deal);
       } else {
-        // Default to negotiating for any other status
-        pipeline.negotiating.push(deal);
+        // Invoiced but not completed work = in progress
+        pipeline.inProgress.push(deal);
       }
     });
 

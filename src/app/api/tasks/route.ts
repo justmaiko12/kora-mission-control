@@ -1,12 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const NOTION_TOKEN = process.env.NOTION_API_TOKEN || '';
+const MASTER_TASKS_DB = process.env.NOTION_MASTER_TASKS_DB || '';
+
+async function fetchTasks() {
+  if (!NOTION_TOKEN || !MASTER_TASKS_DB) {
+    return [];
+  }
+
+  try {
+    const res = await fetch(`https://api.notion.com/v1/databases/${MASTER_TASKS_DB}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NOTION_TOKEN}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filter: {
+          property: 'Status',
+          status: {
+            does_not_equal: 'Done',
+          },
+        },
+        sorts: [
+          {
+            property: 'Due Date',
+            direction: 'ascending',
+          },
+        ],
+        page_size: 20,
+      }),
+    });
+
+    if (!res.ok) {
+      return [];
+    }
+
+    const data = await res.json();
+    const pages = data.results || [];
+
+    return pages.map((page: any) => {
+      const props = page.properties || {};
+      return {
+        id: page.id,
+        title: props.Tasks?.title?.[0]?.plain_text || 'Untitled',
+        status: props.Status?.status?.name || 'unknown',
+        dueDate: props['Due Date']?.date?.start || null,
+        assignee: props['Assigned To']?.people?.[0]?.name || 'Unassigned',
+        priority: props.Priority?.select?.name || 'normal',
+      };
+    });
+  } catch (error) {
+    console.error('Notion fetch error:', error);
+    return [];
+  }
+}
+
 export async function GET() {
   try {
-    // TODO: Connect to Notion Master Tasks DB for real tasks
-    // For now, return empty structure
+    const tasks = await fetchTasks();
     return NextResponse.json({
-      tasks: [],
-      count: 0,
+      tasks,
+      count: tasks.length,
     });
   } catch (error) {
     console.error("Tasks API error:", error);

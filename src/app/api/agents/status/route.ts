@@ -1,9 +1,46 @@
 import { NextResponse } from "next/server";
 
+const NOTION_TOKEN = process.env.NOTION_API_TOKEN || '';
+const MASTER_TASKS_DB = process.env.NOTION_MASTER_TASKS_DB || '';
+
+async function fetchTaskStats() {
+  if (!NOTION_TOKEN || !MASTER_TASKS_DB) {
+    return { pending: 0, completed: 0 };
+  }
+
+  try {
+    const res = await fetch(`https://api.notion.com/v1/databases/${MASTER_TASKS_DB}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NOTION_TOKEN}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        page_size: 100,
+      }),
+    });
+
+    if (!res.ok) {
+      return { pending: 0, completed: 0 };
+    }
+
+    const data = await res.json();
+    const pages = data.results || [];
+    
+    const pending = pages.filter((p: any) => p.properties?.Status?.status?.name !== 'Done').length;
+    const completed = pages.filter((p: any) => p.properties?.Status?.status?.name === 'Done').length;
+
+    return { pending, completed };
+  } catch (error) {
+    console.error('Task stats error:', error);
+    return { pending: 0, completed: 0 };
+  }
+}
+
 export async function GET() {
   try {
-    // Return agent status from internal state
-    // TODO: Connect to OpenClaw gateway for real-time agent status
+    const { pending, completed } = await fetchTaskStats();
     
     return NextResponse.json({
       sessions: [
@@ -11,7 +48,7 @@ export async function GET() {
           id: "kora-main",
           name: "Kora",
           status: "idle",
-          currentTask: null,
+          currentTask: `${pending} pending tasks`,
           lastHeartbeat: new Date().toISOString(),
           progress: 0,
           type: "assistant",
@@ -33,6 +70,7 @@ export async function GET() {
       ],
       activeCount: 0,
       recentCompletions: [],
+      taskStats: { pending, completed },
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
@@ -42,6 +80,7 @@ export async function GET() {
       sessions: [],
       activeCount: 0,
       recentCompletions: [],
+      taskStats: { pending: 0, completed: 0 },
       updatedAt: new Date().toISOString(),
     }, { status: 500 });
   }

@@ -1,39 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
-const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
-
-async function bridgeFetch(path: string, options?: RequestInit) {
-  const res = await fetch(`${BRIDGE_URL}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${BRIDGE_SECRET}`,
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    throw new Error(`Bridge API error: ${res.status}`);
-  }
-  return res.json();
-}
-
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view") || "pipeline";
   const account = searchParams.get("account"); // e.g., "business@shluv.com"
 
   try {
+    // TODO: Connect to Notion Outreach Pipeline DB for real deals
+    // For now, return empty pipeline structure
+    
     if (view === "inbox") {
-      const data = await bridgeFetch("/api/deals/inbox");
-      return NextResponse.json(data);
+      return NextResponse.json({ deals: { inbox: [] } });
     }
     
-    // Pass account filter to pipeline endpoint
-    const queryString = account ? `?account=${encodeURIComponent(account)}` : "";
-    const data = await bridgeFetch(`/api/deals/pipeline${queryString}`);
-    return NextResponse.json(data);
+    // Pipeline view (grouped by status)
+    const pipeline = {
+      prospecting: [],
+      negotiation: [],
+      won: [],
+      lost: [],
+    };
+    
+    return NextResponse.json({ deals: pipeline });
   } catch (error) {
     console.error("Failed to fetch deals:", error);
     return NextResponse.json(
@@ -48,47 +36,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action } = body;
 
+    // TODO: Implement actual deal actions with Notion integration
+    // For now, return success stub
+    
     if (action === "draft") {
-      const data = await bridgeFetch("/api/deals/draft", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-      return NextResponse.json(data);
+      return NextResponse.json({ success: true, deal: { ...body } });
     }
 
     if (action === "create") {
-      // Create a deal from an email (manual)
-      const data = await bridgeFetch("/api/deals/create", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-      return NextResponse.json(data);
+      return NextResponse.json({ success: true, deal: { id: `deal-${Date.now()}`, ...body } });
     }
 
     if (action === "update" || action === "updateStatus") {
-      // Update deal stage, add deadline, etc.
-      const data = await bridgeFetch("/api/deals/update", {
-        method: "PUT",
-        body: JSON.stringify(body),
-      });
-      return NextResponse.json(data);
+      return NextResponse.json({ success: true, updated: true });
     }
 
     if (action === "delete") {
-      const data = await bridgeFetch("/api/deals/delete", {
-        method: "DELETE",
-        body: JSON.stringify(body),
-      });
-      return NextResponse.json(data);
+      return NextResponse.json({ success: true, deleted: true });
     }
 
     if (action === "link") {
-      // Link an email to an existing deal
-      const data = await bridgeFetch("/api/deals/link", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-      return NextResponse.json(data);
+      return NextResponse.json({ success: true, linked: true });
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });

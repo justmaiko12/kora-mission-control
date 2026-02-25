@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
-const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
-
 export async function GET() {
   try {
-    const res = await fetch(`${BRIDGE_URL}/api/tasks`, {
-      headers: {
-        Authorization: `Bearer ${BRIDGE_SECRET}`,
-      },
-      cache: "no-store",
+    // TODO: Connect to Notion Master Tasks DB for real tasks
+    // For now, return empty structure
+    return NextResponse.json({
+      tasks: [],
+      count: 0,
     });
-
-    if (!res.ok) {
-      throw new Error(`Bridge API error: ${res.status}`);
-    }
-
-    const data = await res.json();
-    return NextResponse.json(data);
   } catch (error) {
     console.error("Tasks API error:", error);
     return NextResponse.json(

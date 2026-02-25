@@ -115,16 +115,21 @@ export async function GET(request: NextRequest) {
     }
 
     // Pipeline view: group by payment status (match frontend stages)
+    // Note: We exclude "paid" deals from the view
     const pipeline = {
       negotiating: [] as any[],
       active: [] as any[],
       completed: [] as any[],
       invoiced: [] as any[],
       partial: [] as any[],
-      paid: [] as any[],
     };
 
     (tasks || []).forEach((task: any) => {
+      // Skip paid deals - don't show them
+      if (task.payment_status === "paid" || task.status === "paid") {
+        return;
+      }
+
       const deal = mapPromoTaskToDeal(task);
       // Map payment_status to frontend pipeline stages
       if (task.payment_status === "not_invoiced" || task.status === "todo") {
@@ -137,8 +142,6 @@ export async function GET(request: NextRequest) {
         pipeline.invoiced.push(deal);
       } else if (task.payment_status === "partial") {
         pipeline.partial.push(deal);
-      } else if (task.payment_status === "paid" || task.status === "paid") {
-        pipeline.paid.push(deal);
       } else {
         // Default to negotiating for any other status
         pipeline.negotiating.push(deal);

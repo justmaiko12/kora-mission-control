@@ -30,7 +30,6 @@ interface DealPipeline {
   completed: Deal[];
   invoiced: Deal[];
   partial: Deal[];
-  paid: Deal[];
 }
 
 interface PipelineData {
@@ -43,7 +42,6 @@ const DEAL_STAGES = {
   completed: { label: "✅ Completed", color: "bg-green-500/20 border-green-500/50" },
   invoiced: { label: "🧾 Invoiced", color: "bg-cyan-500/20 border-cyan-500/50" },
   partial: { label: "💰 Semi-Paid", color: "bg-emerald-500/20 border-emerald-500/50" },
-  paid: { label: "✅ Paid", color: "bg-green-500/20 border-green-500/50" },
 };
 type BusinessFilter = "shluv" | "mtr";
 

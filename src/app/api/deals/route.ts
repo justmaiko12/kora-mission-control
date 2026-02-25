@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+// Map business filter to company IDs in invoicer
+const BUSINESS_TO_COMPANY_ID: Record<string, string> = {
+  shluv: "a2e5d4fd-30cd-44b7-a3ce-dc5f8ae5d50b", // Forever Wealthy LLC
+  mtr: "1e9a87f3-0a12-48b0-be03-c4a98359f71f", // MEET THE RODZ CORP
+};
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view") || "pipeline";
-  const account = searchParams.get("account");
+  const account = searchParams.get("account"); // e.g., business@shluv.com or business@meettherodz.com
 
   try {
     // Connect to invoicer Supabase
@@ -25,8 +31,17 @@ export async function GET(request: NextRequest) {
       auth: { persistSession: false },
     });
 
-    // Fetch all promo_tasks
-    const { data: tasks, error } = await supabase
+    // Determine which company to filter by based on account
+    let companyId: string | null = null;
+    
+    if (account?.includes("meettherodz")) {
+      companyId = BUSINESS_TO_COMPANY_ID.mtr;
+    } else if (account?.includes("shluv")) {
+      companyId = BUSINESS_TO_COMPANY_ID.shluv;
+    }
+
+    // Fetch promo_tasks for the specified company
+    let query = supabase
       .from("promo_tasks")
       .select(
         `
@@ -49,8 +64,14 @@ export async function GET(request: NextRequest) {
         paid_amount,
         payment_history
       `
-      )
-      .order("created_at", { ascending: false });
+      );
+
+    // Filter by company if specified
+    if (companyId) {
+      query = query.eq("owner_company_id", companyId);
+    }
+
+    const { data: tasks, error } = await query.order("created_at", { ascending: false });
 
     if (error) {
       console.error("[DEALS API] Failed to fetch promo_tasks:", error);
@@ -62,18 +83,28 @@ export async function GET(request: NextRequest) {
     console.log("[DEALS API] Fetched tasks:", tasks?.length || 0);
 
     // Map Supabase promo_tasks to frontend Deal interface
-    const mapPromoTaskToDeal = (task: any) => ({
-      id: task.id,
-      subject: task.title,
-      from: task.client_name || "Unknown Client",
-      date: task.created_at || new Date().toISOString(),
-      account: task.owner_company_id || account || "unknown",
-      labels: task.payment_status ? [task.payment_status] : [],
-      messageCount: 1,
-      amount: task.fee || 0,
-      ownerCompanyId: task.owner_company_id,
-      source: "invoicer" as const,
-    });
+    const mapPromoTaskToDeal = (task: any) => {
+      // Map company ID back to account string for display
+      let accountString = account || "business@shluv.com";
+      if (task.owner_company_id === BUSINESS_TO_COMPANY_ID.mtr) {
+        accountString = "business@meettherodz.com";
+      } else if (task.owner_company_id === BUSINESS_TO_COMPANY_ID.shluv) {
+        accountString = "business@shluv.com";
+      }
+
+      return {
+        id: task.id,
+        subject: task.title,
+        from: task.client_name || "Unknown Client",
+        date: task.created_at || new Date().toISOString(),
+        account: accountString,
+        labels: task.payment_status ? [task.payment_status] : [],
+        messageCount: 1,
+        amount: task.fee || 0,
+        ownerCompanyId: task.owner_company_id,
+        source: "invoicer" as const,
+      };
+    };
 
     if (view === "inbox") {
       return NextResponse.json({ 
@@ -140,6 +171,16 @@ export async function POST(request: NextRequest) {
       auth: { persistSession: false },
     });
 
+    // Determine company ID from account or ownerCompanyId
+    let ownerCompanyId = body.ownerCompanyId;
+    if (!ownerCompanyId && body.account) {
+      if (body.account.includes("meettherodz")) {
+        ownerCompanyId = BUSINESS_TO_COMPANY_ID.mtr;
+      } else if (body.account.includes("shluv")) {
+        ownerCompanyId = BUSINESS_TO_COMPANY_ID.shluv;
+      }
+    }
+
     if (action === "create") {
       const { error } = await supabase.from("promo_tasks").insert([
         {
@@ -150,7 +191,7 @@ export async function POST(request: NextRequest) {
           client_id: body.clientId,
           work_status: body.workStatus || "todo",
           payment_status: body.paymentStatus || "not_invoiced",
-          owner_company_id: body.ownerCompanyId,
+          owner_company_id: ownerCompanyId || BUSINESS_TO_COMPANY_ID.shluv,
           status: body.status || "todo",
         },
       ]);

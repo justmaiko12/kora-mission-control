@@ -159,7 +159,7 @@ export function useEmails() {
     try {
       const refreshParam = forceRefresh ? "&refresh=true" : "";
       const res = await fetch(
-        `/api/emails?account=${encodeURIComponent(account)}&query=newer_than:14d&max=50${refreshParam}`
+        `/api/emails?dashboard=true&account=${encodeURIComponent(account)}&query=newer_than:14d&max=50${refreshParam}`
       );
       if (!res.ok) throw new Error("Failed to fetch emails");
       const data = await res.json();

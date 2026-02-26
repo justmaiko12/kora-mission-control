@@ -59,22 +59,32 @@ interface BriefingData {
 type ModuleKey = "aiNews" | "kpopNews" | "teamTasks" | "content";
 
 // NewsItemChat — topic-aware chat panel rendered below a news item
+// Input state is LOCAL to prevent parent re-renders on every keystroke
 const NewsItemChat = React.memo(function NewsItemChat({
   item,
-  chatState,
+  messages,
+  loading,
   onSend,
-  onInputChange,
 }: {
   item: BriefingItem;
-  chatState: NewsChatState;
+  messages: ChatMessage[];
+  loading: boolean;
   onSend: (message: string) => void;
-  onInputChange: (value: string) => void;
 }) {
+  // LOCAL input state - doesn't trigger parent re-renders
+  const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const handleSend = () => {
+    if (input.trim() && !loading) {
+      onSend(input);
+      setInput(""); // Clear after send
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && chatState.input.trim() && !chatState.loading) {
-      onSend(chatState.input);
+    if (e.key === "Enter") {
+      handleSend();
     }
   };
 
@@ -97,9 +107,9 @@ const NewsItemChat = React.memo(function NewsItemChat({
       ) : null}
 
       {/* Conversation messages */}
-      {chatState.messages.length > 0 && (
+      {messages.length > 0 && (
         <div className="space-y-2 mb-3 max-h-60 overflow-y-auto pr-1">
-          {chatState.messages.map((msg, idx) => (
+          {messages.map((msg, idx) => (
             <div
               key={idx}
               className={`px-3 py-2 rounded-lg text-sm ${
@@ -115,7 +125,7 @@ const NewsItemChat = React.memo(function NewsItemChat({
               <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
             </div>
           ))}
-          {chatState.loading && (
+          {loading && (
             <div className="px-3 py-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border-subtle)] mr-6">
               <p className="text-xs text-[var(--text-muted)] animate-pulse">🤖 Thinking...</p>
             </div>
@@ -128,49 +138,27 @@ const NewsItemChat = React.memo(function NewsItemChat({
         <input
           ref={inputRef}
           type="text"
-          value={chatState.input}
-          onChange={(e) => {
-            onInputChange(e.target.value);
-          }}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === "Enter" && chatState.input.trim() && !chatState.loading) {
-              onSend(chatState.input);
-            }
-          }}
-          onBlur={(e) => {
-            // Immediately refocus on blur (prevents keyboard from disappearing)
-            setTimeout(() => {
-              e.target.focus();
-            }, 0);
-          }}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
           onTouchStart={(e) => e.stopPropagation()}
-          placeholder={
-            chatState.messages.length === 0
-              ? "Ask about this story..."
-              : "Ask a follow-up..."
-          }
-          disabled={chatState.loading}
+          placeholder={messages.length === 0 ? "Ask about this story..." : "Ask a follow-up..."}
+          disabled={loading}
           autoComplete="off"
-          style={{ 
-            touchAction: "manipulation",
-            fontSize: "16px",
-          }}
+          style={{ touchAction: "manipulation", fontSize: "16px" }}
           className="flex-1 px-3 py-2 bg-[var(--surface-2)] border border-[var(--border-subtle)] rounded-lg focus:outline-none focus:border-[var(--accent)] min-h-[44px] disabled:opacity-60 transition-colors"
         />
         <button
           onTouchStart={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            if (chatState.input.trim() && !chatState.loading) {
-              onSend(chatState.input);
-            }
+            handleSend();
           }}
-          disabled={chatState.loading || !chatState.input.trim()}
+          disabled={loading || !input.trim()}
           style={{ touchAction: "manipulation", fontSize: "16px" }}
           className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-40 text-white rounded-lg min-h-[44px] min-w-[60px] transition-colors font-medium"
         >
-          {chatState.loading ? "···" : "Ask"}
+          {loading ? "···" : "Ask"}
         </button>
       </div>
     </div>
@@ -811,15 +799,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                       {newsChatOpen[item.id] && (
                         <NewsItemChat
                           item={item}
-                          chatState={
-                            newsChatStates[item.id] ?? {
-                              messages: [],
-                              input: "",
-                              loading: false,
-                            }
-                          }
+                          messages={newsChatStates[item.id]?.messages ?? []}
+                          loading={newsChatStates[item.id]?.loading ?? false}
                           onSend={(msg) => handleNewsChatSend(item.id, item, msg)}
-                          onInputChange={(val) => handleChatInputChange(item.id, val)}
                         />
                       )}
                     </div>

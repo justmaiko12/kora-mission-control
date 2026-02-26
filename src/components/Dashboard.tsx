@@ -77,7 +77,7 @@ function NewsItemChat({
   };
 
   return (
-    <div className="mx-3 mb-3 p-3 rounded-xl bg-[var(--surface-0)] border border-[var(--accent)]/20">
+    <div className="mx-3 mb-3 p-3 rounded-xl bg-[var(--surface-0)] border border-[var(--accent)]/20" style={{ touchAction: "manipulation" }}>
       {/* Source / article link */}
       {item.url ? (
         <a
@@ -86,6 +86,7 @@ function NewsItemChat({
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:underline mb-3"
           onClick={(e) => e.stopPropagation()}
+          style={{ touchAction: "manipulation", userSelect: "none" }}
         >
           🔗 {item.source || "Read full article"} ↗
         </a>
@@ -104,6 +105,7 @@ function NewsItemChat({
                   ? "bg-[var(--accent)]/15 text-[var(--text-primary)] ml-6"
                   : "bg-[var(--surface-2)] text-[var(--text-secondary)] mr-6 border border-[var(--border-subtle)]"
               }`}
+              style={{ userSelect: "text" }}
             >
               {msg.role === "assistant" && (
                 <p className="text-[10px] text-[var(--text-muted)] mb-1">🤖 Kora</p>
@@ -120,18 +122,23 @@ function NewsItemChat({
       )}
 
       {/* Input row */}
-      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+      <div className="flex gap-2" onClick={(e) => e.stopPropagation()} style={{ touchAction: "manipulation" }}>
         <input
           type="text"
           value={chatState.input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onFocus={(e) => {
+            // Prevent keyboard from disappearing on mobile
+            e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }}
           placeholder={
             chatState.messages.length === 0
               ? "Ask about this story..."
               : "Ask a follow-up..."
           }
           disabled={chatState.loading}
+          style={{ touchAction: "manipulation" }}
           className="flex-1 px-3 py-2 text-sm bg-[var(--surface-2)] border border-[var(--border-subtle)] rounded-lg focus:outline-none focus:border-[var(--accent)] min-h-[44px] disabled:opacity-60 transition-colors"
         />
         <button
@@ -142,6 +149,7 @@ function NewsItemChat({
             }
           }}
           disabled={chatState.loading || !chatState.input.trim()}
+          style={{ touchAction: "manipulation" }}
           className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-40 text-white rounded-lg text-sm min-h-[44px] min-w-[60px] transition-colors font-medium"
         >
           {chatState.loading ? "···" : "Ask"}

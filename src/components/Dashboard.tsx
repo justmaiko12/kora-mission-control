@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { ViewType } from "@/app/page";
 
 interface DashboardProps {
@@ -34,6 +34,17 @@ interface BriefingModule {
   lastUpdated: string | null;
 }
 
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface NewsChatState {
+  messages: ChatMessage[];
+  input: string;
+  loading: boolean;
+}
+
 interface BriefingData {
   aiNews: BriefingModule;
   kpopNews: BriefingModule;
@@ -47,6 +58,99 @@ interface BriefingData {
 
 type ModuleKey = "aiNews" | "kpopNews" | "teamTasks" | "content";
 
+// NewsItemChat — topic-aware chat panel rendered below a news item
+function NewsItemChat({
+  item,
+  chatState,
+  onSend,
+  onInputChange,
+}: {
+  item: BriefingItem;
+  chatState: NewsChatState;
+  onSend: (message: string) => void;
+  onInputChange: (value: string) => void;
+}) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && chatState.input.trim() && !chatState.loading) {
+      onSend(chatState.input);
+    }
+  };
+
+  return (
+    <div className="mx-3 mb-3 p-3 rounded-xl bg-[var(--surface-0)] border border-[var(--accent)]/20">
+      {/* Source / article link */}
+      {item.url ? (
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:underline mb-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          🔗 {item.source || "Read full article"} ↗
+        </a>
+      ) : item.source ? (
+        <p className="text-xs text-[var(--text-muted)] mb-3">📰 {item.source}</p>
+      ) : null}
+
+      {/* Conversation messages */}
+      {chatState.messages.length > 0 && (
+        <div className="space-y-2 mb-3 max-h-60 overflow-y-auto pr-1">
+          {chatState.messages.map((msg, idx) => (
+            <div
+              key={idx}
+              className={`px-3 py-2 rounded-lg text-sm ${
+                msg.role === "user"
+                  ? "bg-[var(--accent)]/15 text-[var(--text-primary)] ml-6"
+                  : "bg-[var(--surface-2)] text-[var(--text-secondary)] mr-6 border border-[var(--border-subtle)]"
+              }`}
+            >
+              {msg.role === "assistant" && (
+                <p className="text-[10px] text-[var(--text-muted)] mb-1">🤖 Kora</p>
+              )}
+              <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+            </div>
+          ))}
+          {chatState.loading && (
+            <div className="px-3 py-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border-subtle)] mr-6">
+              <p className="text-xs text-[var(--text-muted)] animate-pulse">🤖 Thinking...</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Input row */}
+      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="text"
+          value={chatState.input}
+          onChange={(e) => onInputChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={
+            chatState.messages.length === 0
+              ? "Ask about this story..."
+              : "Ask a follow-up..."
+          }
+          disabled={chatState.loading}
+          className="flex-1 px-3 py-2 text-sm bg-[var(--surface-2)] border border-[var(--border-subtle)] rounded-lg focus:outline-none focus:border-[var(--accent)] min-h-[44px] disabled:opacity-60 transition-colors"
+        />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (chatState.input.trim() && !chatState.loading) {
+              onSend(chatState.input);
+            }
+          }}
+          disabled={chatState.loading || !chatState.input.trim()}
+          className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-40 text-white rounded-lg text-sm min-h-[44px] min-w-[60px] transition-colors font-medium"
+        >
+          {chatState.loading ? "···" : "Ask"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const [stats, setStats] = useState<QuickStats>({
     unreadEmails: 0,
@@ -59,6 +163,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [expandedModule, setExpandedModule] = useState<ModuleKey | null>(null);
   const [expandedNotes, setExpandedNotes] = useState<string | null>(null);
   const [noteText, setNoteText] = useState<Record<string, string>>({});
+
+  // News item chat state — keyed by item ID
+  const [newsChatOpen, setNewsChatOpen] = useState<Record<string, boolean>>({});
+  const [newsChatStates, setNewsChatStates] = useState<Record<string, NewsChatState>>({});
+  // Ref so async handlers always see latest chat state (avoids stale closure)
+  const newsChatStatesRef = useRef(newsChatStates);
+  newsChatStatesRef.current = newsChatStates;
 
   const fetchBriefing = useCallback(async () => {
     try {
@@ -75,6 +186,112 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       console.error("Briefing fetch error:", err);
     }
   }, []);
+
+  /** Toggle a news item's chat panel open/closed */
+  const toggleNewsChat = useCallback((itemId: string) => {
+    setNewsChatOpen((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
+    // Lazily initialise chat state the first time
+    setNewsChatStates((prev) => {
+      if (!prev[itemId]) {
+        return { ...prev, [itemId]: { messages: [], input: "", loading: false } };
+      }
+      return prev;
+    });
+  }, []);
+
+  /** Update the input field for a specific chat */
+  const handleChatInputChange = useCallback((itemId: string, value: string) => {
+    setNewsChatStates((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...(prev[itemId] ?? { messages: [], input: "", loading: false }),
+        input: value,
+      },
+    }));
+  }, []);
+
+  /** Send a message for a specific news item chat */
+  const handleNewsChatSend = useCallback(
+    async (itemId: string, item: BriefingItem, message: string) => {
+      // Read current state via ref to avoid stale closure
+      const current = newsChatStatesRef.current[itemId] ?? {
+        messages: [],
+        input: "",
+        loading: false,
+      };
+      const conversationHistory = current.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      // Optimistic: clear input, set loading
+      setNewsChatStates((prev) => ({
+        ...prev,
+        [itemId]: {
+          ...(prev[itemId] ?? { messages: [], input: "", loading: false }),
+          loading: true,
+          input: "",
+        },
+      }));
+
+      try {
+        const res = await fetch("/api/news/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            newsContext: {
+              title: item.title,
+              summary: item.summary,
+              source: item.source,
+              sourceUrl: item.url,
+            },
+            conversationHistory,
+          }),
+        });
+
+        const data = await res.json();
+        const answer =
+          data.answer ?? "Sorry, I couldn't get a response. Please try again.";
+
+        setNewsChatStates((prev) => {
+          const c = prev[itemId] ?? { messages: [], input: "", loading: false };
+          return {
+            ...prev,
+            [itemId]: {
+              messages: [
+                ...c.messages,
+                { role: "user" as const, content: message },
+                { role: "assistant" as const, content: answer },
+              ],
+              input: "",
+              loading: false,
+            },
+          };
+        });
+      } catch {
+        setNewsChatStates((prev) => {
+          const c = prev[itemId] ?? { messages: [], input: "", loading: false };
+          return {
+            ...prev,
+            [itemId]: {
+              messages: [
+                ...c.messages,
+                { role: "user" as const, content: message },
+                {
+                  role: "assistant" as const,
+                  content: "Sorry, something went wrong. Please try again.",
+                },
+              ],
+              input: "",
+              loading: false,
+            },
+          };
+        });
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     async function fetchStats() {
@@ -473,56 +690,112 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 </div>
               </div>
             ) : (
-              // News modules (AI News & K-pop News) - with feedback
-              <div className="space-y-2">
+              // News modules (AI News & K-pop News) - with feedback + contextual chat
+              <div className="space-y-1">
                 {config.items.length === 0 ? (
                   <p className="text-center text-[var(--text-muted)] py-8">No news yet. Updates at 5am PST.</p>
                 ) : (
                   config.items.map((item) => (
-                    <div key={item.id} className="group flex items-start gap-3 p-3 rounded-lg hover:bg-[var(--surface-2)] transition-colors">
-                      <div className="flex-1 min-w-0">
-                        {item.url ? (
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--accent)]"
-                          >
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-transparent hover:border-[var(--border-subtle)] transition-colors overflow-hidden"
+                    >
+                      {/* Item row — click anywhere to toggle chat */}
+                      <div
+                        className="group flex items-start gap-3 p-3 cursor-pointer hover:bg-[var(--surface-2)] transition-colors"
+                        onClick={() => toggleNewsChat(item.id)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[var(--text-secondary)]">
                             {item.title}
-                          </a>
-                        ) : (
-                          <p className="text-sm font-medium text-[var(--text-secondary)]">{item.title}</p>
-                        )}
-                        {item.summary && (
-                          <p className="text-xs text-[var(--text-muted)] mt-1">{item.summary}</p>
-                        )}
-                        {item.source && (
-                          <p className="text-[10px] text-[var(--text-muted)] mt-1">{item.source}</p>
-                        )}
+                          </p>
+                          {item.summary && (
+                            <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">
+                              {item.summary}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-3 mt-1">
+                            {item.source && (
+                              <span className="text-[10px] text-[var(--text-muted)]">
+                                {item.source}
+                              </span>
+                            )}
+                            {item.url && (
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-[var(--accent)] hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Read ↗
+                              </a>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right-side controls */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {/* Feedback buttons */}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                submitFeedback(expandedModule, item.title, "like");
+                              }}
+                              className={`p-1.5 rounded hover:bg-emerald-500/20 ${
+                                preferences?.liked?.includes(item.title)
+                                  ? "text-emerald-400"
+                                  : "text-[var(--text-muted)]"
+                              }`}
+                              title="More like this"
+                            >
+                              👍
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                submitFeedback(expandedModule, item.title, "dislike");
+                              }}
+                              className={`p-1.5 rounded hover:bg-red-500/20 ${
+                                preferences?.disliked?.includes(item.title)
+                                  ? "text-red-400"
+                                  : "text-[var(--text-muted)]"
+                              }`}
+                              title="Less like this"
+                            >
+                              👎
+                            </button>
+                          </div>
+                          {/* Chat toggle indicator */}
+                          <span
+                            className={`text-xs transition-colors ml-1 ${
+                              newsChatOpen[item.id]
+                                ? "text-[var(--accent)]"
+                                : "text-[var(--text-muted)] opacity-0 group-hover:opacity-100"
+                            }`}
+                            title={newsChatOpen[item.id] ? "Close chat" : "Chat about this"}
+                          >
+                            {newsChatOpen[item.id] ? "▲" : "💬"}
+                          </span>
+                        </div>
                       </div>
-                      {/* Feedback buttons for news only */}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            submitFeedback(expandedModule, item.title, "like");
-                          }}
-                          className={`p-1.5 rounded hover:bg-emerald-500/20 ${preferences?.liked?.includes(item.title) ? "text-emerald-400" : "text-[var(--text-muted)]"}`}
-                          title="More like this"
-                        >
-                          👍
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            submitFeedback(expandedModule, item.title, "dislike");
-                          }}
-                          className={`p-1.5 rounded hover:bg-red-500/20 ${preferences?.disliked?.includes(item.title) ? "text-red-400" : "text-[var(--text-muted)]"}`}
-                          title="Less like this"
-                        >
-                          👎
-                        </button>
-                      </div>
+
+                      {/* Chat panel — lazy-rendered when toggled */}
+                      {newsChatOpen[item.id] && (
+                        <NewsItemChat
+                          item={item}
+                          chatState={
+                            newsChatStates[item.id] ?? {
+                              messages: [],
+                              input: "",
+                              loading: false,
+                            }
+                          }
+                          onSend={(msg) => handleNewsChatSend(item.id, item, msg)}
+                          onInputChange={(val) => handleChatInputChange(item.id, val)}
+                        />
+                      )}
                     </div>
                   ))
                 )}
@@ -636,7 +909,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* Quick hint */}
       <p className="text-center text-[10px] text-[var(--text-muted)]">
-        Click any card to expand • News refreshes daily at 5am PST
+        Click any card to expand • Click a news item to chat about it 💬 • Refreshes daily at 5am PST
       </p>
 
       {/* Expanded Modal */}

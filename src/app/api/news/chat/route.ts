@@ -71,7 +71,7 @@ Guidelines:
         "X-Title": "Kora Mission Control",
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3-5-haiku-20241022",
+        model: "anthropic/claude-3-5-haiku",
         messages,
         max_tokens: 600,
         temperature: 0.4,

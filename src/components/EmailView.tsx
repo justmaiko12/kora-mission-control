@@ -853,6 +853,28 @@ export default function EmailView({
             </ErrorBoundary>
           </div>
         )}
+        
+        {/* Connect Gmail Button - shown when no accounts connected */}
+        {accounts.length === 0 && (
+          <div className="w-full flex items-center justify-center py-6">
+            <button
+              onClick={() => {
+                // Get OAuth URL
+                fetch("/api/emails?action=login")
+                  .then(res => res.json())
+                  .then(data => {
+                    if (data.oauthUrl) {
+                      window.location.href = data.oauthUrl;
+                    }
+                  })
+                  .catch(err => console.error("Failed to get Gmail login URL:", err));
+              }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+            >
+              <span>🔗</span> Connect Gmail
+            </button>
+          </div>
+        )}
 
         {/* Row 2: Filter Pills + Action Icons */}
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide relative -mx-2 px-2">

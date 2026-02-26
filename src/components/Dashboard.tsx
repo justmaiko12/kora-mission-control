@@ -72,13 +72,6 @@ function NewsItemChat({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Maintain focus on input after re-renders
-  useEffect(() => {
-    if (inputRef.current && document.activeElement !== inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [chatState.input]);
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && chatState.input.trim() && !chatState.loading) {
       onSend(chatState.input);

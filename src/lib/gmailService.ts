@@ -127,7 +127,7 @@ export function getOAuthUrl() {
 
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: "offline",
-    scope: ["https://www.googleapis.com/auth/gmail.readonly"],
+    scope: "https://www.googleapis.com/auth/gmail.readonly",
   });
 
   return authUrl;

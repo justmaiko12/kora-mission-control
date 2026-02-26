@@ -119,16 +119,16 @@ export function getOAuthUrl() {
     throw new Error("Missing Google OAuth configuration");
   }
 
-  const oauth2Client = new google.auth.OAuth2(
-    clientId,
-    process.env.GOOGLE_CLIENT_SECRET,
-    redirectUri
-  );
-
-  const authUrl = oauth2Client.generateAuthUrl({
-    access_type: "offline",
+  // Build OAuth URL manually for better control
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
     scope: "https://www.googleapis.com/auth/gmail.readonly",
+    access_type: "offline",
+    prompt: "consent",
   });
 
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   return authUrl;
 }

@@ -12,11 +12,28 @@ export async function GET(request: NextRequest) {
   try {
     // If user is trying to login, return OAuth URL with company context
     if (action === "login") {
-      const oauthUrl = getOAuthUrl();
-      return NextResponse.json({ 
-        oauthUrl: `${oauthUrl}&state=${encodeURIComponent(company)}`,
-        company 
-      });
+      try {
+        const oauthUrl = getOAuthUrl();
+        console.log("[Gmail OAuth] Generated URL:", oauthUrl);
+        console.log("[Gmail OAuth] Client ID:", process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + "...");
+        console.log("[Gmail OAuth] Redirect URI:", process.env.GOOGLE_REDIRECT_URI);
+        
+        return NextResponse.json({ 
+          oauthUrl: `${oauthUrl}&state=${encodeURIComponent(company)}`,
+          company,
+          debug: {
+            clientIdSet: !!process.env.GOOGLE_CLIENT_ID,
+            clientSecretSet: !!process.env.GOOGLE_CLIENT_SECRET,
+            redirectUriSet: !!process.env.GOOGLE_REDIRECT_URI,
+          }
+        });
+      } catch (err) {
+        console.error("[Gmail OAuth] Error generating URL:", err);
+        return NextResponse.json({ 
+          error: err instanceof Error ? err.message : "Unknown error",
+          oauthUrl: null
+        }, { status: 500 });
+      }
     }
 
     // For dashboard view, fetch stored tokens and emails

@@ -42,10 +42,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch full article content on first message only (no conversation history yet)
+    let articleContent = "";
+    if (newsContext.sourceUrl && conversationHistory.length === 0) {
+      try {
+        const jinaUrl = `https://r.jina.ai/${newsContext.sourceUrl}`;
+        const articleRes = await fetch(jinaUrl, {
+          headers: { "Accept": "text/plain" },
+        });
+        if (articleRes.ok) {
+          articleContent = await articleRes.text();
+          // Limit to ~3000 chars to not blow up context
+          if (articleContent.length > 3000) {
+            articleContent = articleContent.slice(0, 3000) + "...[truncated]";
+          }
+        }
+      } catch (e) {
+        console.log("Could not fetch article:", e);
+      }
+    }
+
     const systemPrompt = `You are a helpful assistant discussing a specific news story. Answer questions about this topic concisely and directly, referencing the article when relevant. You may draw on your general knowledge for broader context.
 
 News Article:
-Title: ${newsContext.title}${newsContext.summary ? `\nSummary: ${newsContext.summary}` : ""}${newsContext.source ? `\nSource: ${newsContext.source}` : ""}${newsContext.sourceUrl ? `\nURL: ${newsContext.sourceUrl}` : ""}
+Title: ${newsContext.title}${newsContext.summary ? `\nSummary: ${newsContext.summary}` : ""}${newsContext.source ? `\nSource: ${newsContext.source}` : ""}${newsContext.sourceUrl ? `\nURL: ${newsContext.sourceUrl}` : ""}${articleContent ? `\n\nFull Article Content:\n${articleContent}` : ""}
 
 Guidelines:
 - Be concise (2-3 short paragraphs max)

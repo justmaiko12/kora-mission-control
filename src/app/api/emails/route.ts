@@ -1,79 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOAuthUrl } from "@/lib/gmailService";
-import { fetchEmails } from "@/lib/gmailService";
-import { getCompanyGmailTokens, getGmailTokens } from "@/lib/gmailTokenStorage";
+import {
+  fetchEmailsViaGog,
+  getGmailAccounts,
+  markEmailAsRead,
+  archiveEmail,
+} from "@/lib/gogEmailService";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const action = searchParams.get("action");
-  const company = searchParams.get("company") || "shluv";
+  const account = searchParams.get("account");
   const dashboard = searchParams.get("dashboard");
 
   try {
-    // If user is trying to login, return OAuth URL with company context
-    if (action === "login") {
-      try {
-        const oauthUrl = getOAuthUrl();
-        console.log("[Gmail OAuth] Generated URL:", oauthUrl);
-        console.log("[Gmail OAuth] Client ID:", process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + "...");
-        console.log("[Gmail OAuth] Redirect URI:", process.env.GOOGLE_REDIRECT_URI);
-        
-        return NextResponse.json({ 
-          oauthUrl: `${oauthUrl}&state=${encodeURIComponent(company)}`,
-          company,
-          debug: {
-            clientIdSet: !!process.env.GOOGLE_CLIENT_ID,
-            clientSecretSet: !!process.env.GOOGLE_CLIENT_SECRET,
-            redirectUriSet: !!process.env.GOOGLE_REDIRECT_URI,
-          }
-        });
-      } catch (err) {
-        console.error("[Gmail OAuth] Error generating URL:", err);
-        return NextResponse.json({ 
-          error: err instanceof Error ? err.message : "Unknown error",
-          oauthUrl: null
-        }, { status: 500 });
-      }
-    }
-
-    // For dashboard view, fetch stored tokens and emails
+    // For dashboard view, fetch emails via gog
     if (dashboard === "true") {
-      const companyGmailTokens = await getCompanyGmailTokens(
-        company === "mtr" 
-          ? "1e9a87f3-0a12-48b0-be03-c4a98359f71f"
-          : "a2e5d4fd-30cd-44b7-a3ce-dc5f8ae5d50b"
-      );
+      const accounts = await getGmailAccounts();
 
-      if (companyGmailTokens.length === 0) {
-        return NextResponse.json({
-          authenticated: false,
-          accounts: [],
-          emails: [],
-          loginUrl: getOAuthUrl() + `&state=${encodeURIComponent(company)}`,
-        });
+      // Filter by company if specified
+      let accountsToFetch = accounts;
+      if (account) {
+        if (account.includes("meettherodz")) {
+          accountsToFetch = accounts.filter((a) =>
+            a.includes("meettherodz")
+          );
+        } else if (account.includes("shluv")) {
+          accountsToFetch = accounts.filter((a) => a.includes("shluv"));
+        }
       }
 
-      // Fetch emails from first connected account
-      const token = companyGmailTokens[0];
-      const emails = await fetchEmails({
-        accessToken: token.access_token,
-        refreshToken: token.refresh_token,
-        expiryDate: token.expires_at,
-      });
+      console.log(`[Emails API] Fetching emails for accounts:`, accountsToFetch);
+
+      // Fetch emails from all relevant accounts
+      const emails = await fetchEmailsViaGog();
+
+      // Filter by company/account if specified
+      let filteredEmails = emails;
+      if (account) {
+        filteredEmails = emails.filter((e) => {
+          if (account.includes("meettherodz")) {
+            return e.account.includes("meettherodz");
+          } else if (account.includes("shluv")) {
+            return e.account.includes("shluv");
+          }
+          return true;
+        });
+      }
 
       return NextResponse.json({
         authenticated: true,
-        accounts: companyGmailTokens.map(t => ({ email: t.email })),
-        emails,
-        count: emails.length,
+        accounts: accountsToFetch,
+        emails: filteredEmails,
+        count: filteredEmails.length,
       });
     }
 
+    // List available accounts
+    const accounts = await getGmailAccounts();
     return NextResponse.json({
-      authenticated: false,
+      authenticated: true,
+      accounts,
       emails: [],
-      count: 0,
-      loginUrl: getOAuthUrl(),
     });
   } catch (error) {
     console.error("Failed to fetch emails:", error);
@@ -87,13 +73,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, company = "shluv" } = body;
+    const { action, account, messageId } = body;
 
-    if (action === "getLoginUrl") {
-      const oauthUrl = getOAuthUrl();
-      return NextResponse.json({ 
-        oauthUrl: `${oauthUrl}&state=${encodeURIComponent(company)}`
-      });
+    if (action === "markAsRead") {
+      const success = await markEmailAsRead(account, messageId);
+      return NextResponse.json({ success });
+    }
+
+    if (action === "archive") {
+      const success = await archiveEmail(account, messageId);
+      return NextResponse.json({ success });
     }
 
     return NextResponse.json({ success: false, error: "Unknown action" });

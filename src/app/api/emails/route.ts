@@ -1,27 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthUrl } from "@/lib/gmailService";
+import { fetchEmails } from "@/lib/gmailService";
+import { getCompanyGmailTokens, getGmailTokens } from "@/lib/gmailTokenStorage";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get("action");
+  const company = searchParams.get("company") || "shluv";
   const dashboard = searchParams.get("dashboard");
 
   try {
-    // If user is trying to login, return OAuth URL
+    // If user is trying to login, return OAuth URL with company context
     if (action === "login") {
       const oauthUrl = getOAuthUrl();
-      return NextResponse.json({ oauthUrl });
+      return NextResponse.json({ 
+        oauthUrl: `${oauthUrl}&state=${encodeURIComponent(company)}`,
+        company 
+      });
     }
 
-    // For dashboard view, check if tokens are stored
+    // For dashboard view, fetch stored tokens and emails
     if (dashboard === "true") {
-      // TODO: Implement token storage/retrieval from secure storage
-      // For now, return empty with login prompt
+      const companyGmailTokens = await getCompanyGmailTokens(
+        company === "mtr" 
+          ? "1e9a87f3-0a12-48b0-be03-c4a98359f71f"
+          : "a2e5d4fd-30cd-44b7-a3ce-dc5f8ae5d50b"
+      );
+
+      if (companyGmailTokens.length === 0) {
+        return NextResponse.json({
+          authenticated: false,
+          accounts: [],
+          emails: [],
+          loginUrl: getOAuthUrl() + `&state=${encodeURIComponent(company)}`,
+        });
+      }
+
+      // Fetch emails from first connected account
+      const token = companyGmailTokens[0];
+      const emails = await fetchEmails({
+        accessToken: token.access_token,
+        refreshToken: token.refresh_token,
+        expiryDate: token.expires_at,
+      });
+
       return NextResponse.json({
-        authenticated: false,
-        accounts: [],
-        emails: [],
-        loginUrl: getOAuthUrl(),
+        authenticated: true,
+        accounts: companyGmailTokens.map(t => ({ email: t.email })),
+        emails,
+        count: emails.length,
       });
     }
 
@@ -43,12 +70,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action } = body;
+    const { action, company = "shluv" } = body;
 
-    if (action === "storeTokens") {
-      // TODO: Implement secure token storage
-      // For now, acknowledge
-      return NextResponse.json({ success: true, stored: true });
+    if (action === "getLoginUrl") {
+      const oauthUrl = getOAuthUrl();
+      return NextResponse.json({ 
+        oauthUrl: `${oauthUrl}&state=${encodeURIComponent(company)}`
+      });
     }
 
     return NextResponse.json({ success: false, error: "Unknown action" });

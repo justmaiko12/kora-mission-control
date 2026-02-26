@@ -130,7 +130,6 @@ function NewsItemChat({
           type="text"
           value={chatState.input}
           onChange={(e) => {
-            e.preventDefault();
             onInputChange(e.target.value);
           }}
           onKeyDown={(e) => {
@@ -138,6 +137,12 @@ function NewsItemChat({
             if (e.key === "Enter" && chatState.input.trim() && !chatState.loading) {
               onSend(chatState.input);
             }
+          }}
+          onBlur={(e) => {
+            // Immediately refocus on blur (prevents keyboard from disappearing)
+            setTimeout(() => {
+              e.target.focus();
+            }, 0);
           }}
           onTouchStart={(e) => e.stopPropagation()}
           placeholder={

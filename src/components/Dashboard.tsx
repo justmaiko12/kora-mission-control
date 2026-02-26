@@ -122,26 +122,36 @@ function NewsItemChat({
       )}
 
       {/* Input row */}
-      <div className="flex gap-2" onClick={(e) => e.stopPropagation()} style={{ touchAction: "manipulation" }}>
+      <div className="flex gap-2" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} style={{ touchAction: "manipulation" }}>
         <input
           type="text"
           value={chatState.input}
-          onChange={(e) => onInputChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={(e) => {
-            // Prevent keyboard from disappearing on mobile
-            e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          onChange={(e) => {
+            e.preventDefault();
+            onInputChange(e.target.value);
           }}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter" && chatState.input.trim() && !chatState.loading) {
+              onSend(chatState.input);
+            }
+          }}
+          onTouchStart={(e) => e.stopPropagation()}
           placeholder={
             chatState.messages.length === 0
               ? "Ask about this story..."
               : "Ask a follow-up..."
           }
           disabled={chatState.loading}
-          style={{ touchAction: "manipulation" }}
-          className="flex-1 px-3 py-2 text-sm bg-[var(--surface-2)] border border-[var(--border-subtle)] rounded-lg focus:outline-none focus:border-[var(--accent)] min-h-[44px] disabled:opacity-60 transition-colors"
+          autoComplete="off"
+          style={{ 
+            touchAction: "manipulation",
+            fontSize: "16px",
+          }}
+          className="flex-1 px-3 py-2 bg-[var(--surface-2)] border border-[var(--border-subtle)] rounded-lg focus:outline-none focus:border-[var(--accent)] min-h-[44px] disabled:opacity-60 transition-colors"
         />
         <button
+          onTouchStart={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             if (chatState.input.trim() && !chatState.loading) {
@@ -149,8 +159,8 @@ function NewsItemChat({
             }
           }}
           disabled={chatState.loading || !chatState.input.trim()}
-          style={{ touchAction: "manipulation" }}
-          className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-40 text-white rounded-lg text-sm min-h-[44px] min-w-[60px] transition-colors font-medium"
+          style={{ touchAction: "manipulation", fontSize: "16px" }}
+          className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-40 text-white rounded-lg min-h-[44px] min-w-[60px] transition-colors font-medium"
         >
           {chatState.loading ? "···" : "Ask"}
         </button>

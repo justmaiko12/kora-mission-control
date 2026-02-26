@@ -70,6 +70,15 @@ function NewsItemChat({
   onSend: (message: string) => void;
   onInputChange: (value: string) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Maintain focus on input after re-renders
+  useEffect(() => {
+    if (inputRef.current && document.activeElement !== inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [chatState.input]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && chatState.input.trim() && !chatState.loading) {
       onSend(chatState.input);
@@ -124,6 +133,7 @@ function NewsItemChat({
       {/* Input row */}
       <div className="flex gap-2" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} style={{ touchAction: "manipulation" }}>
         <input
+          ref={inputRef}
           type="text"
           value={chatState.input}
           onChange={(e) => {

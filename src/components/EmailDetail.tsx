@@ -506,7 +506,7 @@ export default function EmailDetail({
           {linkedDeal ? (
             <button
               onClick={() => onViewDeal?.(linkedDeal)}
-              className="px-3 py-1.5 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg transition-colors flex items-center gap-1"
+              className="px-3 py-2 text-sm min-h-[44px] bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg transition-colors flex items-center gap-1"
             >
               💼 View Deal
               {linkedDeal.amount && (
@@ -519,7 +519,7 @@ export default function EmailDetail({
             <button
               onClick={onMarkAsDeal}
               disabled={isMarking}
-              className="px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded-lg transition-colors disabled:opacity-50"
+              className="px-3 py-2 text-sm min-h-[44px] bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
             >
               💰 Mark as Deal
             </button>
@@ -527,16 +527,39 @@ export default function EmailDetail({
           <button
             onClick={onDone}
             disabled={isMarking}
-            className="px-3 py-1.5 text-sm bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-colors disabled:opacity-50"
+            className="px-3 py-2 text-sm min-h-[44px] bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
           >
             ✓ Done
           </button>
           <button
             onClick={onIgnore}
             disabled={isMarking}
-            className="px-3 py-1.5 text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded-lg transition-colors disabled:opacity-50"
+            className="px-3 py-2 text-sm min-h-[44px] bg-zinc-600 hover:bg-zinc-500 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 font-medium"
           >
-            🗑️ Archive
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Archive
+          </button>
+          <button
+            onClick={() => {
+              // Archive + send spam feedback
+              fetch("/api/emails/archive", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  id: email.id,
+                  account,
+                  action: "spam",
+                  email: { from: email.from, subject: email.subject, labels: email.labels },
+                }),
+              }).catch(err => console.error("Failed to mark as spam:", err));
+              onIgnore(); // Remove from view
+            }}
+            disabled={isMarking}
+            className="px-3 py-2 text-sm min-h-[44px] bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+          >
+            🚫 Spam
           </button>
           
           {/* Unsubscribe button - shows when email has List-Unsubscribe header */}
@@ -544,9 +567,9 @@ export default function EmailDetail({
             <button
               onClick={handleUnsubscribe}
               disabled={unsubscribing}
-              className="px-3 py-1.5 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors disabled:opacity-50"
+              className="px-3 py-2 text-sm min-h-[44px] bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
             >
-              {unsubscribing ? "..." : "🚫 Unsubscribe"}
+              {unsubscribing ? "..." : "📵 Unsubscribe"}
             </button>
           )}
           {unsubscribeSuccess && (

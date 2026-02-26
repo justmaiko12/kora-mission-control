@@ -4,6 +4,7 @@ import {
   markAsRead,
   archiveEmail,
 } from "@/lib/serviceAccountEmail";
+import { getEmailStates, buildStateMap } from "@/lib/emailStateService";
 
 const ACCOUNTS = [
   "justmaiko@shluv.com",
@@ -37,14 +38,45 @@ export async function GET(request: NextRequest) {
       // Get list of accounts we're using
       let accountsToShow = ACCOUNTS;
       if (filterAccount) {
-        accountsToShow = ACCOUNTS.filter((a) => a.includes(filterAccount));
+        accountsToShow = ACCOUNTS.filter((a) => a.includes(filterAccount!));
       }
+
+      // Merge email states from Supabase
+      let stateMap: Record<string, import("@/lib/emailStateService").EmailStateRecord> = {};
+      try {
+        // Fetch states for all relevant accounts
+        const accountsToFetch = account ? [account] : accountsToShow;
+        const stateArrays = await Promise.all(
+          accountsToFetch.map((acct) => getEmailStates(acct))
+        );
+        const allStates = stateArrays.flat();
+        stateMap = buildStateMap(allStates);
+      } catch (stateError) {
+        console.warn("[Emails API] Could not load email states:", stateError);
+      }
+
+      // Merge state into each email - transform to frontend format
+      const emailsWithState = emails.map((email: any) => {
+        const stateRecord = stateMap[email.id] || stateMap[email.threadId];
+        const state = stateRecord?.state || null;
+        
+        return {
+          ...email,
+          state,
+          stateUpdatedAt: stateRecord?.updated_at || null,
+          // Transform state to booleans for frontend compatibility
+          needsResponse: state === "needs_response",
+          awaitingResponse: state === "awaiting",
+          // If no state in DB, fall back to heuristic: unread = needs response
+          ...(state === null && !email.read ? { needsResponse: true } : {}),
+        };
+      });
 
       return NextResponse.json({
         authenticated: true,
         accounts: accountsToShow,
-        emails,
-        count: emails.length,
+        emails: emailsWithState,
+        count: emailsWithState.length,
       });
     }
 

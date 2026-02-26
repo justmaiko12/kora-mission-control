@@ -530,11 +530,71 @@ export default function EmailView({
       body: JSON.stringify({
         id: email.id,
         account: activeAccount,
+        action: "archive",
         email: { from: email.from, subject: email.subject, labels: email.labels },
       }),
     }).catch(err => {
       console.error("Failed to archive email:", err);
       // Rollback on error
+      setIgnoredIds((prev) => {
+        const next = new Set(prev);
+        next.delete(email.id);
+        return next;
+      });
+    });
+  };
+
+  // Mark as spam - trains system to filter similar emails
+  const handleMarkAsSpam = async (email: EmailThread) => {
+    // OPTIMISTIC: Hide from UI immediately
+    const newIgnored = new Set([...ignoredIds, email.id]);
+    setIgnoredIds(newIgnored);
+    
+    // Select next email instead of closing
+    selectNextEmail(email, newIgnored);
+    
+    // Fire API in background with spam feedback
+    fetch("/api/emails/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: email.id,
+        account: activeAccount,
+        action: "spam",
+        email: { from: email.from, subject: email.subject, labels: email.labels },
+      }),
+    }).catch(err => {
+      console.error("Failed to mark as spam:", err);
+      // Rollback on error
+      setIgnoredIds((prev) => {
+        const next = new Set(prev);
+        next.delete(email.id);
+        return next;
+      });
+    });
+  };
+
+  // Archive + mark as spam for learning
+  const handleSpam = async (email: EmailThread) => {
+    // OPTIMISTIC: Hide from UI immediately
+    const newIgnored = new Set([...ignoredIds, email.id]);
+    setIgnoredIds(newIgnored);
+    
+    // Select next email
+    selectNextEmail(email, newIgnored);
+    
+    // Fire API in background — archive + spam feedback
+    fetch("/api/emails/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: email.id,
+        account: activeAccount,
+        action: "spam",
+        email: { from: email.from, subject: email.subject, labels: email.labels },
+      }),
+    }).catch(err => {
+      console.error("Failed to mark as spam:", err);
       setIgnoredIds((prev) => {
         const next = new Set(prev);
         next.delete(email.id);
@@ -865,7 +925,9 @@ export default function EmailView({
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide relative -mx-2 px-2">
           <button
             onClick={() => setFilter("needs-response")}
-            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[36px] ${
+            onTouchEnd={(e) => { e.preventDefault(); setFilter("needs-response"); }}
+            style={{ touchAction: "manipulation" }}
+            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[44px] ${
               filter === "needs-response"
                 ? "bg-amber-600 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
@@ -879,7 +941,9 @@ export default function EmailView({
           </button>
           <button
             onClick={() => setFilter("awaiting")}
-            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[36px] ${
+            onTouchEnd={(e) => { e.preventDefault(); setFilter("awaiting"); }}
+            style={{ touchAction: "manipulation" }}
+            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[44px] ${
               filter === "awaiting"
                 ? "bg-blue-600 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
@@ -893,7 +957,9 @@ export default function EmailView({
           </button>
           <button
             onClick={() => setFilter("unread")}
-            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[36px] ${
+            onTouchEnd={(e) => { e.preventDefault(); setFilter("unread"); }}
+            style={{ touchAction: "manipulation" }}
+            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[44px] ${
               filter === "unread"
                 ? "bg-zinc-700 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
@@ -907,7 +973,9 @@ export default function EmailView({
           </button>
           <button
             onClick={() => setFilter("all")}
-            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors whitespace-nowrap min-h-[36px] ${
+            onTouchEnd={(e) => { e.preventDefault(); setFilter("all"); }}
+            style={{ touchAction: "manipulation" }}
+            className={`px-3 py-2 rounded-full text-xs font-medium transition-colors whitespace-nowrap min-h-[44px] ${
               filter === "all"
                 ? "bg-zinc-700 text-white"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
@@ -925,7 +993,13 @@ export default function EmailView({
               setSelectionMode(!selectionMode);
               if (selectionMode) setSelectedIds(new Set());
             }}
-            className={`p-2.5 rounded-lg transition-colors flex-shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center ${
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              setSelectionMode(!selectionMode);
+              if (selectionMode) setSelectedIds(new Set());
+            }}
+            style={{ touchAction: "manipulation" }}
+            className={`p-2.5 rounded-lg transition-colors flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center ${
               selectionMode 
                 ? "bg-indigo-600 text-white" 
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800"
@@ -938,8 +1012,10 @@ export default function EmailView({
           </button>
           <button
             onClick={() => refresh()}
+            onTouchEnd={(e) => { e.preventDefault(); refresh(); }}
             disabled={loading}
-            className="p-2.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center"
+            style={{ touchAction: "manipulation" }}
+            className="p-2.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
             <svg className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1145,36 +1221,84 @@ export default function EmailView({
                 </p>
               </div>
 
-              {/* Quick Actions - DESKTOP: hover reveal, MOBILE: hidden (use swipe or detail view) */}
+              {/* Quick Actions - DESKTOP: hover reveal, MOBILE: always show archive + spam */}
+              {!selectionMode && (
+                <div className="flex md:hidden items-center gap-1 flex-shrink-0">
+                  {/* Mobile: always-visible archive (trash) */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleIgnore(email);
+                    }}
+                    className="p-2.5 min-w-[44px] min-h-[44px] text-zinc-400 hover:text-red-400 rounded-lg transition-colors flex items-center justify-center"
+                    title="Archive"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                  {/* Mobile: spam button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSpam(email);
+                    }}
+                    className="p-2.5 min-w-[44px] min-h-[44px] text-zinc-400 hover:text-orange-400 rounded-lg transition-colors flex items-center justify-center"
+                    title="Spam (archive + train as spam)"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                  </button>
+                </div>
+              )}
               {!selectionMode && (
                 <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                  {/* Done (checkmark) */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDone(email);
                     }}
-                    className="p-2 hover:bg-blue-600/30 rounded-lg transition-colors text-zinc-400 hover:text-blue-400"
+                    className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-blue-600/30 rounded-lg transition-colors text-zinc-400 hover:text-blue-400"
                     title="Done (read, no action needed)"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </button>
+                  {/* Archive (trash can) */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleIgnore(email);
                     }}
-                    className="p-2 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-white"
-                    title="Archive (train as noise)"
+                    className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-red-600/30 rounded-lg transition-colors text-zinc-400 hover:text-red-400"
+                    title="Archive"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
+                  {/* Spam (archive + train) */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSpam(email);
+                    }}
+                    className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-orange-600/30 rounded-lg transition-colors text-zinc-400 hover:text-orange-400"
+                    title="Spam (archive + train as spam)"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                  </button>
+                  {/* Mark as Deal */}
                   <button
                     onClick={(e) => handleMarkAsDeal(e, email)}
-                    className="p-2 hover:bg-green-600/30 rounded-lg transition-colors text-zinc-400 hover:text-green-400"
+                    className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-green-600/30 rounded-lg transition-colors text-zinc-400 hover:text-green-400"
                     title="Mark as Deal (train as important)"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

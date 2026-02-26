@@ -20,26 +20,22 @@ const STORAGE_KEY = "kora-email-tab-names-v3";
 
 export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTabsProps) {
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Load from API (with localStorage fallback)
   useEffect(() => {
     setMounted(true);
     
-    // Try API first
     fetch("/api/settings")
       .then(res => res.json())
       .then(data => {
         if (data.emailTabNames && Object.keys(data.emailTabNames).length > 0) {
           console.log("[EmailTabs] Loaded from API:", data.emailTabNames);
           setCustomNames(data.emailTabNames);
-          // Sync to localStorage
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data.emailTabNames));
         } else {
-          // Fallback to localStorage
           loadFromLocalStorage();
         }
       })
@@ -48,6 +44,25 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
         loadFromLocalStorage();
       });
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isOpen]);
 
   const loadFromLocalStorage = () => {
     try {
@@ -70,54 +85,6 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
     }
   };
 
-  useEffect(() => {
-    if (editingId && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editingId]);
-
-  const handleDoubleClick = (accountId: string, currentName: string) => {
-    setEditingId(accountId);
-    setEditValue(currentName);
-  };
-
-  const handleSave = async (accountId: string) => {
-    const trimmed = editValue.trim();
-    if (trimmed) {
-      const updated = { ...customNames, [accountId]: trimmed };
-      setCustomNames(updated);
-      
-      // Save to localStorage immediately
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch (err) {
-        console.error("[EmailTabs] localStorage save failed:", err);
-      }
-      
-      // Save to API for persistence across devices
-      try {
-        await fetch("/api/settings/email-tabs", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tabNames: { [accountId]: trimmed } }),
-        });
-        console.log("[EmailTabs] Saved to API:", { [accountId]: trimmed });
-      } catch (err) {
-        console.error("[EmailTabs] API save failed (localStorage backup exists):", err);
-      }
-    }
-    setEditingId(null);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent, accountId: string) => {
-    if (e.key === "Enter") {
-      handleSave(accountId);
-    } else if (e.key === "Escape") {
-      setEditingId(null);
-    }
-  };
-
   const getDisplayName = (account: EmailAccount): string => {
     if (mounted && customNames[account.email]) {
       const name = customNames[account.email];
@@ -130,48 +97,84 @@ export default function EmailTabs({ accounts, activeAccount, onChange }: EmailTa
     return account.email?.split("@")[0] || "Email";
   };
 
-  return (
-    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-      {accounts.map((account) => {
-        const isActive = account.id === activeAccount;
-        const isEditing = editingId === account.email;
-        const displayName = getDisplayName(account);
+  const activeAccountData = accounts.find(a => a.id === activeAccount);
+  const otherAccounts = accounts.filter(a => a.id !== activeAccount);
+  const totalUnread = accounts.reduce((sum, a) => sum + (a.id !== activeAccount ? a.unreadCount : 0), 0);
 
-        return (
-          <div key={account.id} className="relative">
-            {isEditing ? (
-              <input
-                ref={inputRef}
-                type="text"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={() => handleSave(account.email)}
-                onKeyDown={(e) => handleKeyDown(e, account.email)}
-                className="py-2 px-3 text-sm font-medium bg-zinc-800 border border-indigo-500 rounded-lg text-white outline-none w-24"
-                maxLength={20}
-              />
-            ) : (
-              <button
-                onClick={() => onChange(account.id)}
-                onDoubleClick={() => handleDoubleClick(account.email, displayName)}
-                title="Double-click to rename"
-                className={`relative py-2.5 px-3 text-sm font-medium transition-colors whitespace-nowrap min-h-[40px] rounded-lg ${
-                  isActive ? "text-indigo-300 bg-zinc-800/50" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/30"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span>{displayName}</span>
-                  {account.unreadCount > 0 && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-600 text-white min-w-[18px] text-center">
-                      {account.unreadCount}
-                    </span>
-                  )}
-                </div>
-              </button>
-            )}
-          </div>
-        );
-      })}
+  const handleSelect = (accountId: string) => {
+    onChange(accountId);
+    setIsOpen(false);
+  };
+
+  // Handle touch for instant response (no 300ms delay)
+  const handleToggleTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    setIsOpen(!isOpen);
+  };
+
+  const handleSelectTouch = (e: React.TouchEvent, accountId: string) => {
+    e.preventDefault();
+    handleSelect(accountId);
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      {/* Active Account Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        onTouchEnd={handleToggleTouch}
+        style={{ touchAction: "manipulation" }}
+        className="flex items-center gap-2 px-3 py-2.5 bg-zinc-800/70 hover:bg-zinc-800 rounded-xl transition-colors min-h-[44px]"
+      >
+        {/* Account name */}
+        <span className="font-medium text-white">
+          {activeAccountData ? getDisplayName(activeAccountData) : "Select Account"}
+        </span>
+        
+        {/* Unread badge for current account */}
+        {activeAccountData && activeAccountData.unreadCount > 0 && (
+          <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-600 text-white min-w-[18px] text-center">
+            {activeAccountData.unreadCount}
+          </span>
+        )}
+        
+        {/* Other accounts unread indicator */}
+        {totalUnread > 0 && (
+          <span className="w-2 h-2 rounded-full bg-amber-500" title={`${totalUnread} unread in other accounts`} />
+        )}
+        
+        {/* Chevron */}
+        <svg 
+          className={`w-4 h-4 text-zinc-400 transition-transform ${isOpen ? "rotate-180" : ""}`} 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && otherAccounts.length > 0 && (
+        <div className="absolute top-full left-0 mt-1 w-56 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+          {otherAccounts.map((account) => (
+            <button
+              key={account.id}
+              onClick={() => handleSelect(account.id)}
+              onTouchEnd={(e) => handleSelectTouch(e, account.id)}
+              style={{ touchAction: "manipulation" }}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-zinc-800 transition-colors text-left min-h-[48px]"
+            >
+              <span className="text-zinc-200 font-medium">{getDisplayName(account)}</span>
+              {account.unreadCount > 0 && (
+                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-600/80 text-white">
+                  {account.unreadCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

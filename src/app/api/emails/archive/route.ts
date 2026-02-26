@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { updateEmailState } from "@/lib/emailStateService";
 
 const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
 const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
@@ -14,7 +15,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Pass email metadata for learning system
+    // Update email state in Supabase based on action
+    if (action === "done") {
+      await updateEmailState(id, account, "done", {
+        threadId: email?.threadId,
+        subject: email?.subject,
+        sender: email?.from,
+      });
+    } else if (action === "archive" || action === "spam") {
+      await updateEmailState(id, account, "archived", {
+        threadId: email?.threadId,
+        subject: email?.subject,
+        sender: email?.from,
+      });
+    }
+    // action === "read" → no state change, just mark read below
+
+    // Pass email metadata to bridge for learning system
     const res = await fetch(`${BRIDGE_URL}/api/email/archive`, {
       method: "POST",
       headers: {

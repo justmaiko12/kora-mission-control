@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view") || "pipeline";
   const account = searchParams.get("account"); // e.g., business@shluv.com or business@meettherodz.com
+  const dealId = searchParams.get("dealId");
 
   try {
     // Connect to invoicer Supabase
@@ -30,6 +31,22 @@ export async function GET(request: NextRequest) {
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false },
     });
+
+    // If a specific dealId is requested, return its linked emails
+    if (dealId) {
+      const { data: linkedEmails, error: linkError } = await supabase
+        .from("email_deal_links")
+        .select("*")
+        .eq("deal_id", dealId)
+        .order("linked_at", { ascending: false });
+
+      if (linkError) {
+        console.error("[DEALS API] Failed to fetch linked emails:", linkError);
+        return NextResponse.json({ linkedEmails: [] });
+      }
+
+      return NextResponse.json({ linkedEmails: linkedEmails || [] });
+    }
 
     // Determine which company to filter by based on account
     let companyId: string | null = null;
@@ -277,6 +294,66 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ success: true, linked: true });
+    }
+
+    // Link an email to a deal via email_deal_links table
+    if (action === "linkEmail") {
+      const { emailId, dealId, account: linkAccount } = body;
+
+      if (!emailId || !dealId) {
+        return NextResponse.json(
+          { error: "emailId and dealId are required" },
+          { status: 400 }
+        );
+      }
+
+      const { error } = await supabase.from("email_deal_links").upsert(
+        {
+          email_id: emailId,
+          deal_id: dealId,
+          account: linkAccount || body.account,
+          linked_at: new Date().toISOString(),
+        },
+        { onConflict: "email_id,deal_id" }
+      );
+
+      if (error) {
+        console.error("Failed to link email to deal:", error);
+        return NextResponse.json(
+          { error: "Failed to link email to deal" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true, linkedEmail: true });
+    }
+
+    // Fetch emails linked to a deal
+    if (action === "getLinkedEmails") {
+      const { dealId } = body;
+
+      if (!dealId) {
+        return NextResponse.json(
+          { error: "dealId is required" },
+          { status: 400 }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from("email_deal_links")
+        .select("*")
+        .eq("deal_id", dealId)
+        .order("linked_at", { ascending: false });
+
+      if (error) {
+        console.error("Failed to fetch linked emails:", error);
+        return NextResponse.json(
+          { error: "Failed to fetch linked emails" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true, linkedEmails: data || [] });
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });

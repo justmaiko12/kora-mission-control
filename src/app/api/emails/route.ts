@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  fetchEmailsViaGog,
-  getGmailAccounts,
-  markEmailAsRead,
+  fetchAllEmails,
+  markAsRead,
   archiveEmail,
-} from "@/lib/gogEmailService";
+} from "@/lib/serviceAccountEmail";
+
+const ACCOUNTS = [
+  "justmaiko@shluv.com",
+  "business@shluv.com",
+  "business@meettherodz.com",
+];
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -12,59 +17,47 @@ export async function GET(request: NextRequest) {
   const dashboard = searchParams.get("dashboard");
 
   try {
-    // For dashboard view, fetch emails via gog
+    // For dashboard view, fetch emails via service account
     if (dashboard === "true") {
-      const accounts = await getGmailAccounts();
+      console.log(`[Emails API] Fetching emails (account filter: ${account})`);
 
-      // Filter by company if specified
-      let accountsToFetch = accounts;
+      // Determine which accounts to fetch
+      let filterAccount: string | undefined;
       if (account) {
         if (account.includes("meettherodz")) {
-          accountsToFetch = accounts.filter((a) =>
-            a.includes("meettherodz")
-          );
+          filterAccount = "meettherodz";
         } else if (account.includes("shluv")) {
-          accountsToFetch = accounts.filter((a) => a.includes("shluv"));
+          filterAccount = "shluv";
         }
       }
 
-      console.log(`[Emails API] Fetching emails for accounts:`, accountsToFetch);
+      // Fetch emails from service account (impersonates target accounts)
+      const emails = await fetchAllEmails(filterAccount);
 
-      // Fetch emails from all relevant accounts
-      const emails = await fetchEmailsViaGog();
-
-      // Filter by company/account if specified
-      let filteredEmails = emails;
-      if (account) {
-        filteredEmails = emails.filter((e) => {
-          if (account.includes("meettherodz")) {
-            return e.account.includes("meettherodz");
-          } else if (account.includes("shluv")) {
-            return e.account.includes("shluv");
-          }
-          return true;
-        });
+      // Get list of accounts we're using
+      let accountsToShow = ACCOUNTS;
+      if (filterAccount) {
+        accountsToShow = ACCOUNTS.filter((a) => a.includes(filterAccount));
       }
 
       return NextResponse.json({
         authenticated: true,
-        accounts: accountsToFetch,
-        emails: filteredEmails,
-        count: filteredEmails.length,
+        accounts: accountsToShow,
+        emails,
+        count: emails.length,
       });
     }
 
     // List available accounts
-    const accounts = await getGmailAccounts();
     return NextResponse.json({
       authenticated: true,
-      accounts,
+      accounts: ACCOUNTS,
       emails: [],
     });
   } catch (error) {
     console.error("Failed to fetch emails:", error);
     return NextResponse.json(
-      { error: "Failed to fetch emails", accounts: [], emails: [] },
+      { error: "Failed to fetch emails", accounts: ACCOUNTS, emails: [] },
       { status: 500 }
     );
   }
@@ -76,7 +69,7 @@ export async function POST(request: NextRequest) {
     const { action, account, messageId } = body;
 
     if (action === "markAsRead") {
-      const success = await markEmailAsRead(account, messageId);
+      const success = await markAsRead(account, messageId);
       return NextResponse.json({ success });
     }
 

@@ -344,8 +344,6 @@ export default function DealsView({ onNavigateToEmail, navigateToDealId, onNavig
                               <span className="text-xs text-zinc-400">{formatMoney(deal.paidAmount)} paid</span>
                             )}
                           </div>
-                        ) : deal.messageCount > 1 ? (
-                          <span className="text-xs text-zinc-500">{deal.messageCount} msgs</span>
                         ) : null}
                       </div>
                       {deal.source === "invoicer" && (

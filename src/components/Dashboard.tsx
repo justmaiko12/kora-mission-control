@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { ViewType } from "@/app/page";
 
 interface DashboardProps {
@@ -59,7 +59,7 @@ interface BriefingData {
 type ModuleKey = "aiNews" | "kpopNews" | "teamTasks" | "content";
 
 // NewsItemChat — topic-aware chat panel rendered below a news item
-function NewsItemChat({
+const NewsItemChat = React.memo(function NewsItemChat({
   item,
   chatState,
   onSend,
@@ -175,7 +175,7 @@ function NewsItemChat({
       </div>
     </div>
   );
-}
+});
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const [stats, setStats] = useState<QuickStats>({

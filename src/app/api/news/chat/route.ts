@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
-const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 interface ConversationMessage {
   role: "user" | "assistant";
@@ -34,81 +34,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build context for the AI
-    const contextMessage = `[News Article Context]
-Title: ${newsContext.title}${newsContext.summary ? `\nSummary: ${newsContext.summary}` : ""}${newsContext.source ? `\nSource: ${newsContext.source}` : ""}${newsContext.sourceUrl ? `\nURL: ${newsContext.sourceUrl}` : ""}
-
-User is asking about this specific news story. Answer concisely (2-3 paragraphs max).`;
-
-    // Build the full message with context
-    const fullMessage = conversationHistory.length === 0
-      ? `${contextMessage}\n\nQuestion: ${message}`
-      : message; // Follow-ups don't need full context again
-
-    // Send to Bridge API
-    const sendRes = await fetch(`${BRIDGE_URL}/api/chat/send`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${BRIDGE_SECRET}`,
-      },
-      body: JSON.stringify({
-        message: fullMessage,
-        context: {
-          type: "news_chat",
-          newsTitle: newsContext.title,
-          newsSource: newsContext.source,
-        },
-        userId: "michael",
-      }),
-    });
-
-    if (!sendRes.ok) {
-      const error = await sendRes.json().catch(() => ({}));
-      console.error("Bridge send error:", error);
+    if (!OPENROUTER_API_KEY) {
+      console.error("OpenRouter API key not configured");
       return NextResponse.json(
-        { error: "Failed to send message" },
+        { error: "API key not configured" },
         { status: 500 }
       );
     }
 
-    const sendData = await sendRes.json();
-    const messageId = sendData.messageId;
+    const systemPrompt = `You are a helpful assistant discussing a specific news story. Answer questions about this topic concisely and directly, referencing the article when relevant. You may draw on your general knowledge for broader context.
 
-    // If immediate response, return it
-    if (sendData.immediate && sendData.response) {
-      return NextResponse.json({ answer: sendData.response });
-    }
+News Article:
+Title: ${newsContext.title}${newsContext.summary ? `\nSummary: ${newsContext.summary}` : ""}${newsContext.source ? `\nSource: ${newsContext.source}` : ""}${newsContext.sourceUrl ? `\nURL: ${newsContext.sourceUrl}` : ""}
 
-    // Poll for response (15s timeout for quick responses)
-    const startTime = Date.now();
-    const timeout = 15000;
-    const pollInterval = 500;
+Guidelines:
+- Be concise (2-3 short paragraphs max)
+- If citing information beyond the article, mention your source briefly
+- Use plain language, avoid excessive jargon
+- If you don't know something specific, say so honestly`;
 
-    while (Date.now() - startTime < timeout) {
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    const messages = [
+      { role: "system" as const, content: systemPrompt },
+      ...conversationHistory.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+      { role: "user" as const, content: message },
+    ];
 
-      const checkRes = await fetch(
-        `${BRIDGE_URL}/api/chat/response/${messageId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${BRIDGE_SECRET}`,
-          },
-        }
-      );
-
-      if (checkRes.ok) {
-        const checkData = await checkRes.json();
-        if (checkData.found) {
-          return NextResponse.json({ answer: checkData.response });
-        }
-      }
-    }
-
-    // Timeout
-    return NextResponse.json({
-      answer: "I'm still thinking about this. Check back in a moment!",
+    const response = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://kora-mission-control.vercel.app",
+        "X-Title": "Kora Mission Control",
+      },
+      body: JSON.stringify({
+        model: "anthropic/claude-3-5-haiku-20241022",
+        messages,
+        max_tokens: 600,
+        temperature: 0.4,
+      }),
     });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("OpenRouter error:", response.status, errText);
+      return NextResponse.json(
+        { error: "Failed to get AI response" },
+        { status: 500 }
+      );
+    }
+
+    const data = await response.json();
+    const answer =
+      data.choices?.[0]?.message?.content || "No response generated";
+
+    return NextResponse.json({ answer });
   } catch (error) {
     console.error("News chat error:", error);
     return NextResponse.json(

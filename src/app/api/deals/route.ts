@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { logAction, logOutcome } from "@/lib/actionLogger";
 
 // Map business filter to company IDs in invoicer
 const BUSINESS_TO_COMPANY_ID: Record<string, string> = {
@@ -239,6 +240,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "update" || action === "updateStatus") {
+      // Fetch current deal for comparison
+      const { data: currentDeal } = await supabase
+        .from("promo_tasks")
+        .select("fee, payment_status, work_status, title, client_name, created_at")
+        .eq("id", body.id)
+        .single();
+
       const { error } = await supabase
         .from("promo_tasks")
         .update({
@@ -257,6 +265,37 @@ export async function POST(request: NextRequest) {
           { error: "Failed to update deal" },
           { status: 500 }
         );
+      }
+
+      // Log deal closure if payment_status changed to "paid"
+      if (body.paymentStatus === "paid" && currentDeal?.payment_status !== "paid") {
+        try {
+          const createdDate = new Date(currentDeal?.created_at || new Date());
+          const now = new Date();
+          const daysToClose = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+          
+          const actionId = await logAction({
+            agentId: "mission-control",
+            actionType: "deal_closed",
+            inputContext: {
+              deal_id: body.id,
+              deal_title: currentDeal?.title || body.title,
+              client: currentDeal?.client_name,
+              amount: currentDeal?.fee || body.fee,
+              days_to_close: daysToClose,
+            },
+          });
+
+          // Log positive outcome
+          await logOutcome({
+            actionId,
+            outcomeType: "deal_paid",
+            outcomeQuality: "positive",
+            notes: `Deal closed and paid: ${currentDeal?.client_name} - $${currentDeal?.fee || 0}`,
+          });
+        } catch (logError) {
+          console.warn("[deals] Could not log deal closure:", logError);
+        }
       }
 
       return NextResponse.json({ success: true, updated: true });

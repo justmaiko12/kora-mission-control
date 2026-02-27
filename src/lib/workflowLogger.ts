@@ -221,24 +221,32 @@ export async function getAgentStats(agentId: string, days: number = 30): Promise
  * Get specialization data for an agent-tasktype combination
  */
 export async function getSpecialization(agentId: string, taskType?: string): Promise<any> {
-  let query = supabase
-    .from('agent_specialization')
-    .select('*')
-    .eq('agent_id', agentId);
-
   if (taskType) {
-    query = query.eq('task_type', taskType).single();
+    const { data, error } = await supabase
+      .from('agent_specialization')
+      .select('*')
+      .eq('agent_id', agentId)
+      .eq('task_type', taskType)
+      .single();
+
+    if (error && !error.message.includes('No rows found')) {
+      throw new Error(`Failed to get specialization: ${error.message}`);
+    }
+
+    return data;
   } else {
-    query = query.order('your_trust_score', { ascending: false });
+    const { data, error } = await supabase
+      .from('agent_specialization')
+      .select('*')
+      .eq('agent_id', agentId)
+      .order('your_trust_score', { ascending: false });
+
+    if (error && !error.message.includes('No rows found')) {
+      throw new Error(`Failed to get specialization: ${error.message}`);
+    }
+
+    return data;
   }
-
-  const { data, error } = await query;
-
-  if (error && !error.message.includes('No rows found')) {
-    throw new Error(`Failed to get specialization: ${error.message}`);
-  }
-
-  return data;
 }
 
 /**

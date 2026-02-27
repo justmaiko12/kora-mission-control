@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateEmailState } from "@/lib/emailStateService";
+import { logAction, logOutcome } from "@/lib/actionLogger";
 
 const BRIDGE_URL = process.env.KORA_BRIDGE_URL || "https://api.korabot.xyz";
 const BRIDGE_SECRET = process.env.KORA_BRIDGE_SECRET || "";
@@ -26,6 +27,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Log the reply action for ML Ops tracking
+    let actionId: string | undefined;
+    try {
+      actionId = await logAction({
+        agentId: "mission-control",
+        actionType: "email_reply",
+        inputContext: {
+          account,
+          to,
+          subject,
+          thread_id: threadId,
+          message_id: messageId,
+        },
+      });
+    } catch (logError) {
+      console.warn("[email reply] Could not log action:", logError);
+      // Don't fail the API response if logging fails
+    }
+
     // Send reply via bridge
     const res = await fetch(`${BRIDGE_URL}/api/email/send`, {
       method: "POST",
@@ -48,10 +68,42 @@ export async function POST(req: NextRequest) {
     const data = await res.json();
 
     if (!res.ok) {
+      // Log failed outcome
+      if (actionId) {
+        try {
+          await logOutcome({
+            actionId,
+            outcomeType: "reply_send_failed",
+            outcomeQuality: "negative",
+            notes: data.error || "Unknown error sending reply",
+          });
+        } catch (outcomeError) {
+          console.warn("[email reply] Could not log negative outcome:", outcomeError);
+        }
+      }
+
       return NextResponse.json(
-        { error: data.error || "Failed to send reply", details: data.details },
+        {
+          error: data.error || "Failed to send reply",
+          details: data.details,
+          actionId,
+        },
         { status: res.status }
       );
+    }
+
+    // Log successful outcome
+    if (actionId) {
+      try {
+        await logOutcome({
+          actionId,
+          outcomeType: "reply_sent",
+          outcomeQuality: "positive",
+          notes: `Reply sent to ${to}`,
+        });
+      } catch (outcomeError) {
+        console.warn("[email reply] Could not log positive outcome:", outcomeError);
+      }
     }
 
     // After successful reply, update email state to "awaiting"
@@ -65,7 +117,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({ ...data, actionId });
   } catch (error) {
     console.error("Email reply error:", error);
     return NextResponse.json(
